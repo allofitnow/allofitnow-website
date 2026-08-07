@@ -1,0 +1,238 @@
+---
+import { about, bleed } from '@/data/home';
+---
+
+<section class="about" data-ref="about" data-screen-label="About" id="work">
+  <div class="display" data-ref="display">
+    {
+      about.display.map((line) => (
+        <div data-ar="1" class="mask">
+          <div data-ai="1" data-dline="1" class="dline">
+            {line.map((word) => (
+              <span>{word}</span>
+            ))}
+          </div>
+        </div>
+      ))
+    }
+  </div>
+
+  <div class="stmt-row">
+    <div data-ar="1" class="mask stmt-cell">
+      <div class="stmt-wrap" data-ref="stmtWrap">
+        <div class="stmt-src" data-ref="statement">
+          <span data-dropcap="1" class="dropcap">{about.dropcap}</span>{about.statement}
+        </div>
+        <div data-ref="stmtOut"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="portrait" data-ref="portrait" data-screen-label="Bleed">
+    <div data-ar="1" class="portrait-mask">
+      <div data-ai="1" class="portrait-inner">
+        <div class="track" data-ref="track">
+          {
+            bleed.map((tile, i) => (
+              <div class="slide" data-slide="1" data-i={i}>
+                <img src={tile.image} alt={tile.artist} draggable="false" loading="lazy" />
+                <span class="ph">{tile.artist}</span>
+              </div>
+            ))
+          }
+          <div class="mirror" data-ref="mirror"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="work-cue" data-ref="workCue">
+    <div data-ar="1" class="mask">
+      <div data-ai="1" class="work-cue-inner">
+        <span data-wb="-1" class="bracket">[</span>
+        <span class="sp"></span>
+        <span>{about.workCue}</span>
+        <span class="sp"></span>
+        <span data-wb="1" class="bracket">]</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .about {
+    min-height: 100vh;
+    color: var(--aoin-cool-white);
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    padding: 120px 48px 0;
+    box-sizing: border-box;
+  }
+
+  .mask {
+    overflow: hidden;
+  }
+
+  /* display lines — WE INNOVATE / VISUAL EXPERIENCES */
+  .display {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    font-family: var(--font-headline);
+    font-weight: var(--weight-headline);
+    font-size: clamp(46px, 8.6vw, 168px);
+    line-height: 0.96;
+    letter-spacing: -0.012em;
+    text-align: justify;
+    text-align-last: justify;
+  }
+  .dline {
+    transform: translateY(110%);
+    display: flex;
+    justify-content: space-between;
+    white-space: nowrap;
+  }
+  .dline span:last-child {
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+
+  /* statement */
+  .stmt-row {
+    display: flex;
+    justify-content: center;
+    gap: clamp(24px, 3vw, 56px);
+    margin-top: clamp(28px, 3.2vw, 58px);
+  }
+  .stmt-cell {
+    flex: 0 1 min(62%, 760px);
+  }
+  .stmt-wrap {
+    position: relative;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: clamp(28px, 1.2vw, 58px);
+    line-height: 1.36;
+    letter-spacing: -0.004em;
+  }
+  .stmt-src {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    visibility: hidden;
+    pointer-events: none;
+    text-align: justify;
+    text-align-last: justify;
+  }
+  /* Inverted dropcap — cool-white block, black glyphs. Kept per direction. */
+  .dropcap {
+    display: inline-block;
+    background: var(--aoin-cool-white);
+    color: #000;
+    padding: 0.12em 0.2em;
+    margin: -0.12em 0.52em -0.12em 0;
+    vertical-align: baseline;
+    line-height: 1;
+    text-box: trim-both cap alphabetic;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 1em;
+    letter-spacing: 0.06em;
+  }
+  /* built lines get their own [data-ai] masks via the controller */
+  .stmt-wrap :global([data-ai]) {
+    transform: translateY(110%);
+  }
+
+  /* bleed carousel */
+  .portrait {
+    margin-top: 140px;
+    flex: 1 1 auto;
+    min-height: 40vh;
+    margin-left: -48px;
+    margin-right: -48px;
+    position: relative;
+    overflow: hidden;
+  }
+  .portrait-mask {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+  }
+  .portrait-inner {
+    position: absolute;
+    inset: 0;
+    transform: translateY(110%);
+  }
+  .track {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    will-change: transform;
+    touch-action: pan-y;
+  }
+  .slide {
+    flex: 0 0 auto;
+    width: 39vw;
+    height: 100%;
+    margin-right: 12px;
+    position: relative;
+    overflow: hidden;
+    border-radius: var(--radius-tile);
+  }
+  .slide img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    z-index: 1; /* cover the placeholder once loaded */
+  }
+  .slide .ph {
+    position: absolute;
+    inset: 0;
+    z-index: 0; /* behind the image; only visible until it loads */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: rgba(217, 225, 234, 0.35);
+  }
+  .mirror {
+    display: flex;
+  }
+
+  /* work cue */
+  .work-cue {
+    margin-top: 34px;
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 12px;
+    letter-spacing: 0.22em;
+    color: var(--aoin-cool-white);
+  }
+  .work-cue-inner {
+    transform: translateY(110%);
+    display: flex;
+    align-items: center;
+  }
+  .work-cue .bracket {
+    display: inline-block;
+    transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .work-cue .sp {
+    display: inline-block;
+    width: 1.1em;
+  }
+</style>

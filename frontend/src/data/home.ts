@@ -65,17 +65,17 @@ export const about = {
 };
 
 // Bleed carousel — maps to the homepage's marquee relationship to `projects`.
-// THE KID LAROI reuses RENÉE RAPP's still in the prototype (rough-in) — swap
-// when the real asset arrives.
+// Repointed to the stills currently on disk (roster was recurated after the
+// initial extraction). CONFIRM artist labels + order — and note the filename
+// `good-charlote.webp` is a typo for Good Charlotte.
 export const bleed: BleedTile[] = [
   { artist: 'BAD BUNNY', image: '/assets/bad-bunny.webp' },
+  { artist: 'RAUW ALEJANDRO', image: '/assets/rauw-alejandro.webp' },
   { artist: 'MARTIN GARRIX', image: '/assets/martin-garrix.webp' },
   { artist: 'PESO PLUMA', image: '/assets/peso-pluma.webp' },
   { artist: 'MELANIE MARTINEZ', image: '/assets/melanie-martinez.webp' },
-  { artist: 'CHILDISH GAMBINO', image: '/assets/childish-gambino.webp' },
-  { artist: 'LINKIN PARK', image: '/assets/linkin-park.webp' },
+  { artist: 'GOOD CHARLOTTE', image: '/assets/good-charlote.webp' },
   { artist: 'RENÉE RAPP', image: '/assets/renee-rapp.webp' },
-  { artist: 'THE KID LAROI', image: '/assets/renee-rapp.webp' },
 ];
 
 export const servicesLabels = { left: 'STUDIO', right: 'CAPABILITIES' };

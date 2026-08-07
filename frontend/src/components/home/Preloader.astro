@@ -2,8 +2,10 @@
 ---
 
 <div class="preloader" data-ref="preloader" data-screen-label="Preloader">
-  <div class="mask"><div class="label" data-ref="preLabel">LOADING</div></div>
-  <div class="mask"><div class="count" data-ref="preCount">0</div></div>
+  <div class="stack">
+    <div class="mask"><div class="label" data-ref="preLabel">LOADING</div></div>
+    <div class="mask"><div class="count" data-ref="preCount">0</div></div>
+  </div>
 </div>
 
 <style>
@@ -12,12 +14,18 @@
     inset: 0;
     z-index: 60;
     background: #000;
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    align-content: center;
-    align-items: start;
-    padding: 0 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0 20px;
     box-sizing: border-box;
+  }
+  .stack {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    gap: clamp(10px, 1.6vw, 22px);
   }
   .mask {
     overflow: hidden;
@@ -25,19 +33,21 @@
   .label {
     font-family: var(--font-mono);
     font-weight: var(--weight-mono);
-    font-size: 14px;
+    font-size: clamp(12px, 1.1vw, 15px);
     line-height: 1;
     letter-spacing: 0.3em;
-    text-box: trim-both cap alphabetic;
+    /* trailing indent balances the tracking so the word stays optically centred */
+    text-indent: 0.3em;
     color: var(--aoin-cool-white);
   }
   .count {
     font-family: var(--font-display);
     font-weight: var(--weight-display);
-    font-size: clamp(140px, 28vw, 520px);
+    /* generous but full-width-centred, so three digits at 100 never clip */
+    font-size: clamp(120px, 22vw, 360px);
     line-height: 1;
     letter-spacing: -0.01em;
     color: var(--aoin-cool-white);
-    text-box: trim-both cap alphabetic;
+    font-variant-numeric: tabular-nums;
   }
 </style>

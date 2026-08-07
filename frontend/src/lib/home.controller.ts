@@ -62,6 +62,35 @@ export class HomeController {
   private onResize!: () => void;
   private footScroll?: () => void;
 
+  // About
+  private aboutShown = false;
+  private aboutPlayed = false;
+  private aboutAnimating = false;
+  private aboutTimers: number[] = [];
+  private aboutDoneId = 0;
+  private refitQueued = false;
+  private aboutIo?: IntersectionObserver;
+  private stmtRO?: ResizeObserver;
+  private stmtW = 0;
+  private roRaf = 0;
+  private stmtHTML = '';
+
+  // Bleed slider
+  private sliderOn = false;
+  private x = 0;
+  private target = 0;
+  private half = 0;
+  private sw = 0;
+  private last = 0;
+  private dragging = false;
+  private px = 0;
+  private slideRaf = 0;
+  private mirrorId = 0;
+  private onMove?: (e: PointerEvent) => void;
+  private onUp?: () => void;
+  private noDrag?: (e: Event) => void;
+  private onResizeSlider?: () => void;
+
   constructor(root: HTMLElement) {
     this.root = root;
   }
@@ -99,21 +128,53 @@ export class HomeController {
     this.onResize = () => {
       this.updateHero();
       this.applyResponsive();
+      this.fitDisplay();
+      this.fitAndBuild();
+      this.applyAboutType();
       this.alignNav();
+      this.layoutSlider();
       this.sizeReel();
     };
     window.addEventListener('resize', this.onResize);
 
     this.wireCue();
+    this.wireWorkCue();
     this.updateHero();
     this.startClock();
     this.startAtmosphere();
     this.watchFootBar();
+    this.layoutSlider();
+    this.syncMirror();
+    this.mirrorId = window.setInterval(() => this.syncMirror(), 1500);
+    this.watchAbout();
     this.applyResponsive();
+    this.applyAboutType();
+
+    const sw = this.ref('stmtWrap');
+    if (window.ResizeObserver && sw) {
+      this.stmtRO = new ResizeObserver(() => {
+        const w = sw.clientWidth;
+        if (w && w !== this.stmtW) {
+          this.stmtW = w;
+          cancelAnimationFrame(this.roRaf);
+          this.roRaf = requestAnimationFrame(() => this.fitAndBuild());
+        }
+      });
+      this.stmtRO.observe(sw);
+    }
 
     document.fonts.ready.then(() => {
       this.runPreload();
+      this.fitDropcap();
+      this.applyAboutType();
       this.alignNav();
+      this.layoutSlider();
+      requestAnimationFrame(() =>
+        requestAnimationFrame(() => {
+          this.applyResponsive();
+          this.fitAndBuild();
+        })
+      );
     });
   }
 
@@ -505,6 +566,23 @@ export class HomeController {
       cue.style.fontSize = (m ? 10 : 11) + 'px';
       cue.style.bottom = (m ? 30 : 38) + 'px';
     }
+    const about = this.ref('about');
+    if (about) {
+      about.style.padding = m ? '120px 20px 80px' : '160px 48px 120px';
+      about.style.minHeight = m ? 'auto' : '100vh';
+    }
+    const portrait = this.ref('portrait');
+    if (portrait) {
+      portrait.style.marginLeft = '-' + pad + 'px';
+      portrait.style.marginRight = '-' + pad + 'px';
+      portrait.style.minHeight = m ? '28vh' : '40vh';
+      portrait.style.marginTop = m ? '56px' : '140px';
+      portrait.style.flex = m ? '0 0 auto' : '1 1 auto';
+    }
+    const stmtWrap = this.ref('stmtWrap');
+    if (stmtWrap && stmtWrap.parentElement) {
+      stmtWrap.parentElement.style.flex = m ? '0 1 100%' : '0 1 min(62%,760px)';
+    }
     const fbar = this.ref('footBar');
     if (fbar) {
       fbar.style.left = pad + 'px';
@@ -569,6 +647,486 @@ export class HomeController {
     else window.scrollTo({ top: y, behavior: 'smooth' });
   }
 
+  // ── About: display type fitting ────────────────────────────────────────
+  private fitDisplay() {
+    const wrap = this.ref('display');
+    if (!wrap) return;
+    const lines = this.refs('[data-ref="display"] [data-dline]');
+    if (!lines.length) return;
+    const W = wrap.clientWidth;
+    if (!W) return;
+    const base = 200;
+    wrap.style.fontSize = base + 'px';
+    let widest = 0;
+    lines.forEach((line) => {
+      const words = Array.prototype.slice.call(line.children) as HTMLElement[];
+      const sum =
+        words.reduce((a, s) => a + s.getBoundingClientRect().width, 0) +
+        (words.length - 1) * base * 0.28;
+      if (sum > widest) widest = sum;
+    });
+    const fitted = widest > 0 ? (W / widest) * base : base;
+    const floor = Math.min(46, fitted);
+    const size = Math.max(floor, Math.min(168, fitted));
+    wrap.style.fontSize = size + 'px';
+    // displayAlign default 'centered'
+    lines.forEach((line) => {
+      line.style.gap = '.26em';
+      line.style.justifyContent = 'center';
+    });
+  }
+
+  private applyAboutType() {
+    const el = this.ref('stmtWrap');
+    if (el) {
+      el.style.fontSize = 'clamp(20px,2.2vw,40px)';
+      el.style.lineHeight = '1.5';
+      el.style.textAlign = 'justify';
+      el.style.textAlignLast = 'justify';
+    }
+    const display = this.ref('display');
+    if (display) {
+      display.style.lineHeight = '0.96';
+      this.fitDisplay();
+    }
+    const portrait = this.ref('portrait');
+    if (portrait) portrait.style.marginTop = '140px';
+    this.applySliderStyle();
+    const about = this.ref('about');
+    if (about) {
+      about.querySelectorAll<HTMLElement>('[data-dropcap]').forEach((c) => {
+        c.style.marginRight = '1em';
+      });
+      about.style.marginTop = '0px';
+      const kids = Array.prototype.slice.call(about.children) as HTMLElement[];
+      kids.forEach((c) => (c.style.transform = 'none'));
+    }
+  }
+
+  private fitDropcap() {
+    const about = this.ref('about');
+    const box = about && about.querySelector<HTMLElement>('[data-dropcap]');
+    if (!box) return;
+    const cap = (family: string, weight: number) => {
+      const p = document.createElement('span');
+      p.textContent = 'H';
+      p.style.cssText =
+        'position:absolute;visibility:hidden;left:-9999px;top:0;font-size:400px;line-height:1;text-box:trim-both cap alphabetic;font-family:' +
+        family +
+        ';font-weight:' +
+        weight;
+      document.body.appendChild(p);
+      const h = p.getBoundingClientRect().height;
+      p.remove();
+      return h;
+    };
+    const denim = cap("'Denim INK WD',sans-serif", 500);
+    const theran = cap("'SN Ja Mono',monospace", 300);
+    if (denim > 0 && theran > 0) box.style.fontSize = (denim / theran).toFixed(3) + 'em';
+  }
+
+  // ── About: statement line solver ───────────────────────────────────────
+  private stmtOverflow() {
+    const wrap = this.ref('stmtWrap');
+    const out = this.ref('stmtOut');
+    if (!wrap || !out) return false;
+    const lh = parseFloat(getComputedStyle(wrap).lineHeight) || 0;
+    if (!lh) return false;
+    return (Array.prototype.slice.call(out.children) as HTMLElement[]).some((c) => {
+      const inner = (c.firstElementChild as HTMLElement) || c;
+      return inner.getBoundingClientRect().height > lh * 1.35;
+    });
+  }
+
+  private buildStatementLines(): number[] | undefined {
+    const el = this.ref('stmtOut');
+    const src = this.ref('statement');
+    if (!el || !src) return;
+    this.stmtHTML = src.innerHTML;
+    el.innerHTML = this.stmtHTML;
+    const tokens: Node[] = [];
+    Array.prototype.slice.call(el.childNodes).forEach((n: Node) => {
+      if (n.nodeType === 1) {
+        tokens.push(n);
+        return;
+      }
+      (n.textContent || '').split(/(\s+)/).forEach((t) => {
+        if (!t) return;
+        if (/^\s+$/.test(t)) tokens.push(document.createTextNode(' '));
+        else {
+          const s = document.createElement('span');
+          s.textContent = t;
+          tokens.push(s);
+        }
+      });
+    });
+    el.innerHTML = '';
+    tokens.forEach((t) => el.appendChild(t));
+    const lines: { key: number; items: Node[] }[] = [];
+    let cur: { key: number; items: Node[] } | null = null;
+    const lh = parseFloat(getComputedStyle(el).lineHeight) || 24;
+    tokens.forEach((t) => {
+      if (t.nodeType !== 1) {
+        if (cur) cur.items.push(t);
+        return;
+      }
+      const e = t as HTMLElement;
+      const bottom = e.offsetTop + e.offsetHeight;
+      if (!cur) {
+        cur = { key: bottom, items: [t] };
+        lines.push(cur);
+        return;
+      }
+      if (Math.abs(bottom - cur.key) > lh * 0.5) {
+        cur = { key: bottom, items: [t] };
+        lines.push(cur);
+      } else cur.items.push(t);
+    });
+    el.innerHTML = '';
+    lines.forEach((line, idx) => {
+      const mask = document.createElement('div');
+      mask.style.overflow = 'hidden';
+      const inner = document.createElement('div');
+      inner.setAttribute('data-ai', '1');
+      inner.style.transform = this.aboutShown ? 'none' : 'translateY(110%)';
+      const isLast = idx === lines.length - 1;
+      const words = line.items.filter((n) => n.nodeType === 1).length;
+      inner.style.textAlign = 'justify';
+      inner.style.textAlignLast = isLast && words < 3 ? 'left' : 'justify';
+      line.items.forEach((n) => inner.appendChild(n));
+      mask.appendChild(inner);
+      el.appendChild(mask);
+    });
+    const cap = el.querySelector<HTMLElement>('[data-dropcap]');
+    if (cap) cap.style.marginRight = '0.52em';
+    if (
+      el.textContent!.replace(/\s+/g, '').length <
+      src.textContent!.replace(/\s+/g, '').length - 2
+    ) {
+      el.innerHTML = this.stmtHTML;
+    }
+    return lines.map((l) => l.items.filter((n) => n.nodeType === 1).length);
+  }
+
+  private fitAndBuild() {
+    const wrap = this.ref('stmtWrap');
+    const out = this.ref('stmtOut');
+    const src = this.ref('statement');
+    const about = this.ref('about');
+    if (!wrap || !out || !src) return;
+    if (this.aboutAnimating) {
+      this.refitQueued = true;
+      return;
+    }
+    const narrow = (about ? about.getBoundingClientRect().width : window.innerWidth) <= 700;
+    const target = narrow ? 8 : 4;
+    const min = narrow ? 14 : 10;
+    const capMax = narrow ? 20 : null;
+    const max = capMax || 58;
+    const at = (size: number) => {
+      wrap.style.fontSize = size + 'px';
+      const counts = this.buildStatementLines() || [];
+      const last = counts[counts.length - 1] || 0;
+      return { n: counts.length, last, over: this.stmtOverflow() };
+    };
+    let lo = min,
+      hi = max;
+    for (let i = 0; i < 12; i++) {
+      const mid = (lo + hi) / 2;
+      const r = at(mid);
+      if (r.n <= target && !r.over) lo = mid;
+      else hi = mid;
+    }
+    let size = lo;
+    for (let i = 0; i < 30; i++) {
+      const r = at(size);
+      if (r.n <= target && !r.over && r.last >= 2) break;
+      if (size - 0.5 < min) break;
+      size -= 0.5;
+    }
+    at(size);
+  }
+
+  // ── About: reveal ──────────────────────────────────────────────────────
+  private aboutEase() {
+    return 'cubic-bezier(0.05,0.89,0,0.99)';
+  }
+
+  private playAbout(show = true) {
+    const sec = this.ref('about');
+    if (!sec) return;
+    this.aboutAnimating = true;
+    clearTimeout(this.aboutDoneId);
+    const inners = this.refs('[data-ref="about"] [data-ai]');
+    const stagger = 180 * (show ? 1 : 0.35);
+    const dur = 820 * (show ? 1 : 0.55);
+    const ease = this.aboutEase();
+    this.aboutTimers.forEach(clearTimeout);
+    this.aboutTimers = [];
+    const n = inners.length;
+    const lead = show ? 260 : 0;
+    inners.forEach((el, i) => {
+      const order = show ? i : n - 1 - i;
+      const from = show ? 'translateY(110%)' : 'translateY(0%)';
+      const to = show ? 'translateY(0%)' : 'translateY(110%)';
+      el.getAnimations().forEach((a) => a.cancel());
+      el.style.transform = from;
+      el.animate(
+        [
+          { transform: from, offset: 0, easing: ease },
+          { transform: to, offset: 1 },
+        ],
+        { duration: dur, delay: lead + order * stagger, fill: 'both' }
+      );
+      this.aboutTimers.push(
+        window.setTimeout(
+          () => {
+            el.getAnimations().forEach((a) => a.cancel());
+            el.style.transform = show ? 'none' : 'translateY(110%)';
+          },
+          lead + order * stagger + dur + 20
+        )
+      );
+    });
+    this.aboutDoneId = window.setTimeout(
+      () => {
+        this.aboutAnimating = false;
+        if (this.refitQueued) {
+          this.refitQueued = false;
+          this.fitAndBuild();
+        }
+      },
+      lead + n * stagger + dur + 80
+    );
+    // display words travel outward from centre into rest
+    const lines = this.refs('[data-ref="about"] [data-dline]');
+    const collapse = 0.55;
+    const wordStagger = 70;
+    lines.forEach((line, li) => {
+      const words = Array.prototype.slice.call(line.children) as HTMLElement[];
+      const lr = line.getBoundingClientRect();
+      const cx = lr.left + lr.width / 2;
+      words.forEach((w, wi) => {
+        const r = w.getBoundingClientRect();
+        const dx = (cx - (r.left + r.width / 2)) * collapse;
+        const delay = show ? li * stagger + wi * wordStagger : (n - 1 - li) * stagger;
+        const from = show ? 'translateX(' + dx + 'px)' : 'translateX(0px)';
+        const to = show ? 'translateX(0px)' : 'translateX(' + dx + 'px)';
+        w.getAnimations().forEach((a) => a.cancel());
+        w.style.transform = from;
+        w.animate(
+          [
+            { transform: from, offset: 0, easing: ease },
+            { transform: to, offset: 1 },
+          ],
+          { duration: dur * 1.15, delay: lead + delay, fill: 'both' }
+        );
+        this.aboutTimers.push(
+          window.setTimeout(
+            () => {
+              w.getAnimations().forEach((a) => a.cancel());
+              w.style.transform = show ? 'none' : 'translateX(' + dx + 'px)';
+            },
+            lead + delay + dur * 1.15 + 20
+          )
+        );
+      });
+    });
+  }
+
+  private snapAbout(show: boolean) {
+    const sec = this.ref('about');
+    if (!sec) return;
+    this.aboutTimers.forEach(clearTimeout);
+    clearTimeout(this.aboutDoneId);
+    this.aboutAnimating = false;
+    this.refs('[data-ref="about"] [data-ai]').forEach((el) => {
+      el.getAnimations().forEach((a) => a.cancel());
+      el.style.transform = show ? 'none' : 'translateY(110%)';
+    });
+    this.refs('[data-ref="about"] [data-dline]').forEach((line) => {
+      (Array.prototype.slice.call(line.children) as HTMLElement[]).forEach((w) => {
+        w.getAnimations().forEach((a) => a.cancel());
+        w.style.transform = 'none';
+      });
+    });
+  }
+
+  private watchAbout() {
+    const sec = this.ref('about');
+    if (!sec) return;
+    if (reducedMotion()) {
+      this.refs('[data-ref="about"] [data-ai]').forEach((el) => (el.style.transform = 'none'));
+      return;
+    }
+    this.aboutIo = new IntersectionObserver(
+      (es) => {
+        es.forEach((e) => {
+          if (e.isIntersecting === this.aboutShown) return;
+          this.aboutShown = e.isIntersecting;
+          const below = e.boundingClientRect.top > 0;
+          if (e.isIntersecting) {
+            this.fitAndBuild();
+            if (below || !this.aboutPlayed) {
+              this.aboutPlayed = true;
+              this.playAbout(true);
+            } else this.snapAbout(true);
+          } else if (below) {
+            this.playAbout(false);
+          }
+        });
+      },
+      { threshold: 0.2 }
+    );
+    this.aboutIo.observe(sec);
+  }
+
+  // ── Bleed slider ───────────────────────────────────────────────────────
+  private startSlider() {
+    const track = this.ref('track');
+    if (!track || this.sliderOn) return;
+    this.sliderOn = true;
+    this.x = 0;
+    this.target = 0;
+    const mirror = this.ref('mirror');
+    const tiles = () =>
+      (Array.prototype.slice.call(track.children) as HTMLElement[]).filter((c) => c !== mirror);
+    this.half = 0;
+    const measure = () => {
+      const t = tiles();
+      if (!t.length) return 0;
+      const r = t[0].getBoundingClientRect();
+      this.sw = r.width + 12;
+      this.half = this.sw * t.length;
+      return this.half;
+    };
+    measure();
+    const wrap = (v: number) => {
+      const h = this.half || measure() || 1;
+      return (((v % h) + h) % h) - h;
+    };
+    const tick = (now: number) => {
+      const dt = Math.min(64, now - (this.last || now));
+      this.last = now;
+      if (!this.dragging) this.target -= (26 * dt) / 1000;
+      this.x += (this.target - this.x) * 0.12;
+      track.style.transform = 'translateX(' + wrap(this.x) + 'px)';
+      this.slideRaf = requestAnimationFrame(tick);
+    };
+    this.slideRaf = requestAnimationFrame(tick);
+    this.onMove = (e: PointerEvent) => {
+      if (this.dragging) {
+        const dx = e.clientX - this.px;
+        this.px = e.clientX;
+        this.target += dx;
+      }
+    };
+    this.onUp = () => {
+      if (!this.dragging) return;
+      this.dragging = false;
+      track.style.cursor = 'grab';
+    };
+    track.style.cursor =
+      "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M12 3v18M3 12h18' stroke='%23DDE7F4' stroke-width='1.25'/%3E%3C/svg%3E\") 12 12, crosshair";
+    track.style.userSelect = 'none';
+    (track.style as CSSStyleDeclaration & { webkitUserSelect?: string }).webkitUserSelect = 'none';
+    track.style.touchAction = 'pan-y';
+    this.noDrag = (e: Event) => e.preventDefault();
+    track.querySelectorAll('img').forEach((i) => (i.draggable = false));
+    track.addEventListener('dragstart', this.noDrag);
+    track.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      this.dragging = true;
+      this.px = (e as PointerEvent).clientX;
+    });
+    window.addEventListener('pointermove', this.onMove);
+    window.addEventListener('pointerup', this.onUp);
+    this.onResizeSlider = () => measure();
+    window.addEventListener('resize', this.onResizeSlider);
+  }
+
+  private layoutSlider() {
+    this.startSlider();
+  }
+
+  private applySliderStyle() {
+    const track = this.ref('track');
+    if (!track) return;
+    const m = window.innerWidth <= 720;
+    const w = m ? 72 : 39;
+    const r = 12;
+    (Array.prototype.slice.call(track.querySelectorAll('[data-slide]')) as HTMLElement[]).forEach(
+      (t) => {
+        t.style.width = w + 'vw';
+        t.style.borderRadius = r + 'px';
+      }
+    );
+    if (this.sw) {
+      const first = track.querySelector<HTMLElement>('[data-slide]');
+      const n = track.querySelectorAll('[data-slide]').length / 2 || 1;
+      if (first) {
+        this.sw = first.getBoundingClientRect().width + 12;
+        this.half = this.sw * n;
+      }
+    }
+  }
+
+  private syncMirror() {
+    const row = this.ref('track');
+    const mirror = this.ref('mirror');
+    if (!row || !mirror) return;
+    const tiles = (Array.prototype.slice.call(row.children) as HTMLElement[]).filter(
+      (c) => c !== mirror
+    );
+    tiles.forEach((tile, i) => {
+      const srcImg = tile.querySelector('img');
+      const src = srcImg ? srcImg.getAttribute('src') || '' : '';
+      const label = tile.querySelector('.ph')?.textContent || '';
+      let clone = mirror.children[i] as HTMLElement | undefined;
+      if (!clone) {
+        clone = document.createElement('div');
+        clone.className = tile.className;
+        clone.setAttribute('data-slide', '1');
+        clone.setAttribute('data-i', tile.getAttribute('data-i') || '0');
+        clone.style.width = tile.style.width || '39vw';
+        clone.style.borderRadius = tile.style.borderRadius || '12px';
+        clone.innerHTML =
+          '<img alt="" draggable="false" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none">' +
+          '<span class="ph"></span>';
+        mirror.appendChild(clone);
+      }
+      const img = clone.querySelector('img') as HTMLImageElement;
+      const ph = clone.querySelector('.ph') as HTMLElement;
+      if (ph) ph.textContent = label;
+      if (src) {
+        if (img.getAttribute('src') !== src) img.setAttribute('src', src);
+        img.style.display = 'block';
+      }
+    });
+    while (mirror.children.length > tiles.length) mirror.lastElementChild!.remove();
+  }
+
+  // ── Work cue ───────────────────────────────────────────────────────────
+  private wireWorkCue() {
+    const cue = this.ref('workCue');
+    if (!cue) return;
+    cue.addEventListener('mouseenter', () => this.setWorkBrackets(10));
+    cue.addEventListener('mouseleave', () => this.setWorkBrackets(0));
+    cue.addEventListener('click', () => this.goWork());
+  }
+  private setWorkBrackets(px: number) {
+    const cue = this.ref('workCue');
+    if (!cue) return;
+    cue.querySelectorAll<HTMLElement>('[data-wb]').forEach((b) => {
+      const dir = Number(b.getAttribute('data-wb')) || 1;
+      b.style.transform = px ? 'translateX(' + dir * px + 'px)' : 'none';
+    });
+  }
+  private goWork() {
+    const about = this.ref('about');
+    if (about) this.scrollToY(about.offsetTop + about.offsetHeight);
+  }
+
   destroy() {
     window.removeEventListener('scroll', this.onScroll);
     window.removeEventListener('resize', this.onResize);
@@ -581,6 +1139,17 @@ export class HomeController {
     clearTimeout(this.blinkTimer);
     this.navTimers.forEach(clearTimeout);
     this.atmoOn = false;
+
+    if (this.aboutIo) this.aboutIo.disconnect();
+    if (this.stmtRO) this.stmtRO.disconnect();
+    cancelAnimationFrame(this.roRaf);
+    cancelAnimationFrame(this.slideRaf);
+    clearInterval(this.mirrorId);
+    this.aboutTimers.forEach(clearTimeout);
+    clearTimeout(this.aboutDoneId);
+    if (this.onMove) window.removeEventListener('pointermove', this.onMove);
+    if (this.onUp) window.removeEventListener('pointerup', this.onUp);
+    if (this.onResizeSlider) window.removeEventListener('resize', this.onResizeSlider);
   }
 }
 
