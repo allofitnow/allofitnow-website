@@ -33,6 +33,26 @@ const CFG = {
   reelHold: 0.3,
 } as const;
 
+// Gap between the statement and the bleed marquee, all views (px). Dialed down
+// from the prototype's 140 — the marquee sat too low.
+const STILL_GAP = 48;
+
+// Services sticky-label lead-in / settle, as % of viewport height.
+const SVC_LEAD_IN = 4;
+const SVC_SETTLE = 18;
+
+// Clients roster solver — tuned values (prototype Figma-variable defaults, not
+// the code's ?? fallbacks). Changing these changes the justified layout.
+const ROSTER = {
+  max: 21.5, // max font px the solver tries
+  min: 16, // floor font px
+  label: 76, // max flanking-label px
+  lines: 8, // target line count
+  leading: 1.72,
+  gap: 1.9, // min word gap as a multiple of font size
+  width: 0.8, // roster column width as fraction of available
+} as const;
+
 declare global {
   interface Window {
     __aoinLenis?: Lenis;
@@ -90,6 +110,27 @@ export class HomeController {
   private noDrag?: (e: Event) => void;
   private onResizeSlider?: () => void;
 
+  // Services
+  private svcShown = false;
+  private svcPlayed = false;
+  private svcTimers: number[] = [];
+  private svcIo?: IntersectionObserver;
+
+  // Clients
+  private cliHTML?: string;
+  private cliNames?: string[];
+  private cliScroll?: () => void;
+  private cliRO?: ResizeObserver;
+  private cliRetries: number[] = [];
+  private cliRaf = 0;
+  private cliW = 0;
+  private cliH = 0;
+
+  // Footer
+  private footerScroll?: () => void;
+
+  private mobile = false;
+
   constructor(root: HTMLElement) {
     this.root = root;
   }
@@ -130,8 +171,10 @@ export class HomeController {
       this.fitDisplay();
       this.fitAndBuild();
       this.applyAboutType();
+      this.applyServicesType();
       this.alignNav();
       this.layoutSlider();
+      this.layoutClients();
       this.sizeReel();
     };
     window.addEventListener('resize', this.onResize);
@@ -144,8 +187,14 @@ export class HomeController {
     this.watchFootBar();
     this.layoutSlider();
     this.watchAbout();
+    this.wireServices();
+    this.watchServices();
+    this.watchClients();
+    this.watchFooter();
     this.applyResponsive();
     this.applyAboutType();
+    this.applyServicesType();
+    this.layoutClients();
 
     const sw = this.ref('stmtWrap');
     if (window.ResizeObserver && sw) {
@@ -160,17 +209,45 @@ export class HomeController {
       this.stmtRO.observe(sw);
     }
 
+    const clients = this.ref('clients');
+    if (window.ResizeObserver && clients) {
+      this.cliRO = new ResizeObserver(() => {
+        const w = clients.clientWidth,
+          h = clients.clientHeight;
+        if (w === this.cliW && h === this.cliH) return;
+        this.cliW = w;
+        this.cliH = h;
+        cancelAnimationFrame(this.cliRaf);
+        this.cliRaf = requestAnimationFrame(() => {
+          this.layoutClients();
+          this.cliScroll?.();
+        });
+      });
+      this.cliRO.observe(clients);
+    }
+
     document.fonts.ready.then(() => {
       this.runPreload();
       this.fitDropcap();
       this.applyAboutType();
+      this.applyServicesType();
       this.alignNav();
       this.layoutSlider();
+      this.layoutClients();
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
           this.applyResponsive();
           this.fitAndBuild();
+          this.applyServicesType();
+          this.layoutClients();
         })
+      );
+      // fonts can widen names after first paint — re-solve a few times as it settles
+      this.cliRetries = [400, 1200, 2600].map((t) =>
+        window.setTimeout(() => {
+          this.layoutClients();
+          this.cliScroll?.();
+        }, t)
       );
     });
   }
@@ -543,6 +620,7 @@ export class HomeController {
   // ── Responsive (chrome subset for this slice) ──────────────────────────
   private applyResponsive() {
     const m = window.innerWidth <= 720;
+    this.mobile = m;
     const pad = m ? 20 : 48;
     const nav = this.ref('nav');
     if (nav) {
@@ -573,13 +651,68 @@ export class HomeController {
       portrait.style.marginLeft = '-' + pad + 'px';
       portrait.style.marginRight = '-' + pad + 'px';
       portrait.style.minHeight = m ? '28vh' : '40vh';
-      portrait.style.marginTop = m ? '56px' : '140px';
+      portrait.style.marginTop = STILL_GAP + 'px';
       portrait.style.flex = m ? '0 0 auto' : '1 1 auto';
     }
     const stmtWrap = this.ref('stmtWrap');
     if (stmtWrap && stmtWrap.parentElement) {
       stmtWrap.parentElement.style.flex = m ? '0 1 100%' : '0 1 min(62%,760px)';
     }
+
+    const svc = this.ref('services');
+    if (svc) {
+      const svcLabels = svc.children[0] as HTMLElement;
+      svcLabels.style.position = m ? 'static' : 'sticky';
+      svcLabels.style.transform = m ? 'none' : 'translateY(-50%)';
+      svcLabels.style.fontSize = (m ? 11 : 18) + 'px';
+      this.refs('[data-ref="services"] [data-panel] > div').forEach((row) => {
+        row.style.flexDirection = m ? 'column' : 'row';
+        row.style.gap = m ? '14px' : 'clamp(32px,6vw,120px)';
+        const blurb = row.firstElementChild as HTMLElement;
+        if (blurb) blurb.style.flex = m ? '0 1 auto' : '0 1 min(52ch,52%)';
+      });
+      svc.style.padding = m ? '100px 20px 0' : '120px 48px 0';
+    }
+
+    const cli = this.ref('clients');
+    if (cli) {
+      cli.style.padding = m ? '110px 20px 90px' : '150px 48px 160px';
+      const row = cli.firstElementChild as HTMLElement;
+      row.style.flexWrap = m ? 'wrap' : 'nowrap';
+      row.style.gap = m ? '10px' : 'clamp(20px,2.4vw,44px)';
+      const cw = this.ref('clientsWrap');
+      if (cw) {
+        cw.style.flexBasis = m ? '100%' : 'auto';
+        cw.style.order = m ? '3' : '0';
+        cw.style.marginTop = m ? '18px' : '0';
+      }
+      this.refs('[data-ref="clients"] [data-clabel]').forEach((el) => {
+        const cell = el.parentElement as HTMLElement;
+        cell.style.alignSelf = 'flex-start';
+        cell.style.position = m ? 'static' : 'sticky';
+        cell.style.transform = m ? 'none' : 'translateY(-50%)';
+      });
+    }
+
+    const foot = this.ref('footer');
+    if (foot) {
+      foot.style.padding = m ? '96px 20px 0' : '110px 48px 0';
+      foot.style.height = m ? 'auto' : '100vh';
+      foot.style.minHeight = m ? '100vh' : '560px';
+      const grid = foot.firstElementChild as HTMLElement;
+      grid.style.gridTemplateColumns = m ? '1fr 1fr' : '1.6fr 1fr 1fr .9fr';
+      grid.style.rowGap = m ? '40px' : '';
+      grid.style.fontSize = (m ? 10 : 12) + 'px';
+      const cols = Array.prototype.slice.call(grid.children) as HTMLElement[];
+      cols.forEach((c, i) => {
+        c.style.justifySelf = m ? 'start' : i === 3 ? 'end' : 'start';
+        c.style.textAlign = m ? 'left' : i === 3 ? 'right' : 'left';
+      });
+      const mark = foot.lastElementChild as HTMLElement;
+      mark.style.paddingBottom = m ? 'clamp(20px,3vh,40px)' : 'clamp(28px,4vh,56px)';
+      mark.style.marginTop = m ? '64px' : '0';
+    }
+
     const fbar = this.ref('footBar');
     if (fbar) {
       fbar.style.left = pad + 'px';
@@ -687,7 +820,7 @@ export class HomeController {
       this.fitDisplay();
     }
     const portrait = this.ref('portrait');
-    if (portrait) portrait.style.marginTop = '140px';
+    if (portrait) portrait.style.marginTop = STILL_GAP + 'px';
     this.applySliderStyle();
     const about = this.ref('about');
     if (about) {
@@ -1089,6 +1222,326 @@ export class HomeController {
     if (about) this.scrollToY(about.offsetTop + about.offsetHeight);
   }
 
+  // ── Services ───────────────────────────────────────────────────────────
+  private wireServices() {
+    this.refs('[data-ref="services"] [data-svc]').forEach((row) => {
+      row.addEventListener('mouseenter', () => this.openService(row));
+      row.addEventListener('mouseleave', () => this.closeService(row));
+    });
+  }
+  private openService(row: HTMLElement) {
+    const list = this.ref('servicesList');
+    if (!row || !list) return;
+    this.refs('[data-ref="servicesList"] [data-svc]').forEach((r) => {
+      const p = r.querySelector<HTMLElement>('[data-panel]');
+      if (!p) return;
+      if (r === row) p.style.height = (p.firstElementChild as HTMLElement).getBoundingClientRect().height + 'px';
+      else p.style.height = '0px';
+    });
+  }
+  private closeService(row: HTMLElement) {
+    const p = row && row.querySelector<HTMLElement>('[data-panel]');
+    if (p) p.style.height = '0px';
+  }
+  private applyServicesType() {
+    const el = this.ref('servicesList');
+    if (!el) return;
+    el.style.fontSize = 'clamp(46px,8vw,150px)';
+    el.style.lineHeight = '1.02';
+    const col = this.ref('servicesCol');
+    const lines = this.refs('[data-ref="servicesList"] [data-sline]');
+    const svc = this.ref('services');
+    const labels = svc ? this.refs('[data-ref="services"] [data-sr] > [data-si]') : [];
+    const labelW = labels.slice(0, 2).reduce((m, l) => Math.max(m, l.getBoundingClientRect().width), 0);
+    const narrow = (svc ? svc.getBoundingClientRect().width : window.innerWidth) <= 700;
+    const gutter = narrow ? 0 : labelW ? labelW + 40 : 0;
+    const avail = Math.max(200, el.clientWidth - gutter * 2);
+    if (col && lines.length && avail) {
+      col.style.width = '100%';
+      const natural = () =>
+        lines.reduce((m, l) => {
+          const kids = Array.prototype.slice.call(l.children) as HTMLElement[];
+          const gap = parseFloat(getComputedStyle(l).columnGap) || 0;
+          const w =
+            kids.reduce((a, k) => a + k.getBoundingClientRect().width, 0) +
+            gap * Math.max(0, kids.length - 1);
+          return Math.max(m, w);
+        }, 0);
+      let size = parseFloat(getComputedStyle(el).fontSize) || 80;
+      let w = natural();
+      if (w > avail) {
+        size = Math.floor(size * (avail / w) * 100) / 100;
+        el.style.fontSize = size + 'px';
+        for (let i = 0; i < 12 && natural() > avail && size > 24; i++) {
+          size -= 0.5;
+          el.style.fontSize = size + 'px';
+        }
+        w = natural();
+      }
+      col.style.width = Math.ceil(w) + 'px';
+    }
+    el.style.paddingTop = '0px';
+    const vh = window.innerHeight;
+    el.style.paddingTop = Math.round(vh * (SVC_LEAD_IN / 100)) + 'px';
+    el.style.paddingBottom = Math.round(vh * (SVC_SETTLE / 100)) + 'px';
+  }
+  private playServices(show: boolean) {
+    const sec = this.ref('services');
+    if (!sec) return;
+    const inners = this.refs('[data-ref="services"] [data-si]');
+    const stagger = 180 * (show ? 1 : 0.35);
+    const dur = 820 * (show ? 1 : 0.55);
+    const ease = this.aboutEase();
+    this.svcTimers.forEach(clearTimeout);
+    this.svcTimers = [];
+    const n = inners.length;
+    inners.forEach((el, i) => {
+      const order = show ? i : n - 1 - i;
+      const from = show ? 'translateY(110%)' : 'translateY(0%)';
+      const to = show ? 'translateY(0%)' : 'translateY(110%)';
+      el.getAnimations().forEach((a) => a.cancel());
+      el.style.transform = from;
+      el.animate(
+        [
+          { transform: from, offset: 0, easing: ease },
+          { transform: to, offset: 1 },
+        ],
+        { duration: dur, delay: order * stagger, fill: 'both' }
+      );
+      this.svcTimers.push(
+        window.setTimeout(
+          () => {
+            el.getAnimations().forEach((a) => a.cancel());
+            el.style.transform = show ? 'none' : 'translateY(110%)';
+          },
+          order * stagger + dur + 20
+        )
+      );
+    });
+  }
+  private watchServices() {
+    const sec = this.ref('services');
+    if (!sec) return;
+    const inners = this.refs('[data-ref="services"] [data-si]');
+    if (reducedMotion()) {
+      inners.forEach((el) => (el.style.transform = 'none'));
+      return;
+    }
+    this.svcIo = new IntersectionObserver(
+      (es) => {
+        es.forEach((e) => {
+          if (e.isIntersecting === this.svcShown) return;
+          this.svcShown = e.isIntersecting;
+          const below = e.boundingClientRect.top > 0;
+          if (e.isIntersecting) {
+            if (below || !this.svcPlayed) {
+              this.svcPlayed = true;
+              this.playServices(true);
+            } else
+              this.refs('[data-ref="services"] [data-si]').forEach((el) => {
+                el.getAnimations().forEach((a) => a.cancel());
+                el.style.transform = 'none';
+              });
+          } else if (below) {
+            this.playServices(false);
+          }
+        });
+      },
+      { threshold: 0.25 }
+    );
+    this.svcIo.observe(sec);
+  }
+
+  // ── Clients roster (justified line-break solver) ───────────────────────
+  private layoutClients() {
+    const sec = this.ref('clients');
+    const wrap = this.ref('clientsWrap');
+    const src = this.ref('clientsSrc');
+    const out = this.ref('clientsOut');
+    if (!wrap || !src || !out || !sec) return;
+    if (this.cliHTML === undefined) this.cliHTML = src.innerHTML;
+    const labels = this.refs('[data-ref="clients"] [data-clabel]');
+    if (labels.length) {
+      const rowW = (sec.firstElementChild as HTMLElement).getBoundingClientRect().width;
+      labels.forEach((el) => (el.style.fontSize = '100px'));
+      const at100 = labels.reduce((a, el) => a + el.getBoundingClientRect().width, 0);
+      const cap = at100 ? Math.floor((100 * (rowW * (this.mobile ? 0.9 : 0.42))) / at100) : 80;
+      labels.forEach((el) => (el.style.fontSize = Math.max(20, Math.min(ROSTER.label, cap)) + 'px'));
+    }
+    wrap.style.maxWidth = 'none';
+    const full = wrap.clientWidth;
+    wrap.style.maxWidth = this.mobile ? 'none' : Math.round(full * ROSTER.width) + 'px';
+    wrap.style.marginLeft = '0';
+    wrap.style.marginRight = '0';
+    wrap.style.lineHeight = String(ROSTER.leading);
+    const avail = wrap.clientWidth;
+    if (!avail) return;
+    const names =
+      this.cliNames || (this.cliNames = src.textContent!.split('|').map((t) => t.trim()).filter(Boolean));
+    type Tok = HTMLSpanElement & { __w: number };
+    const measure = (size: number) => {
+      wrap.style.fontSize = size + 'px';
+      out.innerHTML = '';
+      const tokens = names.map((n) => {
+        const sp = document.createElement('span') as Tok;
+        sp.style.whiteSpace = 'nowrap';
+        sp.dataset.name = n;
+        sp.textContent = n;
+        return sp;
+      });
+      tokens.forEach((t) => out.appendChild(t));
+      tokens.forEach((t) => (t.__w = t.getBoundingClientRect().width));
+      const w = tokens.map((t) => t.__w);
+      const minGap = size * ROSTER.gap;
+      const N = w.length;
+      const pre = [0];
+      for (let k = 0; k < N; k++) pre.push(pre[k] + w[k]);
+      const lineCost = (p: number, q: number) => {
+        const count = q - p;
+        const natural = pre[q] - pre[p] + minGap * (count - 1);
+        if (natural > avail) return Infinity;
+        const slack = avail - natural;
+        return slack * slack;
+      };
+      const target = Math.max(1, Math.round(ROSTER.lines));
+      const L = Math.min(N, Math.max(target, Math.ceil((N * (size * 6)) / Math.max(1, avail)) + 6));
+      const INF = Infinity;
+      const cost: number[][] = [],
+        back: number[][] = [];
+      for (let k = 0; k <= L; k++) {
+        cost.push(new Array(N + 1).fill(INF));
+        back.push(new Array(N + 1).fill(-1));
+      }
+      cost[0][0] = 0;
+      for (let k = 1; k <= L; k++) {
+        for (let q = 1; q <= N; q++) {
+          for (let p = q - 1; p >= 0; p--) {
+            if (cost[k - 1][p] === INF) continue;
+            const c = lineCost(p, q);
+            if (c === INF) break;
+            const tot = cost[k - 1][p] + c;
+            if (tot < cost[k][q]) {
+              cost[k][q] = tot;
+              back[k][q] = p;
+            }
+          }
+        }
+      }
+      let minK = -1;
+      for (let k = 1; k <= L; k++)
+        if (cost[k][N] !== INF) {
+          minK = k;
+          break;
+        }
+      if (minK === -1) return null;
+      let use = minK;
+      for (let k = Math.max(minK, target); k <= L; k++)
+        if (cost[k][N] !== INF) {
+          use = k;
+          break;
+        }
+      const breaks: [number, number][] = [];
+      let q = N;
+      for (let k = use; k > 0; k--) {
+        const p = back[k][q];
+        breaks.unshift([p, q]);
+        q = p;
+      }
+      const linesArr = breaks.map(([p, q2]) => ({ items: tokens.slice(p, q2) }));
+      const gaps = linesArr.map((l) =>
+        l.items.length < 2 ? avail : (avail - l.items.reduce((a, e) => a + e.__w, 0)) / (l.items.length - 1)
+      );
+      const sorted = gaps.slice().sort((x, y) => x - y);
+      const median = sorted[Math.floor(sorted.length / 2)] || 1;
+      return {
+        lines: linesArr,
+        deviation: Math.abs(gaps[gaps.length - 1] - median) / Math.max(1, median),
+        worst: Math.max.apply(null, gaps),
+      };
+    };
+    const FLOOR = ROSTER.min;
+    let chosen: number | null = null,
+      relaxed: { size: number; worst: number } | null = null;
+    for (let size = ROSTER.max; size >= FLOOR - 0.01; size -= 0.5) {
+      const r = measure(size);
+      if (!r) continue;
+      if (r.deviation <= 1 && r.worst / size <= 6) {
+        chosen = size;
+        break;
+      }
+      if (relaxed === null || r.worst < relaxed.worst) relaxed = { size, worst: r.worst };
+    }
+    if (chosen === null) chosen = relaxed !== null ? relaxed.size : FLOOR;
+    const res = measure(chosen);
+    if (!res) return;
+    out.innerHTML = '';
+    res.lines.forEach((line) => {
+      const mask = document.createElement('div');
+      mask.style.overflow = 'hidden';
+      const inner = document.createElement('div');
+      inner.setAttribute('data-ci', '1');
+      inner.style.transform = 'translateY(110%)';
+      inner.style.transition = 'transform .62s cubic-bezier(.05,.89,0,.99)';
+      inner.style.display = 'flex';
+      inner.style.whiteSpace = 'nowrap';
+      inner.style.justifyContent = 'space-between';
+      line.items.forEach((n) => {
+        n.textContent = n.dataset.name!;
+        inner.appendChild(n);
+      });
+      mask.appendChild(inner);
+      out.appendChild(mask);
+    });
+    this.cliScroll?.();
+  }
+  private watchClients() {
+    const sec = this.ref('clients');
+    if (!sec) return;
+    if (reducedMotion()) {
+      this.refs('[data-ref="clients"] [data-ci]').forEach((el) => (el.style.transform = 'none'));
+      return;
+    }
+    this.cliScroll = () => {
+      const all = this.refs('[data-ref="clients"] [data-ci]');
+      const labels = all.filter((el) => el.hasAttribute('data-clabel'));
+      const rows = all.filter((el) => !el.hasAttribute('data-clabel'));
+      const inView = sec.getBoundingClientRect().top < window.innerHeight * 0.9;
+      labels.forEach((el) => (el.style.transform = inView ? 'none' : 'translateY(110%)'));
+      const r = sec.getBoundingClientRect();
+      const vh = window.innerHeight;
+      const span = r.height + vh * 0.3;
+      const p = Math.max(0, Math.min(1, (vh * 0.9 - r.top) / span));
+      const n = Math.ceil(p * rows.length * 1.7);
+      rows.forEach((el, i) => (el.style.transform = i < n ? 'none' : 'translateY(110%)'));
+    };
+    this.cliScroll();
+    window.addEventListener('scroll', this.cliScroll, { passive: true });
+    window.__aoinLenis?.on('scroll', this.cliScroll);
+  }
+
+  // ── Footer reveal ──────────────────────────────────────────────────────
+  private watchFooter() {
+    const sec = this.ref('footer');
+    if (!sec) return;
+    const inners = this.refs('[data-ref="footer"] [data-fi]');
+    inners.forEach((el) => (el.style.transition = 'transform .7s cubic-bezier(.05,.89,0,.99)'));
+    this.footerScroll = () => {
+      const r = sec.getBoundingClientRect();
+      const show = r.top < window.innerHeight * 0.82;
+      inners.forEach((el, i) => {
+        el.style.transitionDelay = (show ? i * 60 : 0) + 'ms';
+        el.style.transform = show
+          ? 'none'
+          : el.parentElement!.getAttribute('data-fr') && el.querySelector('img')
+            ? 'translateY(30%)'
+            : 'translateY(110%)';
+      });
+    };
+    this.footerScroll();
+    window.addEventListener('scroll', this.footerScroll, { passive: true });
+    window.__aoinLenis?.on('scroll', this.footerScroll);
+  }
+
   destroy() {
     window.removeEventListener('scroll', this.onScroll);
     window.removeEventListener('resize', this.onResize);
@@ -1111,6 +1564,14 @@ export class HomeController {
     if (this.onMove) window.removeEventListener('pointermove', this.onMove);
     if (this.onUp) window.removeEventListener('pointerup', this.onUp);
     if (this.onResizeSlider) window.removeEventListener('resize', this.onResizeSlider);
+
+    if (this.svcIo) this.svcIo.disconnect();
+    this.svcTimers.forEach(clearTimeout);
+    if (this.cliRO) this.cliRO.disconnect();
+    if (this.cliScroll) window.removeEventListener('scroll', this.cliScroll);
+    if (this.footerScroll) window.removeEventListener('scroll', this.footerScroll);
+    this.cliRetries.forEach(clearTimeout);
+    cancelAnimationFrame(this.cliRaf);
   }
 }
 

@@ -1,0 +1,135 @@
+---
+import { footer } from '@/data/home';
+
+// helper: render an array of strings separated by <br/>
+---
+
+<section class="footer" data-ref="footer" id="contact" data-screen-label="Footer">
+  <div class="grid">
+    <div class="col">
+      <div data-fr="1" class="mask lbl"><div data-fi="1">[INFO]</div></div>
+      <div data-fr="1" class="mask">
+        <div data-fi="1">
+          {footer.info.map((l, i) => (<>{i > 0 && <br />}{l}</>))}
+        </div>
+      </div>
+      <div data-fr="1" class="mask spaced">
+        <div data-fi="1">
+          {footer.legal.map((l, i) => (<>{i > 0 && <br />}{l}</>))}
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div data-fr="1" class="mask lbl"><div data-fi="1">[NAVIGATION]</div></div>
+      <div class="navgrid">
+        <div data-fr="1" class="mask">
+          <div data-fi="1">
+            {footer.navPrimary.map((l, i) => (<>{i > 0 && <br />}<a href={l.href}>{l.label}</a></>))}
+          </div>
+        </div>
+        <div data-fr="1" class="mask">
+          <div data-fi="1">
+            {footer.navSecondary.map((l, i) => (<>{i > 0 && <br />}<a href={l.href}>{l.label}</a></>))}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="col">
+      <div data-fr="1" class="mask lbl"><div data-fi="1">[SOCIAL]</div></div>
+      <div data-fr="1" class="mask">
+        <div data-fi="1">
+          {
+            footer.social.map((s, i) => (
+              <>
+                {i > 0 && <br />}
+                <a href={s.href} target={s.href.startsWith('http') ? '_blank' : undefined} rel={s.href.startsWith('http') ? 'noopener' : undefined}>
+                  {s.label}
+                </a>
+              </>
+            ))
+          }
+        </div>
+      </div>
+    </div>
+
+    <div class="col studio">
+      <div data-fr="1" class="mask lbl"><div data-fi="1">[STUDIO]</div></div>
+      <div data-fr="1" class="mask">
+        <div data-fi="1">
+          {footer.address.map((l, i) => (<>{i > 0 && <br />}{l}</>))}
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div data-fr="1" class="mask wordmark">
+    <div data-fi="1"><img src="/assets/aoin-wordmark.svg" alt="ALL OF IT NOW" /></div>
+  </div>
+</section>
+
+<style>
+  .footer {
+    position: relative;
+    z-index: 1;
+    height: 100vh;
+    min-height: 560px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 110px 48px 0;
+    box-sizing: border-box;
+    color: var(--aoin-cool-white);
+    overflow: hidden;
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 1fr 0.9fr;
+    gap: clamp(24px, 3vw, 64px);
+    align-items: start;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    line-height: 1.75;
+  }
+  .col.studio {
+    justify-self: end;
+    text-align: right;
+  }
+
+  .mask {
+    overflow: hidden;
+  }
+  .footer [data-fi] {
+    transform: translateY(110%);
+  }
+  .lbl {
+    margin-bottom: 26px;
+  }
+  .lbl [data-fi] {
+    opacity: 0.42;
+  }
+  .spaced {
+    margin-top: 26px;
+  }
+
+  .navgrid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0 clamp(16px, 2vw, 40px);
+  }
+
+  .wordmark {
+    padding-bottom: clamp(28px, 4vh, 56px);
+  }
+  .wordmark [data-fi] {
+    transform: translateY(30%);
+  }
+  .wordmark img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+</style>

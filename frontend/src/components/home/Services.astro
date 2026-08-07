@@ -1,0 +1,132 @@
+---
+import { services, servicesLabels } from '@/data/home';
+---
+
+<section class="services" data-ref="services" id="services" data-screen-label="Capabilities">
+  <div class="labels">
+    <div data-sr="1" class="mask"><div data-si="1">{servicesLabels.left}</div></div>
+    <div data-sr="1" class="mask"><div data-si="1">{servicesLabels.right}</div></div>
+  </div>
+
+  <div class="list" data-ref="servicesList">
+    <div class="col" data-ref="servicesCol">
+      {
+        services.map((s, i) => (
+          <div class="svc" data-svc="1" data-idx={i}>
+            <div data-sr="1" class="mask">
+              <div data-si="1" data-sline="1" class="line">
+                <span>{s.title[0]}</span>
+                <span>{s.title[1]}</span>
+              </div>
+            </div>
+            <div data-panel="1" class="panel">
+              <div class="panel-inner">
+                <div class="blurb">{s.blurb}</div>
+                <a href={s.href} class="learn">
+                  LEARN MORE<span>&rarr;</span>
+                </a>
+              </div>
+            </div>
+          </div>
+        ))
+      }
+    </div>
+  </div>
+</section>
+
+<style>
+  .services {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 120px 48px 0;
+    box-sizing: border-box;
+  }
+  .labels {
+    position: sticky;
+    top: 50vh;
+    transform: translateY(-50%);
+    z-index: 3;
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 18px;
+    letter-spacing: 0.22em;
+    color: var(--aoin-cool-white);
+    pointer-events: none;
+  }
+  .labels .mask {
+    overflow: hidden;
+  }
+  .labels [data-si] {
+    transform: translateY(110%);
+  }
+
+  .list {
+    flex: 1 1 auto;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
+    gap: 0;
+    font-family: var(--font-headline);
+    font-weight: var(--weight-headline);
+    font-size: clamp(46px, 8vw, 150px);
+    line-height: 1.02;
+    letter-spacing: -0.012em;
+    color: var(--aoin-cool-white);
+  }
+  .col {
+    width: 100%;
+    margin: 0 auto;
+  }
+
+  .svc {
+    position: relative;
+    border-bottom: 2px solid var(--aoin-cool-white);
+  }
+  .svc .mask {
+    overflow: hidden;
+  }
+  .line {
+    transform: translateY(110%);
+    display: flex;
+    justify-content: space-between;
+    gap: 0.28em;
+    white-space: nowrap;
+  }
+
+  .panel {
+    height: 0;
+    overflow: hidden;
+    transition: height 0.55s cubic-bezier(0.05, 0.89, 0, 0.99);
+  }
+  .panel-inner {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: clamp(32px, 6vw, 120px);
+    padding: 14px 0 30px;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 13px;
+    line-height: 1.5;
+    letter-spacing: 0.06em;
+    color: var(--aoin-cool-white);
+  }
+  .blurb {
+    flex: 0 1 min(52ch, 52%);
+    text-wrap: balance;
+  }
+  .learn {
+    flex: 0 0 auto;
+    display: flex;
+    align-items: center;
+    gap: 0.9em;
+    color: var(--aoin-cool-white);
+    text-decoration: none;
+    letter-spacing: 0.22em;
+  }
+</style>

@@ -1,0 +1,82 @@
+---
+import { clients, clientsLabels } from '@/data/home';
+---
+
+<section class="clients" data-ref="clients" data-screen-label="Clients">
+  <div class="row">
+    <div data-ar="1" class="mask label-cell">
+      <div class="label" data-ref="cliLeft" data-clabel="1" data-ci="1">{clientsLabels.left}</div>
+    </div>
+
+    <div class="wrap" data-ref="clientsWrap">
+      <div class="src" data-ref="clientsSrc">
+        {
+          clients.map((n, i) => (
+            <>
+              {i > 0 && <span data-sep="1">|</span>} {n}{' '}
+            </>
+          ))
+        }
+      </div>
+      <div class="out" data-ref="clientsOut"></div>
+    </div>
+
+    <div data-ar="1" class="mask label-cell">
+      <div class="label" data-ref="cliRight" data-clabel="1" data-ci="1">{clientsLabels.right}</div>
+    </div>
+  </div>
+</section>
+
+<style>
+  .clients {
+    position: relative;
+    z-index: 1;
+    padding: 150px 48px 160px;
+    box-sizing: border-box;
+    color: var(--aoin-cool-white);
+  }
+  .row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+    gap: clamp(26px, 2vw, 36px);
+  }
+  .label-cell {
+    flex: 0 0 auto;
+    position: sticky;
+    top: 50vh;
+    transform: translateY(-50%);
+    align-self: flex-start;
+  }
+  .label {
+    transform: translateY(110%);
+    transition: transform 0.62s cubic-bezier(0.05, 0.89, 0, 0.99);
+    font-family: var(--font-headline);
+    font-weight: var(--weight-headline);
+    line-height: 1;
+    letter-spacing: -0.01em;
+    white-space: nowrap;
+  }
+
+  .wrap {
+    flex: 1 1 auto;
+    min-width: 0;
+    position: relative;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 15px;
+    line-height: 1.18;
+    letter-spacing: 0.02em;
+  }
+  /* hidden measurement source — the controller solves line breaks from it */
+  .src {
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 0;
+    visibility: hidden;
+    pointer-events: none;
+    text-align: justify;
+    text-align-last: justify;
+  }
+</style>
