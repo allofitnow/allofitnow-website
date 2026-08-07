@@ -1,0 +1,141 @@
+/* ============================================================
+   AOIN — design tokens
+   Ported verbatim from the home prototype (AOIN Home standalone).
+   Source of truth: AOIN_BrandRefresh-2026.fig (Figma Variables + observed usage).
+   Values are dialed, not defaults — do not "round" them.
+   ============================================================ */
+
+/* ---- Webfonts (brand-provided binaries in /public/fonts) ---- */
+@font-face {
+  font-family: "Denim INK WD";
+  src: url("/fonts/DenimINKWD-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "Denim INK WD";
+  src: url("/fonts/DenimINKWD-Medium.otf") format("opentype");
+  font-weight: 500 700;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "SN Ja Mono";
+  src: url("/fonts/SNJaMono-Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: block;
+}
+@font-face {
+  font-family: "OO Theran";
+  src: url("/fonts/OOTheran-Light.otf") format("opentype");
+  font-weight: 300;
+  font-style: normal;
+  font-display: block;
+}
+
+/* ---- Color ---- */
+:root {
+  /* Base palette */
+  --aoin-black: rgb(0, 0, 0);            /* primary canvas */
+  --aoin-ink: rgb(10, 10, 10);           /* near-black, soft canvas / text on light */
+  --aoin-cool-white: rgb(217, 225, 234); /* THE brand foreground — "coolWhite" (#DDE7F4) */
+  --aoin-cool-white-45: rgba(217, 225, 234, 0.45); /* muted / secondary */
+  --aoin-white: rgb(255, 255, 255);      /* pure white, sparing (photo-heavy slides) */
+
+  /* Semantic */
+  --surface-page: var(--aoin-black);
+  --surface-inverse: var(--aoin-cool-white);
+  --text-primary: var(--aoin-cool-white);
+  --text-secondary: var(--aoin-cool-white-45);
+  --text-on-light: var(--aoin-black);
+  --border-frame: var(--aoin-cool-white);
+  --scrim-photo: rgba(0, 0, 0, 0.3);     /* flat protection over imagery */
+}
+
+/* ---- Typography ----
+   Three-family system (from "Typography Selections", 260430):
+   - Denim INK WD Medium  → HEADLINES + LOGOTYPE
+   - Denim INK WD Regular → BODY COPY
+   - SN Ja Mono Light     → DATA + OVERLINES
+   - OO Theran Light      → statement display (manifesto lines) */
+:root {
+  --font-headline: "Denim INK WD", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-body: "Denim INK WD", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SN Ja Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --font-display: "OO Theran", -apple-system, "Helvetica Neue", Arial, sans-serif;
+
+  --weight-headline: 500; /* Denim Medium */
+  --weight-body: 400;     /* Denim Regular */
+  --weight-mono: 300;     /* Ja Mono Light */
+  --weight-display: 300;  /* OO Theran Light */
+
+  /* Headlines & display set tight: line-height 100%, often cap-trimmed */
+  --leading-headline: 1;
+  --leading-display: 1;
+  --leading-body: 1.35;
+
+  /* Overline treatment: mono, generous tracking, all-caps or all-lowercase */
+  --tracking-overline: 0.3em;
+  --tracking-headline: 0.02em; /* occasionally on large names */
+
+  /* Reference scale @1920×1080 (scale proportionally per medium) */
+  --size-display-hero: 220px;  /* artist name on a slide */
+  --size-headline-1: 120px;    /* stacked wordmark / cover */
+  --size-headline-2: 60px;     /* subtitle line */
+  --size-statement: 47px;      /* OO Theran manifesto line */
+  --size-mono-meta: 20px;      /* data / overline rows */
+  --size-body: 20px;
+}
+
+/* ---- Layout & motif ---- */
+:root {
+  /* Frame motif: 4px cool-white inset frame with a notched corner */
+  --frame-stroke: 4px;
+  --frame-inset-social: 32px;   /* on 1080-wide canvases */
+
+  /* Margins observed */
+  --margin-slide: 120px;        /* 1920×1080 slide side margin (approx. 121px in file) */
+  --margin-cover: 31px;         /* cover edge inset */
+  --margin-edge: 48px;          /* the home page's live edge inset (desktop) */
+  --margin-edge-mobile: 20px;   /* the home page's live edge inset (<=720px) */
+
+  /* Corners: the brand is square. No border-radius anywhere. */
+  --radius-none: 0;
+  /* Exception: the bleed carousel tiles carry a 12px radius (matches project hero). */
+  --radius-tile: 12px;
+}
+
+/* ---- Raw Figma Variables (first mode = :root default) ----
+   Kept for parity with the export. FLOAT tokens are unitless. */
+:root {
+  --color-1-2: rgb(255, 255, 255);
+  --color-1-3: rgb(255, 255, 255);
+  --color-1-4: rgb(255, 255, 255);
+  --color-1: rgb(255, 255, 255);
+  --color-2-2: rgb(0, 0, 0);
+  --color-2-3: rgb(0, 0, 0);
+  --color-2-4: rgb(0, 0, 0);
+  --color-2: rgb(0, 0, 0);
+  --color-4: rgb(217, 225, 234);
+  --color-5: rgba(217, 225, 234, 0.45);
+  --color-7: rgb(217, 225, 234);
+  --color-8-2: rgb(217, 225, 234);
+  --color-8: rgb(217, 225, 234);
+  --coolwhite: rgb(217, 225, 234);
+}
+
+/* ---- Base element defaults ---- */
+html,
+body {
+  margin: 0;
+  background: var(--surface-page);
+}
+a {
+  color: var(--aoin-cool-white);
+  text-decoration: none;
+}
+a:hover {
+  color: var(--aoin-cool-white-45);
+}

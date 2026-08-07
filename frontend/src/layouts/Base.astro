@@ -1,0 +1,34 @@
+---
+import '@/styles/tokens.css';
+
+interface Props {
+  title?: string;
+  description?: string;
+}
+
+const {
+  title = 'All Of It Now',
+  description = 'All Of It Now — a real-time content and show production studio in Los Angeles.',
+} = Astro.props;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="icon" href="/assets/aoin-icon.svg" type="image/svg+xml" />
+
+    {/* Fonts are on the critical path — the preloader/intro is gated on
+        document.fonts.ready, so avoid the FOIT that font-display:block causes. */}
+    <link rel="preload" href="/fonts/DenimINKWD-Medium.otf" as="font" type="font/otf" crossorigin />
+    <link rel="preload" href="/fonts/DenimINKWD-Regular.otf" as="font" type="font/otf" crossorigin />
+    <link rel="preload" href="/fonts/SNJaMono-Light.otf" as="font" type="font/otf" crossorigin />
+    <link rel="preload" href="/fonts/OOTheran-Light.otf" as="font" type="font/otf" crossorigin />
+  </head>
+  <body>
+    <slot />
+  </body>
+</html>
