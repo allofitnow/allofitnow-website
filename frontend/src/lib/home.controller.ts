@@ -85,7 +85,6 @@ export class HomeController {
   private dragging = false;
   private px = 0;
   private slideRaf = 0;
-  private mirrorId = 0;
   private onMove?: (e: PointerEvent) => void;
   private onUp?: () => void;
   private noDrag?: (e: Event) => void;
@@ -144,8 +143,6 @@ export class HomeController {
     this.startAtmosphere();
     this.watchFootBar();
     this.layoutSlider();
-    this.syncMirror();
-    this.mirrorId = window.setInterval(() => this.syncMirror(), 1500);
     this.watchAbout();
     this.applyResponsive();
     this.applyAboutType();
@@ -1071,41 +1068,6 @@ export class HomeController {
     }
   }
 
-  private syncMirror() {
-    const row = this.ref('track');
-    const mirror = this.ref('mirror');
-    if (!row || !mirror) return;
-    const tiles = (Array.prototype.slice.call(row.children) as HTMLElement[]).filter(
-      (c) => c !== mirror
-    );
-    tiles.forEach((tile, i) => {
-      const srcImg = tile.querySelector('img');
-      const src = srcImg ? srcImg.getAttribute('src') || '' : '';
-      const label = tile.querySelector('.ph')?.textContent || '';
-      let clone = mirror.children[i] as HTMLElement | undefined;
-      if (!clone) {
-        clone = document.createElement('div');
-        clone.className = tile.className;
-        clone.setAttribute('data-slide', '1');
-        clone.setAttribute('data-i', tile.getAttribute('data-i') || '0');
-        clone.style.width = tile.style.width || '39vw';
-        clone.style.borderRadius = tile.style.borderRadius || '12px';
-        clone.innerHTML =
-          '<img alt="" draggable="false" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none">' +
-          '<span class="ph"></span>';
-        mirror.appendChild(clone);
-      }
-      const img = clone.querySelector('img') as HTMLImageElement;
-      const ph = clone.querySelector('.ph') as HTMLElement;
-      if (ph) ph.textContent = label;
-      if (src) {
-        if (img.getAttribute('src') !== src) img.setAttribute('src', src);
-        img.style.display = 'block';
-      }
-    });
-    while (mirror.children.length > tiles.length) mirror.lastElementChild!.remove();
-  }
-
   // ── Work cue ───────────────────────────────────────────────────────────
   private wireWorkCue() {
     const cue = this.ref('workCue');
@@ -1144,7 +1106,6 @@ export class HomeController {
     if (this.stmtRO) this.stmtRO.disconnect();
     cancelAnimationFrame(this.roRaf);
     cancelAnimationFrame(this.slideRaf);
-    clearInterval(this.mirrorId);
     this.aboutTimers.forEach(clearTimeout);
     clearTimeout(this.aboutDoneId);
     if (this.onMove) window.removeEventListener('pointermove', this.onMove);

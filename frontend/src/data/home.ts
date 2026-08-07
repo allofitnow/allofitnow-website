@@ -6,13 +6,6 @@ export interface NavLink {
   href: string;
 }
 
-export interface BleedTile {
-  /** Artist / project name — also the placeholder label while the image loads. */
-  artist: string;
-  /** Still in /public/assets. */
-  image: string;
-}
-
 export interface ServiceItem {
   /** Title split into two words so it can justify edge-to-edge on one line. */
   title: [string, string];
@@ -64,18 +57,17 @@ export const about = {
   workCue: 'VIEW SELECTED WORK',
 };
 
-// Bleed carousel — maps to the homepage's marquee relationship to `projects`.
-// Repointed to the stills currently on disk (roster was recurated after the
-// initial extraction). CONFIRM artist labels + order — and note the filename
-// `good-charlote.webp` is a typo for Good Charlotte.
-export const bleed: BleedTile[] = [
-  { artist: 'BAD BUNNY', image: '/assets/bad-bunny.webp' },
-  { artist: 'RAUW ALEJANDRO', image: '/assets/rauw-alejandro.webp' },
-  { artist: 'MARTIN GARRIX', image: '/assets/martin-garrix.webp' },
-  { artist: 'PESO PLUMA', image: '/assets/peso-pluma.webp' },
-  { artist: 'MELANIE MARTINEZ', image: '/assets/melanie-martinez.webp' },
-  { artist: 'GOOD CHARLOTTE', image: '/assets/good-charlote.webp' },
-  { artist: 'RENÉE RAPP', image: '/assets/renee-rapp.webp' },
+// Bleed carousel — the homepage marquee. Just an ordered list of stills; no
+// baked-in names (the roster churns and Payload will own it — this becomes the
+// `homepage.marquee` relationship to `projects`). Add/remove/reorder freely.
+export const bleed: string[] = [
+  '/assets/bad-bunny.webp',
+  '/assets/rauw-alejandro.webp',
+  '/assets/martin-garrix.webp',
+  '/assets/peso-pluma.webp',
+  '/assets/melanie-martinez.webp',
+  '/assets/good-charlote.webp',
+  '/assets/renee-rapp.webp',
 ];
 
 export const servicesLabels = { left: 'STUDIO', right: 'CAPABILITIES' };

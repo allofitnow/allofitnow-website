@@ -33,14 +33,23 @@ import { about, bleed } from '@/data/home';
       <div data-ai="1" class="portrait-inner">
         <div class="track" data-ref="track">
           {
-            bleed.map((tile, i) => (
-              <div class="slide" data-slide="1" data-i={i}>
-                <img src={tile.image} alt={tile.artist} draggable="false" loading="lazy" />
-                <span class="ph">{tile.artist}</span>
+            bleed.map((src) => (
+              <div class="slide" data-slide="1">
+                <img src={src} alt="" draggable="false" loading="lazy" />
               </div>
             ))
           }
-          <div class="mirror" data-ref="mirror"></div>
+          {/* mirror copy for the seamless loop — rendered in markup so it's
+              styled identically (JS cloning dropped the scoped styles) */}
+          <div class="mirror" data-ref="mirror">
+            {
+              bleed.map((src) => (
+                <div class="slide" data-slide="1">
+                  <img src={src} alt="" draggable="false" loading="lazy" />
+                </div>
+              ))
+            }
+          </div>
         </div>
       </div>
     </div>
@@ -183,6 +192,7 @@ import { about, bleed } from '@/data/home';
     position: relative;
     overflow: hidden;
     border-radius: var(--radius-tile);
+    background: rgba(217, 225, 234, 0.05); /* neutral fill until the still loads */
   }
   .slide img {
     position: absolute;
@@ -191,20 +201,6 @@ import { about, bleed } from '@/data/home';
     height: 100%;
     object-fit: cover;
     display: block;
-    z-index: 1; /* cover the placeholder once loaded */
-  }
-  .slide .ph {
-    position: absolute;
-    inset: 0;
-    z-index: 0; /* behind the image; only visible until it loads */
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-family: var(--font-mono);
-    font-weight: var(--weight-mono);
-    font-size: 11px;
-    letter-spacing: 0.3em;
-    color: rgba(217, 225, 234, 0.35);
   }
   .mirror {
     display: flex;
