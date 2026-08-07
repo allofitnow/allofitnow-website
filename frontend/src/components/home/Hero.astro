@@ -1,0 +1,167 @@
+---
+import { hero, reel } from '@/data/home';
+const reelSrc = `https://player.vimeo.com/video/${reel.vimeoId}?h=${reel.hash}&background=1&autoplay=1&loop=1&muted=1&autopause=0&dnt=1`;
+const cueWord = (w: string) => w.split('');
+---
+
+<div class="hero" data-ref="heroWrap" data-screen-label="Hero">
+  <div class="sticky">
+    <div class="word w-all" data-ref="wAll">{hero.words[0]}</div>
+    <div class="word w-of" data-ref="wOf">{hero.words[1]}</div>
+    <div class="word w-it" data-ref="wIt">{hero.words[2]}</div>
+    <div class="word w-now" data-ref="wNow">{hero.words[3]}</div>
+
+    <div class="mask" data-ref="mask">
+      <div class="intro-icon" data-ref="introIcon">
+        <img class="icon" data-ref="icon" src="/assets/aoin-icon.svg" alt="AOIN icon" />
+      </div>
+      <div class="box" data-ref="box">
+        <div class="reel-frame" data-ref="reelFrame">
+          <iframe
+            data-ref="reelIframe"
+            src={reelSrc}
+            allow="autoplay; fullscreen"
+            title="AOIN reel"></iframe>
+        </div>
+      </div>
+    </div>
+
+    <div class="cue" data-ref="cue" data-screen-label="Scroll cue">
+      <div class="cue-row">
+        <span class="grp" data-g="1" data-br="-1"
+          ><span data-gi="1"><span data-l="1" data-b="1">[</span></span></span
+        >
+        <span class="sp"></span>
+        <span class="grp" data-g="1"
+          ><span data-gi="1">{cueWord('SCROLL').map((c) => <span data-l="1">{c}</span>)}</span></span
+        >
+        <span class="sp"></span>
+        <span class="grp" data-g="1"
+          ><span data-gi="1">{cueWord('DOWN').map((c) => <span data-l="1">{c}</span>)}</span></span
+        >
+        <span class="sp"></span>
+        <span class="grp" data-g="1" data-br="1"
+          ><span data-gi="1"><span data-l="1" data-b="1">]</span></span></span
+        >
+      </div>
+    </div>
+  </div>
+</div>
+
+<style>
+  .hero {
+    position: relative;
+    height: 300vh; /* controller overrides to pinViewports × 100vh */
+  }
+  .sticky {
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    overflow: hidden;
+  }
+
+  .word {
+    position: absolute;
+    z-index: 4;
+    opacity: 0;
+    color: var(--aoin-cool-white);
+    font-family: var(--font-headline);
+    font-weight: var(--weight-headline);
+    font-size: clamp(44px, 6.2vw, 112px);
+    line-height: 1;
+    letter-spacing: 0.01em;
+  }
+  .w-all {
+    top: 40px;
+    left: 48px;
+  }
+  .w-of {
+    top: 40px;
+    right: 48px;
+  }
+  .w-it {
+    bottom: 44px;
+    left: 48px;
+  }
+  .w-now {
+    bottom: 44px;
+    right: 48px;
+  }
+
+  .mask {
+    position: absolute;
+    overflow: hidden;
+    z-index: 3;
+  }
+  .intro-icon {
+    position: absolute;
+    inset: 0;
+    transform: scale(0);
+  }
+  .icon {
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    transform: translate(-50%, -50%);
+  }
+  .box {
+    position: absolute;
+    inset: 0;
+    background: var(--aoin-cool-white);
+    overflow: hidden;
+    transform: translateY(101%);
+  }
+  .reel-frame {
+    position: absolute;
+    inset: 0;
+    overflow: hidden;
+    background: #000;
+  }
+  .reel-frame iframe {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    border: 0;
+    pointer-events: none;
+  }
+
+  .cue {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 38px;
+    z-index: 6;
+    display: flex;
+    justify-content: center;
+    cursor: pointer;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 11px;
+    color: var(--aoin-cool-white);
+    opacity: 0;
+  }
+  .cue-row {
+    display: flex;
+    align-items: flex-end;
+  }
+  .cue .grp {
+    display: inline-block;
+    overflow: hidden;
+  }
+  .cue [data-br] {
+    transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .cue [data-gi] {
+    display: inline-block;
+    white-space: nowrap;
+    transform: translateY(110%);
+  }
+  .cue [data-l] {
+    display: inline-block;
+  }
+  .cue .sp {
+    display: inline-block;
+    width: 1.1em;
+  }
+</style>

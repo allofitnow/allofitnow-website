@@ -1,0 +1,120 @@
+---
+import { nav, location } from '@/data/home';
+---
+
+<nav class="nav" data-ref="nav" aria-label="Primary">
+  <div class="cell logo" data-nr="1">
+    <div data-ni="1">
+      <img src="/assets/aoin-logo.svg" alt="All Of It Now" />
+    </div>
+  </div>
+
+  <div class="cell links">
+    {
+      nav.slice(0, 2).map((l) => (
+        <div data-nr="1">
+          <div data-ni="1">
+            <a href={l.href}>{l.label}</a>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+
+  <div class="cell links">
+    {
+      nav.slice(2, 4).map((l) => (
+        <div data-nr="1">
+          <div data-ni="1">
+            <a href={l.href}>{l.label}</a>
+          </div>
+        </div>
+      ))
+    }
+  </div>
+
+  <div class="cell meta">
+    <div data-nr="1"><div data-ni="1"><span data-ref="clock">00:00:00 GMT-7</span></div></div>
+    <div data-nr="1"><div data-ni="1">{location}</div></div>
+  </div>
+
+  <div class="cell menu" data-ref="menuBtn">
+    <div data-ni="1">
+      <button type="button" data-ref="menuBtnLabel">MENU</button>
+    </div>
+  </div>
+</nav>
+
+<style>
+  .nav {
+    position: fixed;
+    top: 30px;
+    left: 48px;
+    right: 48px;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    align-items: start;
+    pointer-events: none;
+    opacity: 0;
+  }
+  /* reveal masks — controller toggles [data-ni] transform */
+  .nav [data-nr] {
+    overflow: hidden;
+  }
+  .nav [data-ni] {
+    transform: translateY(-110%);
+  }
+  .nav a,
+  .nav button {
+    pointer-events: auto;
+  }
+
+  .cell.logo {
+    justify-self: start;
+  }
+  .cell.logo img {
+    display: block;
+    height: 44px;
+    width: auto;
+  }
+
+  .cell.links,
+  .cell.meta {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    line-height: 1.25;
+  }
+  .cell.meta {
+    justify-self: end;
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  .cell.menu {
+    display: none;
+    justify-self: end;
+    align-self: start;
+    overflow: hidden;
+  }
+  .cell.menu button {
+    -webkit-appearance: none;
+    appearance: none;
+    background: none;
+    border: 0;
+    margin: 0;
+    padding: 10px 0 10px 16px;
+    min-height: 44px;
+    color: var(--aoin-cool-white);
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    cursor: pointer;
+  }
+</style>

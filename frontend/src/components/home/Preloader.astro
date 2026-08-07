@@ -1,0 +1,43 @@
+---
+---
+
+<div class="preloader" data-ref="preloader" data-screen-label="Preloader">
+  <div class="mask"><div class="label" data-ref="preLabel">LOADING</div></div>
+  <div class="mask"><div class="count" data-ref="preCount">0</div></div>
+</div>
+
+<style>
+  .preloader {
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    background: #000;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-content: center;
+    align-items: start;
+    padding: 0 48px;
+    box-sizing: border-box;
+  }
+  .mask {
+    overflow: hidden;
+  }
+  .label {
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 14px;
+    line-height: 1;
+    letter-spacing: 0.3em;
+    text-box: trim-both cap alphabetic;
+    color: var(--aoin-cool-white);
+  }
+  .count {
+    font-family: var(--font-display);
+    font-weight: var(--weight-display);
+    font-size: clamp(140px, 28vw, 520px);
+    line-height: 1;
+    letter-spacing: -0.01em;
+    color: var(--aoin-cool-white);
+    text-box: trim-both cap alphabetic;
+  }
+</style>

@@ -1,77 +1,31 @@
 ---
 import Base from '@/layouts/Base.astro';
+import Preloader from '@/components/home/Preloader.astro';
+import Nav from '@/components/home/Nav.astro';
+import Grain from '@/components/home/Grain.astro';
+import Hero from '@/components/home/Hero.astro';
+import FootBar from '@/components/home/FootBar.astro';
 ---
 
-<Base title="All Of It Now — scaffold">
-  <main class="scaffold">
-    <p class="over">ALL OF IT NOW — FRONTEND SCAFFOLD</p>
-    <h1 class="wordmark">ALL OF<br />IT NOW</h1>
-    <p class="statement">
-      Astro is standing. Tokens and the four brand faces are wired. The home
-      port lands next, one component at a time.
-    </p>
-    <p class="note">
-      Denim INK WD · SN Ja Mono · OO Theran — if these three read as distinct
-      typefaces below, the font pipeline is good.
-    </p>
-    <ul class="faces">
-      <li style="font-family:var(--font-headline);font-weight:var(--weight-headline)">Denim INK WD Medium — headlines</li>
-      <li style="font-family:var(--font-body);font-weight:var(--weight-body)">Denim INK WD Regular — body</li>
-      <li style="font-family:var(--font-mono);font-weight:var(--weight-mono)">SN Ja Mono Light — data / overlines</li>
-      <li style="font-family:var(--font-display);font-weight:var(--weight-display)">OO Theran Light — statement display</li>
-    </ul>
-  </main>
+<Base>
+  <div class="home" data-home>
+    <Preloader />
+    <Nav />
+    <Grain />
+    <Hero />
+    <FootBar />
+  </div>
 </Base>
 
 <style>
-  .scaffold {
-    min-height: 100vh;
-    box-sizing: border-box;
-    padding: clamp(48px, 8vw, 120px) var(--margin-edge);
-    color: var(--text-primary);
-    display: flex;
-    flex-direction: column;
-    gap: 28px;
-  }
-  .over {
-    font-family: var(--font-mono);
-    font-weight: var(--weight-mono);
-    font-size: 12px;
-    letter-spacing: var(--tracking-overline);
-    color: var(--text-secondary);
-    margin: 0;
-  }
-  .wordmark {
-    font-family: var(--font-headline);
-    font-weight: var(--weight-headline);
-    font-size: clamp(48px, 12vw, 160px);
-    line-height: var(--leading-headline);
-    letter-spacing: 0.01em;
-    margin: 0;
-  }
-  .statement {
-    font-family: var(--font-display);
-    font-weight: var(--weight-display);
-    font-size: clamp(20px, 2.4vw, 34px);
-    line-height: var(--leading-body);
-    max-width: 40ch;
-    margin: 0;
-  }
-  .note {
-    font-family: var(--font-body);
-    font-weight: var(--weight-body);
-    font-size: var(--size-body);
-    color: var(--text-secondary);
-    max-width: 52ch;
-    margin: 0;
-  }
-  .faces {
-    list-style: none;
-    margin: 8px 0 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    font-size: clamp(18px, 2vw, 26px);
+  .home {
+    background: #000;
+    color: var(--aoin-cool-white);
   }
 </style>
+
+<script>
+  import { mountHome } from '@/lib/home.controller';
+  const root = document.querySelector<HTMLElement>('[data-home]');
+  if (root) mountHome(root);
+</script>
