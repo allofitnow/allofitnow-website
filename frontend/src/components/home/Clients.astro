@@ -1,5 +1,5 @@
 ---
-import { clients, clientsMeta } from '@/data/home';
+import { clients } from '@/data/home';
 
 // Broken-measure row builder (from the component's AOIN_CLIENTS_DATA notes).
 // Geometry is data-driven so the roster can change freely — edit data/home.ts.
@@ -50,7 +50,6 @@ while (i < clients.length) {
 <section class="aoin-clients" data-screen-label="Clients">
   <div class="aoin-meta">
     <span>selected clients</span>
-    <span class="aoin-meta-mid">{clientsMeta}</span>
     <span>{clients.length} / estd. 2014</span>
   </div>
 
@@ -90,8 +89,6 @@ while (i < clients.length) {
     flex-wrap: wrap;
     justify-content: space-between;
     gap: 8px clamp(20px, 3cqw, 60px);
-    padding-bottom: 14px;
-    border-bottom: 1px solid rgba(217, 225, 234, 0.18);
     font-family: var(--font-mono);
     font-weight: var(--weight-mono);
     font-size: clamp(11px, 0.9cqw, 13px);
@@ -167,11 +164,6 @@ while (i < clients.length) {
   .aoin-w3 {
     animation-name: aoin-shift, aoin-f3;
     animation-range: cover 0% cover 64%, cover 0% cover 100%;
-  }
-  @container (max-width: 1100px) {
-    .aoin-meta-mid {
-      display: none;
-    }
   }
   @container (max-width: 640px) {
     .aoin-line {

@@ -97,9 +97,6 @@ export const services: ServiceItem[] = [
   },
 ];
 
-// Middle meta line in the Selected Clients header (uppercased by CSS).
-export const clientsMeta = 'realtime content — show integration';
-
 // Roster, in order. The Selected Clients component builds its broken-measure
 // rows from this list (change/reorder freely — layout regenerates). Multi-word
 // names keep their internal spaces; the component swaps them to U+2007 so

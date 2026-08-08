@@ -422,8 +422,6 @@ export class HomeController {
     if (!nav || !heroWrap) return;
     const at = Math.max(40, heroWrap.offsetTop + heroWrap.offsetHeight + this.cfg.navRevealOffset);
     nav.dataset.revealAt = String(Math.round(at));
-    // stay shown ~a viewport past reveal (through About) before hide-on-scroll
-    nav.dataset.hideBuffer = String(Math.round(window.innerHeight));
   }
 
   // - Film grain -

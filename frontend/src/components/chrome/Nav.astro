@@ -260,8 +260,7 @@ import { nav, location, tagline } from '@/data/home';
     // data-reveal-at is the scroll px before the nav first slides in. Pages with
     // a cinematic hero (home) set this to the hero-clear point; default 40.
     const menuOpen = () => menu.classList.contains('aoin-menu--open');
-    let last = window.scrollY,
-      revealed = false;
+    let revealed = false;
     function onScroll() {
       const y = window.scrollY;
       const at = +(nav!.dataset.revealAt || 40);
@@ -269,14 +268,11 @@ import { nav, location, tagline } from '@/data/home';
         revealed = true;
         nav!.classList.add('aoin-nav--revealed');
       }
+      // Static once revealed — the nav only hides when scrolled back up past the
+      // reveal point (on home, back into the hero). No hide-on-scroll otherwise.
       if (revealed && !menuOpen()) {
-        // how far past the reveal point before scroll-down starts hiding the nav.
-        // Home sets this to ~a viewport so the nav lingers through About.
-        const buffer = +(nav!.dataset.hideBuffer || 120);
-        const hide = y < at || (y > last && y > at + buffer);
-        nav!.classList.toggle('aoin-nav--hidden', hide);
+        nav!.classList.toggle('aoin-nav--hidden', y < at);
       }
-      last = y;
     }
     window.addEventListener('scroll', onScroll, { passive: true });
     onScroll();
