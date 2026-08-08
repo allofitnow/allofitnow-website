@@ -69,6 +69,16 @@ import { tagline, social } from '@/data/home';
     .foot-bar > [data-fb] {
       text-align: center;
     }
+    /* The tagline is one long line; at the mobile size it lands a hair wider
+       than the 20px-rail container and the reveal mask (overflow:hidden) clips
+       the last character. Tighten the tracking so it fits on typical phones,
+       and let it wrap instead of clip on anything narrower. Scoped to the
+       tagline — the social labels stay nowrap. */
+    .foot-bar > [data-fb] [data-fbi] {
+      white-space: normal;
+      letter-spacing: 0.12em;
+      line-height: 1.4;
+    }
     .social {
       justify-content: space-between;
       gap: 0;
