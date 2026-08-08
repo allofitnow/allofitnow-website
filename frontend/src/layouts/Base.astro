@@ -1,5 +1,7 @@
 ---
 import '@/styles/tokens.css';
+import '@/styles/transitions.css';
+import { ClientRouter } from 'astro:transitions';
 import Nav from '@/components/chrome/Nav.astro';
 import Cursor from '@/components/chrome/Cursor.astro';
 
@@ -29,10 +31,22 @@ const {
     <link rel="preload" href="/fonts/DenimINKWD-Regular.otf" as="font" type="font/otf" crossorigin />
     <link rel="preload" href="/fonts/SNJaMono-Light.otf" as="font" type="font/otf" crossorigin />
     <link rel="preload" href="/fonts/OOTheran-Light.otf" as="font" type="font/otf" crossorigin />
+
+    {/* SPA soft-nav for the Work<->Project flight. Only tile<->hero links are
+        soft; chrome/home links carry data-astro-reload and full-load, so the
+        home controller never has to survive a swap. */}
+    <ClientRouter />
   </head>
   <body>
+    {/* Nav + Cursor persist across soft swaps (transition:persist is on their
+        own root elements) so their once-bound scripts — clock, reveal, crosshair
+        — keep working instead of re-binding to fresh nodes each navigation. */}
     <Nav />
     <slot />
     <Cursor />
+
+    <script>
+      import '@/lib/flight';
+    </script>
   </body>
 </html>

@@ -2,20 +2,20 @@
 import { nav, location, tagline } from '@/data/home';
 ---
 
-<nav class="aoin-nav" data-aoin-nav aria-label="Primary">
+<nav class="aoin-nav" data-aoin-nav aria-label="Primary" transition:persist="aoin-nav">
   <div class="aoin-nav__row aoin-nav__logo">
-    <a href="/"><img src="/assets/aoin-logo.svg" alt="All Of It Now" /></a>
+    <a href="/" data-astro-reload><img src="/assets/aoin-logo.svg" alt="All Of It Now" /></a>
   </div>
 
   <div class="aoin-nav__col aoin-nav__col--links">
     {nav.slice(0, 2).map((l) => (
-      <div class="aoin-nav__row"><a href={l.href}>{l.label}</a></div>
+      <div class="aoin-nav__row"><a href={l.href} data-astro-reload>{l.label}</a></div>
     ))}
   </div>
 
   <div class="aoin-nav__col aoin-nav__col--links2">
     {nav.slice(2, 4).map((l) => (
-      <div class="aoin-nav__row"><a href={l.href}>{l.label}</a></div>
+      <div class="aoin-nav__row"><a href={l.href} data-astro-reload>{l.label}</a></div>
     ))}
   </div>
 
@@ -29,9 +29,9 @@ import { nav, location, tagline } from '@/data/home';
   </div>
 </nav>
 
-<div class="aoin-menu" id="aoin-menu" data-aoin-menu>
+<div class="aoin-menu" id="aoin-menu" data-aoin-menu transition:persist="aoin-menu">
   <div class="aoin-menu__links">
-    {nav.map((l) => (<a href={l.href}>{l.label}</a>))}
+    {nav.map((l) => (<a href={l.href} data-astro-reload>{l.label}</a>))}
   </div>
   <div class="aoin-menu__meta">
     <div>{tagline}</div>

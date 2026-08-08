@@ -1,0 +1,59 @@
+/* ============================================================
+   Work <-> Project flight — native View Transitions tuning
+   ------------------------------------------------------------
+   The morph is driven by a single shared view-transition-name,
+   "aoin-flight", applied at runtime by lib/flight.ts to the one
+   element that should travel (the clicked grid tile's image on
+   the way in, the matching tile on the way back). The browser
+   tweens that element's box from the tile crop to the project
+   hero; everything else cross-fades as the root.
+
+   Timing/easing come from the same --fly-* tokens as the
+   reflow prototype so the whole transition stays tunable in
+   tokens.css. Only tile<->hero navigations are soft; all chrome
+   and home links carry data-astro-reload and full-load.
+   ============================================================ */
+
+/* The travelling image: box morph + crop cross-fade, full flight length. */
+::view-transition-group(aoin-flight) {
+  animation-duration: var(--fly-dur);
+  animation-timing-function: var(--fly-ease);
+}
+::view-transition-old(aoin-flight),
+::view-transition-new(aoin-flight) {
+  animation-duration: var(--fly-dur);
+  animation-timing-function: var(--fly-ease);
+  /* Both crops are the same photograph — a plain cross-fade reads as a reframe
+     rather than a dissolve. mix-blend keeps the overlap from washing brighter. */
+  mix-blend-mode: normal;
+}
+
+/* Everything that isn't travelling: a short, calm cross-fade. Shorter than the
+   morph so the destination has settled before the image lands. */
+::view-transition-old(root) {
+  animation: aoin-vt-out 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+::view-transition-new(root) {
+  animation: aoin-vt-in 460ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+@keyframes aoin-vt-out {
+  to {
+    opacity: 0;
+  }
+}
+@keyframes aoin-vt-in {
+  from {
+    opacity: 0;
+  }
+}
+
+/* Astro already skips view transitions under reduced-motion; this is a belt-and
+   -braces fallback so nothing lingers if a swap does run. */
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-group(*),
+  ::view-transition-old(*),
+  ::view-transition-new(*) {
+    animation-duration: 0.001ms !important;
+    animation-delay: 0ms !important;
+  }
+}

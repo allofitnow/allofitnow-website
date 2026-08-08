@@ -17,7 +17,7 @@ const count = String(projects.length).padStart(2, '0');
       {projects.map((p) => <ProjectTile project={p} />)}
     </div>
 
-    <a class="back" href="/" data-unit data-flight data-go="home">
+    <a class="back" href="/" data-unit data-flight data-go="home" data-astro-reload>
       [&nbsp;&nbsp;BACK&nbsp;&nbsp;]
     </a>
   </main>
