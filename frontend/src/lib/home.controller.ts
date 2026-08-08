@@ -828,7 +828,8 @@ export class HomeController {
     this.aboutAnimating = true;
     clearTimeout(this.aboutDoneId);
     const inners = this.refs('[data-ref="about"] [data-ai]');
-    const stagger = 180 * (show ? 1 : 0.35);
+    // 90ms (was 180) — pulls the bleed marquee in closer behind the text
+    const stagger = 90 * (show ? 1 : 0.35);
     const dur = 820 * (show ? 1 : 0.55);
     const ease = this.aboutEase();
     this.aboutTimers.forEach(clearTimeout);
