@@ -1,5 +1,7 @@
 ---
 import '@/styles/tokens.css';
+import Nav from '@/components/chrome/Nav.astro';
+import Cursor from '@/components/chrome/Cursor.astro';
 
 interface Props {
   title?: string;
@@ -29,6 +31,8 @@ const {
     <link rel="preload" href="/fonts/OOTheran-Light.otf" as="font" type="font/otf" crossorigin />
   </head>
   <body>
+    <Nav />
     <slot />
+    <Cursor />
   </body>
 </html>

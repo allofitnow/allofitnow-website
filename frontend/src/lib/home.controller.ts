@@ -67,13 +67,10 @@ export class HomeController {
   private cfg = CFG;
 
   // timers / raf / observers to tear down
-  private navTimers: number[] = [];
-  private navShown = false;
   private raf = 0;
   private preRaf = 0;
   private blinkId = 0;
   private blinkTimer = 0;
-  private clockId = 0;
   private atmoTimer = 0;
   private atmoOn = false;
   private cueReady = false;
@@ -172,7 +169,7 @@ export class HomeController {
       this.fitAndBuild();
       this.applyAboutType();
       this.applyServicesType();
-      this.alignNav();
+      this.setNavReveal();
       this.layoutSlider();
       this.layoutClients();
       this.sizeReel();
@@ -182,7 +179,7 @@ export class HomeController {
     this.wireCue();
     this.wireWorkCue();
     this.updateHero();
-    this.startClock();
+    this.setNavReveal();
     this.startAtmosphere();
     this.watchFootBar();
     this.layoutSlider();
@@ -231,7 +228,6 @@ export class HomeController {
       this.fitDropcap();
       this.applyAboutType();
       this.applyServicesType();
-      this.alignNav();
       this.layoutSlider();
       this.layoutClients();
       requestAnimationFrame(() =>
@@ -468,81 +464,17 @@ export class HomeController {
     });
   }
 
-  // ── Nav reveal ─────────────────────────────────────────────────────────
-  private setNav(show: boolean) {
-    const nav = this.ref('nav');
-    if (!nav || this.navShown === show) return;
-    this.navShown = show;
-    this.navTimers.forEach(clearTimeout);
-    this.navTimers = [];
-    nav.style.opacity = '1';
-    const inners = this.refs('[data-ref="nav"] [data-ni]');
-    const stagger = this.cfg.navStagger * (show ? 1 : 0.35);
-    const dur = this.cfg.navDuration * (show ? 1 : 0.55);
-    if (reducedMotion()) {
-      inners.forEach((el) => (el.style.transform = show ? 'none' : 'translateY(-110%)'));
-      return;
-    }
-    const n = inners.length;
-    inners.forEach((el, i) => {
-      const order = show ? i : n - 1 - i;
-      const from = show ? 'translateY(-110%)' : 'translateY(0%)';
-      const to = show ? 'translateY(0%)' : 'translateY(-110%)';
-      el.getAnimations().forEach((a) => a.cancel());
-      el.animate(
-        [
-          { transform: from, offset: 0, easing: 'cubic-bezier(1,0,0,1)' },
-          { transform: to, offset: 1 },
-        ],
-        { duration: dur, delay: order * stagger, fill: 'both' }
-      );
-      el.style.transform = show ? 'none' : 'translateY(-110%)';
-    });
-  }
-  private alignNav() {
-    const nav = this.ref('nav');
-    if (!nav) return;
-    const img = nav.querySelector('img');
-    const cols = Array.prototype.slice.call(nav.children).slice(1) as HTMLElement[];
-    if (!img || !cols.length) return;
-    const h = (img as HTMLImageElement).offsetHeight || 44;
-    const capTop = h * (69.7969 / 422);
-    const probe = document.createElement('span');
-    probe.textContent = 'H';
-    probe.style.cssText =
-      "position:absolute;visibility:hidden;left:-9999px;font-family:'SN Ja Mono',monospace;font-weight:300;font-size:11px;line-height:1.25;text-box:trim-both cap alphabetic";
-    document.body.appendChild(probe);
-    const capH = probe.getBoundingClientRect().height;
-    probe.remove();
-    const lineBox = 11 * 1.25;
-    const inset = capH > 0 ? (lineBox - capH) / 2 : 2;
-    const pad = Math.max(0, capTop - inset + this.cfg.navTextNudge);
-    cols.forEach((c) => (c.style.paddingTop = pad + 'px'));
-  }
-
-  // ── Clock ──────────────────────────────────────────────────────────────
-  private startClock() {
-    const tz = 'America/Los_Angeles';
-    const fmt = new Intl.DateTimeFormat('en-US', {
-      timeZone: tz,
-      hour12: false,
-      hour: '2-digit',
-      minute: '2-digit',
-      second: '2-digit',
-    });
-    const zone = new Intl.DateTimeFormat('en-US', { timeZone: tz, timeZoneName: 'longOffset' })
-      .formatToParts(new Date())
-      .find((p) => p.type === 'timeZoneName');
-    const label = (zone ? zone.value : 'GMT-7').replace(':00', '');
-    const clock = this.ref('clock');
-    const menuClock = this.ref('menuClock');
-    const tick = () => {
-      const t = fmt.format(new Date()) + ' ' + label;
-      if (clock) clock.textContent = t;
-      if (menuClock) menuClock.textContent = t;
-    };
-    tick();
-    this.clockId = window.setInterval(tick, 1000);
+  // ── Nav reveal handoff ─────────────────────────────────────────────────
+  // The site-wide nav (Base) reveals itself once scroll passes data-reveal-at.
+  // Home sets that threshold to the hero-clear point so the nav stays hidden
+  // through the cinematic hero, then slides in as About arrives. Everything
+  // else (stagger, hide-on-scroll, clock, mobile menu) lives in Nav.astro.
+  private setNavReveal() {
+    const nav = document.querySelector<HTMLElement>('[data-aoin-nav]');
+    const heroWrap = this.ref('heroWrap');
+    if (!nav || !heroWrap) return;
+    const at = Math.max(40, heroWrap.offsetTop + heroWrap.offsetHeight + this.cfg.navRevealOffset);
+    nav.dataset.revealAt = String(Math.round(at));
   }
 
   // ── Film grain ─────────────────────────────────────────────────────────
@@ -622,20 +554,6 @@ export class HomeController {
     const m = window.innerWidth <= 720;
     this.mobile = m;
     const pad = m ? 20 : 48;
-    const nav = this.ref('nav');
-    if (nav) {
-      nav.style.left = pad + 'px';
-      nav.style.right = pad + 'px';
-      nav.style.top = (m ? 16 : 30) + 'px';
-      nav.style.gridTemplateColumns = m ? '1fr auto' : '1fr 1fr 1fr 1fr';
-      const cells = Array.prototype.slice.call(nav.children) as HTMLElement[];
-      [1, 2, 3].forEach((i) => {
-        if (cells[i]) cells[i].style.display = m ? 'none' : 'flex';
-      });
-      if (cells[4]) cells[4].style.display = m ? 'block' : 'none';
-      const logo = nav.querySelector('img') as HTMLImageElement | null;
-      if (logo) logo.style.height = (m ? 32 : 44) + 'px';
-    }
     const cue = this.ref('cue');
     if (cue) {
       cue.style.fontSize = (m ? 10 : 11) + 'px';
@@ -765,10 +683,6 @@ export class HomeController {
     if (icon) icon.style.transform = 'translate(-50%, calc(-50% - ' + Math.round(iconY) + 'px))';
     const cue = this.ref('cue');
     if (cue && this.cueShown) cue.style.opacity = String(Math.max(0, 1 - p / 0.06));
-    const clear = rect.bottom + this.cfg.navRevealOffset;
-    if (this.footerActive()) this.setNav(false);
-    else if (clear <= 0) this.setNav(true);
-    else if (clear > 40) this.setNav(false);
     this.sizeReel();
   }
 
@@ -1155,6 +1069,7 @@ export class HomeController {
       if (!this.dragging) return;
       this.dragging = false;
       track.style.cursor = 'grab';
+      (window as unknown as { aoinCursor?: { hold(on: boolean): void } }).aoinCursor?.hold(false);
     };
     track.style.cursor =
       "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24'%3E%3Cpath d='M12 3v18M3 12h18' stroke='%23DDE7F4' stroke-width='1.25'/%3E%3C/svg%3E\") 12 12, crosshair";
@@ -1168,6 +1083,7 @@ export class HomeController {
       e.preventDefault();
       this.dragging = true;
       this.px = (e as PointerEvent).clientX;
+      (window as unknown as { aoinCursor?: { hold(on: boolean): void } }).aoinCursor?.hold(true);
     });
     window.addEventListener('pointermove', this.onMove);
     window.addEventListener('pointerup', this.onUp);
@@ -1549,10 +1465,8 @@ export class HomeController {
     cancelAnimationFrame(this.raf);
     cancelAnimationFrame(this.preRaf);
     clearInterval(this.blinkId);
-    clearInterval(this.clockId);
     clearInterval(this.atmoTimer);
     clearTimeout(this.blinkTimer);
-    this.navTimers.forEach(clearTimeout);
     this.atmoOn = false;
 
     if (this.aboutIo) this.aboutIo.disconnect();

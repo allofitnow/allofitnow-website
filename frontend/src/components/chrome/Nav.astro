@@ -1,0 +1,308 @@
+---
+import { nav, location, tagline } from '@/data/home';
+---
+
+<nav class="aoin-nav" data-aoin-nav aria-label="Primary">
+  <div class="aoin-nav__row aoin-nav__logo">
+    <a href="/"><img src="/assets/aoin-logo.svg" alt="All Of It Now" /></a>
+  </div>
+
+  <div class="aoin-nav__col aoin-nav__col--links">
+    {nav.slice(0, 2).map((l) => (
+      <div class="aoin-nav__row"><a href={l.href}>{l.label}</a></div>
+    ))}
+  </div>
+
+  <div class="aoin-nav__col aoin-nav__col--links2">
+    {nav.slice(2, 4).map((l) => (
+      <div class="aoin-nav__row"><a href={l.href}>{l.label}</a></div>
+    ))}
+  </div>
+
+  <div class="aoin-nav__col aoin-nav__col--meta">
+    <div class="aoin-nav__row"><span data-aoin-clock>00:00:00 GMT-7</span></div>
+    <div class="aoin-nav__row"><span>{location}</span></div>
+  </div>
+
+  <div class="aoin-nav__col--menu aoin-nav__row">
+    <button type="button" class="aoin-nav__menu-btn" data-aoin-menu-btn aria-expanded="false" aria-controls="aoin-menu">MENU</button>
+  </div>
+</nav>
+
+<div class="aoin-menu" id="aoin-menu" data-aoin-menu>
+  <div class="aoin-menu__links">
+    {nav.map((l) => (<a href={l.href}>{l.label}</a>))}
+  </div>
+  <div class="aoin-menu__meta">
+    <div>{tagline}</div>
+    <div><span data-aoin-clock>00:00:00 GMT-7</span><br />{location}</div>
+  </div>
+</div>
+
+<style>
+  .aoin-nav {
+    position: fixed;
+    top: 30px;
+    left: 48px;
+    right: 48px;
+    z-index: 20;
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr 1fr;
+    align-items: start;
+    color: var(--aoin-cool-white);
+    pointer-events: none;
+    transition:
+      transform 0.45s cubic-bezier(0.2, 0.8, 0.2, 1),
+      opacity 0.3s linear;
+  }
+  .aoin-nav--hidden {
+    transform: translateY(calc(-100% - 40px));
+    opacity: 0;
+  }
+
+  .aoin-nav a {
+    color: var(--aoin-cool-white);
+    text-decoration: none;
+    pointer-events: auto;
+  }
+  .aoin-nav a:hover {
+    opacity: 0.45;
+  }
+
+  /* every animatable row is a clipping mask + inner slider */
+  .aoin-nav__row {
+    overflow: hidden;
+  }
+  .aoin-nav__row > * {
+    display: block;
+    transform: translateY(-110%);
+  }
+  .aoin-nav--revealed .aoin-nav__row > * {
+    transform: translateY(0);
+    transition: transform 900ms cubic-bezier(1, 0, 0, 1);
+  }
+  /* stagger: rows animate in DOM order, 110ms apart */
+  .aoin-nav__col .aoin-nav__row:nth-child(1) > * { transition-delay: 0ms; }
+  .aoin-nav__col .aoin-nav__row:nth-child(2) > * { transition-delay: 110ms; }
+  .aoin-nav__col--links .aoin-nav__row:nth-child(1) > * { transition-delay: 110ms; }
+  .aoin-nav__col--links .aoin-nav__row:nth-child(2) > * { transition-delay: 220ms; }
+  .aoin-nav__col--links2 .aoin-nav__row:nth-child(1) > * { transition-delay: 330ms; }
+  .aoin-nav__col--links2 .aoin-nav__row:nth-child(2) > * { transition-delay: 440ms; }
+  .aoin-nav__col--meta .aoin-nav__row:nth-child(1) > * { transition-delay: 550ms; }
+  .aoin-nav__col--meta .aoin-nav__row:nth-child(2) > * { transition-delay: 660ms; }
+  .aoin-nav__col--menu .aoin-nav__row > * { transition-delay: 110ms; }
+
+  .aoin-nav__logo {
+    justify-self: start;
+  }
+  .aoin-nav__logo img {
+    display: block;
+    height: 44px;
+    width: auto;
+  }
+
+  .aoin-nav__col {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    line-height: 1.25;
+  }
+  .aoin-nav__col--meta {
+    justify-self: end;
+    text-align: right;
+    white-space: nowrap;
+  }
+  .aoin-nav__col--menu {
+    display: none;
+    justify-self: end;
+    align-self: start;
+  }
+
+  .aoin-nav__menu-btn {
+    -webkit-appearance: none;
+    appearance: none;
+    background: none;
+    border: 0;
+    margin: 0;
+    padding: 10px 0 10px 16px;
+    min-height: 44px;
+    pointer-events: auto;
+    cursor: pointer;
+    color: var(--aoin-cool-white);
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 12px;
+    letter-spacing: 0.2em;
+  }
+
+  /* fullscreen mobile menu */
+  .aoin-menu {
+    position: fixed;
+    inset: 0;
+    z-index: 19;
+    background: #000;
+    color: var(--aoin-cool-white);
+    display: none;
+    flex-direction: column;
+    justify-content: space-between;
+    padding: 78px 20px 28px;
+    box-sizing: border-box;
+    opacity: 0;
+    transition: opacity 0.28s linear;
+  }
+  .aoin-menu--visible {
+    display: flex;
+  }
+  .aoin-menu--open {
+    opacity: 1;
+  }
+  .aoin-menu a {
+    color: var(--aoin-cool-white);
+    text-decoration: none;
+  }
+  .aoin-menu__links {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    font-family: var(--font-headline);
+    font-weight: var(--weight-headline);
+    font-size: clamp(38px, 11.5vw, 64px);
+    line-height: 1.06;
+    letter-spacing: -0.012em;
+  }
+  .aoin-menu__links a {
+    display: block;
+    padding: 6px 0;
+  }
+  .aoin-menu__meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 16px;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    line-height: 1.35;
+  }
+  .aoin-menu__meta > :last-child {
+    text-align: right;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 720px) {
+    .aoin-nav {
+      top: 16px;
+      left: 20px;
+      right: 20px;
+      grid-template-columns: 1fr auto;
+      row-gap: 16px;
+      column-gap: 16px;
+    }
+    .aoin-nav__logo img {
+      height: 32px;
+    }
+    .aoin-nav__col--links,
+    .aoin-nav__col--links2,
+    .aoin-nav__col--meta {
+      display: none;
+    }
+    .aoin-nav__col--menu {
+      display: block;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .aoin-nav,
+    .aoin-nav__row > *,
+    .aoin-menu {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  (function () {
+    const nav = document.querySelector<HTMLElement>('[data-aoin-nav]');
+    const menu = document.querySelector<HTMLElement>('[data-aoin-menu]');
+    const menuBtn = document.querySelector<HTMLElement>('[data-aoin-menu-btn]');
+    const clocks = document.querySelectorAll<HTMLElement>('[data-aoin-clock]');
+    if (!nav || !menu || !menuBtn) return;
+
+    // LA clock
+    const fmt = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'America/Los_Angeles',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+    });
+    function offsetLabel() {
+      const s = new Intl.DateTimeFormat('en-US', {
+        timeZone: 'America/Los_Angeles',
+        timeZoneName: 'longOffset',
+      }).format(new Date());
+      const m = s.match(/GMT[+-]\d+/);
+      return m ? m[0] : 'GMT-7';
+    }
+    function tick() {
+      const t = fmt.format(new Date()) + ' ' + offsetLabel();
+      clocks.forEach((el) => (el.textContent = t));
+    }
+    tick();
+    setInterval(tick, 1000);
+
+    // reveal + hide-on-scroll.
+    // data-reveal-at is the scroll px before the nav first slides in. Pages with
+    // a cinematic hero (home) set this to the hero-clear point; default 40.
+    const menuOpen = () => menu.classList.contains('aoin-menu--open');
+    let last = window.scrollY,
+      revealed = false;
+    function onScroll() {
+      const y = window.scrollY;
+      const at = +(nav!.dataset.revealAt || 40);
+      if (!revealed && y > at) {
+        revealed = true;
+        nav!.classList.add('aoin-nav--revealed');
+      }
+      if (revealed && !menuOpen()) {
+        // hidden below the reveal point (e.g. back in the hero) or scrolling down
+        const hide = y < at || (y > last && y > at + 80);
+        nav!.classList.toggle('aoin-nav--hidden', hide);
+      }
+      last = y;
+    }
+    window.addEventListener('scroll', onScroll, { passive: true });
+    onScroll();
+
+    // mobile menu
+    function setMenu(open: boolean) {
+      menuBtn!.textContent = open ? 'CLOSE' : 'MENU';
+      menuBtn!.setAttribute('aria-expanded', String(open));
+      if (open) {
+        menu!.classList.add('aoin-menu--visible');
+        requestAnimationFrame(() => menu!.classList.add('aoin-menu--open'));
+        document.body.style.overflow = 'hidden';
+        nav!.classList.remove('aoin-nav--hidden');
+      } else {
+        menu!.classList.remove('aoin-menu--open');
+        document.body.style.overflow = '';
+        setTimeout(() => {
+          if (!menu!.classList.contains('aoin-menu--open')) menu!.classList.remove('aoin-menu--visible');
+        }, 300);
+      }
+    }
+    menuBtn.addEventListener('click', () => setMenu(!menuOpen()));
+    menu.querySelectorAll('a').forEach((a) => a.addEventListener('click', () => setMenu(false)));
+    window.addEventListener('resize', () => {
+      if (window.innerWidth > 720) setMenu(false);
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') setMenu(false);
+    });
+  })();
+</script>

@@ -1,0 +1,119 @@
+---
+// Site-wide crosshair cursor. Fine-pointer devices only; touch keeps the OS
+// cursor and this never initialises. Exposes window.aoinCursor.{split,hold}
+// so drag interactions (e.g. the bleed carousel) can hold it open.
+---
+
+<div class="aoin-cursor" data-aoin-cursor aria-hidden="true">
+  <div class="aoin-cursor__quad" data-cq="-1,-1"><div class="aoin-cursor__v"></div><div class="aoin-cursor__h"></div></div>
+  <div class="aoin-cursor__quad" data-cq="1,-1"><div class="aoin-cursor__v"></div><div class="aoin-cursor__h"></div></div>
+  <div class="aoin-cursor__quad" data-cq="-1,1"><div class="aoin-cursor__v"></div><div class="aoin-cursor__h"></div></div>
+  <div class="aoin-cursor__quad" data-cq="1,1"><div class="aoin-cursor__v"></div><div class="aoin-cursor__h"></div></div>
+</div>
+
+<style is:global>
+  /* Hide the native cursor on fine-pointer devices only. */
+  @media (hover: hover) and (pointer: fine) {
+    * {
+      cursor: none !important;
+    }
+  }
+</style>
+
+<style>
+  .aoin-cursor {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 90;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.2s linear;
+    will-change: transform;
+  }
+  /* four quadrant groups; data-cq="sx,sy" is the fly-out direction on split */
+  .aoin-cursor__quad {
+    position: absolute;
+    left: 0;
+    top: 0;
+    transition: transform 0.32s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .aoin-cursor__v {
+    position: absolute;
+    left: -1px;
+    width: 2px;
+    background: var(--aoin-cool-white);
+  }
+  .aoin-cursor__h {
+    position: absolute;
+    top: -1px;
+    height: 2px;
+    background: var(--aoin-cool-white);
+  }
+</style>
+
+<script>
+  (function () {
+    const cur = document.querySelector<HTMLElement>('[data-aoin-cursor]');
+    if (!cur) return;
+    // fine pointer only — touch/coarse devices keep the OS cursor
+    if (!window.matchMedia('(hover:hover) and (pointer:fine)').matches) {
+      cur.remove();
+      return;
+    }
+
+    const quads = Array.prototype.slice.call(cur.querySelectorAll<HTMLElement>('[data-cq]'));
+    const BASE_ARM = 12; // arm length at rest, px
+    const SPLIT = 4; // px each quadrant flies out over a target
+    let held = false;
+
+    // Arms shorten as they separate, so total mass reads even.
+    function split(q: number) {
+      const arm = Math.max(3, BASE_ARM - q);
+      quads.forEach(function (el: HTMLElement) {
+        const s = el.getAttribute('data-cq')!.split(',');
+        const sx = +s[0],
+          sy = +s[1];
+        el.style.transform = 'translate(' + sx * q + 'px,' + sy * q + 'px)';
+        const v = el.children[0] as HTMLElement,
+          h = el.children[1] as HTMLElement;
+        v.style.height = arm + 'px';
+        v.style.top = (sy < 0 ? -arm : 0) + 'px';
+        h.style.width = arm + 'px';
+        h.style.left = (sx < 0 ? -arm : 0) + 'px';
+      });
+    }
+    split(0);
+
+    window.addEventListener(
+      'pointermove',
+      function (e) {
+        cur.style.transform = 'translate3d(' + e.clientX + 'px,' + e.clientY + 'px,0)';
+        cur.style.opacity = '1';
+      },
+      { passive: true }
+    );
+
+    // leaving the window entirely fades it out
+    document.addEventListener('pointerout', function (e) {
+      if (!e.relatedTarget) cur.style.opacity = '0';
+    });
+
+    // any interactive target splits the crosshair on hover
+    document.addEventListener('pointerover', function (e) {
+      if (held) return;
+      const t = e.target as Element | null;
+      const hot = t && t.closest && t.closest('a,button,[data-cursor-split]');
+      split(hot ? SPLIT : 0);
+    });
+
+    // hold-open while dragging (the bleed carousel calls this)
+    (window as any).aoinCursor = {
+      split: split,
+      hold: function (on: boolean) {
+        held = on;
+        split(on ? SPLIT : 0);
+      },
+    };
+  })();
+</script>
