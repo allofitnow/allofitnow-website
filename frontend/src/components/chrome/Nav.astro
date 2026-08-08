@@ -260,11 +260,16 @@ import { nav, location, tagline } from '@/data/home';
     // data-reveal-at is the scroll px before the nav first slides in. Pages with
     // a cinematic hero (home) set this to the hero-clear point; default 40.
     const menuOpen = () => menu.classList.contains('aoin-menu--open');
+
+    // Per-page state, recomputed on every navigation (syncPage) so it stays
+    // correct across ClientRouter soft-swaps as well as full loads.
+    let isHome = false;
+    let footer: HTMLElement | null = null;
+    let revealed = false;
     // Footer carries its own logo + nav links — hide the top nav when it arrives.
-    const footer = document.querySelector<HTMLElement>('[data-nav-hide]');
     const footerInView = () =>
       !!footer && footer.getBoundingClientRect().top < window.innerHeight * 0.6;
-    let revealed = false;
+
     function onScroll() {
       const y = window.scrollY;
       const at = +(nav!.dataset.revealAt || 40);
@@ -272,14 +277,32 @@ import { nav, location, tagline } from '@/data/home';
         revealed = true;
         nav!.classList.add('aoin-nav--revealed');
       }
-      // Static once revealed. Hides only when scrolled back up past the reveal
-      // point (into the hero on home) or when the footer takes the screen.
+      // Static once revealed. On home it re-hides when scrolled back up into the
+      // hero; everywhere it hides when the footer (its own logo+links) takes over.
       if (revealed && !menuOpen()) {
-        nav!.classList.toggle('aoin-nav--hidden', y < at || footerInView());
+        const hideInHero = isHome && y < at;
+        nav!.classList.toggle('aoin-nav--hidden', hideInHero || footerInView());
       }
     }
+
+    function syncPage() {
+      isHome = !!document.querySelector('[data-home]');
+      footer = document.querySelector<HTMLElement>('[data-nav-hide]');
+      revealed = false;
+      nav!.classList.remove('aoin-nav--revealed', 'aoin-nav--hidden');
+      // Interior pages have no cinematic hero — reveal the nav on arrival rather
+      // than waiting for a scroll that may never come.
+      if (!isHome) {
+        revealed = true;
+        nav!.classList.add('aoin-nav--revealed');
+      }
+      onScroll();
+    }
+
     window.addEventListener('scroll', onScroll, { passive: true });
-    onScroll();
+    syncPage();
+    // Fires only under the ClientRouter (Stage 2); harmless otherwise.
+    document.addEventListener('astro:page-load', syncPage);
 
     // mobile menu
     function setMenu(open: boolean) {

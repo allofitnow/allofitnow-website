@@ -15,4 +15,10 @@ export default defineConfig({
     prefetchAll: true,
     defaultStrategy: 'hover',
   },
+
+  vite: {
+    server: {
+      allowedHosts:['.tail5e27f.ts.net']
+    }
+  }
 });

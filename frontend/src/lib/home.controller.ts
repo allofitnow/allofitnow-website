@@ -1053,7 +1053,8 @@ export class HomeController {
     if (!cue) return;
     cue.addEventListener('mouseenter', () => this.setWorkBrackets(10));
     cue.addEventListener('mouseleave', () => this.setWorkBrackets(0));
-    cue.addEventListener('click', () => this.goWork());
+    // Navigation is the anchor's own href="/work" (intercepted by the flight
+    // engine when present); the controller only owns the bracket hover.
   }
   private setWorkBrackets(px: number) {
     const cue = this.ref('workCue');
@@ -1062,10 +1063,6 @@ export class HomeController {
       const dir = Number(b.getAttribute('data-wb')) || 1;
       b.style.transform = px ? 'translateX(' + dir * px + 'px)' : 'none';
     });
-  }
-  private goWork() {
-    const about = this.ref('about');
-    if (about) this.scrollToY(about.offsetTop + about.offsetHeight);
   }
 
   // - Services -

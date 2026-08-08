@@ -1,0 +1,63 @@
+---
+import type { Project } from '@/data/projects';
+
+interface Props {
+  project: Project;
+}
+const { project } = Astro.props;
+---
+
+{/* A real anchor so the grid works with JS off; the flight engine intercepts the
+    click. data-slug is the shared-element key the flight matches across pages. */}
+<a
+  class="tile"
+  href={`/work/${project.slug}`}
+  data-slug={project.slug}
+  data-flight
+  aria-label={project.title}
+>
+  <img src={project.thumb} alt={project.title} draggable="false" />
+  <span class="cap">
+    <span class="code">{project.code}</span>
+    <span class="name">{project.title}</span>
+  </span>
+</a>
+
+<style>
+  .tile {
+    position: relative;
+    display: block;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    overflow: hidden;
+    border-radius: var(--tile-radius, 12px);
+    background: #0a0a0a;
+  }
+  .tile img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .cap {
+    position: absolute;
+    left: 14px;
+    bottom: 12px;
+    right: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 12px;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 10px;
+    letter-spacing: 0.28em;
+    color: var(--aoin-cool-white);
+    mix-blend-mode: difference;
+    pointer-events: none;
+  }
+  .cap .name {
+    text-align: right;
+  }
+</style>

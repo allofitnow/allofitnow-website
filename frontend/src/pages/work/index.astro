@@ -1,0 +1,68 @@
+---
+import Base from '@/layouts/Base.astro';
+import ProjectTile from '@/components/work/ProjectTile.astro';
+import { projects } from '@/data/projects';
+
+const count = String(projects.length).padStart(2, '0');
+---
+
+<Base title="Work — All Of It Now" description="Selected work from All Of It Now.">
+  <main class="work" data-screen-label="Work">
+    <div class="section-label" data-unit>
+      <span>[ SELECTED WORK ]</span>
+      <span>{count} PROJECTS</span>
+    </div>
+
+    <div class="grid" id="grid">
+      {projects.map((p) => <ProjectTile project={p} />)}
+    </div>
+
+    <a class="back" href="/" data-unit data-flight data-go="home">
+      [&nbsp;&nbsp;BACK&nbsp;&nbsp;]
+    </a>
+  </main>
+</Base>
+
+<style>
+  .work {
+    padding: var(--work-pad-top) var(--margin-edge) 140px;
+  }
+  .section-label {
+    display: flex;
+    justify-content: space-between;
+    padding-bottom: 26px;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: var(--aoin-cool-white-45);
+  }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: var(--tile-gap);
+  }
+  @media (max-width: 900px) {
+    .grid {
+      grid-template-columns: repeat(2, 1fr);
+    }
+  }
+  @media (max-width: 560px) {
+    .grid {
+      grid-template-columns: 1fr;
+    }
+    .work {
+      padding-left: var(--margin-edge-mobile);
+      padding-right: var(--margin-edge-mobile);
+    }
+  }
+  .back {
+    display: inline-block;
+    margin-top: 60px;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 12px;
+    letter-spacing: 0.28em;
+    color: var(--aoin-cool-white);
+  }
+</style>

@@ -107,6 +107,33 @@
   --radius-tile: 12px;
 }
 
+/* ---- Flight transition contract (Work <-> Project) ----
+   The whole transition lives here so it stays tunable in one place. The --fly-*
+   values are read by the flight engine in JS (lib/flight.ts), not by CSS; the
+   geometry tokens double as the grid/hero layout AND the flight's target rects.
+   Ported from docs/prototypes/reflow-transition.html — dialed, do not round. */
+:root {
+  --fly-dur: 940ms;
+  --fly-ease: cubic-bezier(0.05, 0.89, 0, 0.99);
+  --exit-lead: 0.55;      /* outgoing content is gone by this fraction of the flight */
+  --exit-stagger: 40ms;   /* per-item offset; auto-compressed to fit the envelope */
+  --exit-ease: cubic-bezier(0.5, 0, 0.75, 0); /* accelerating — things leave, not drift */
+  --enter-dur: 650ms;
+  --exit-dist: 110%;      /* travel distance of an exiting/entering unit */
+  --swap-at: 0.55;        /* the page commits at this fraction of the flight, not the end */
+  --enter-delay: 80ms;    /* after the swap, before arriving content moves */
+  --enter-stagger: 60ms;
+
+  /* Work grid + project hero geometry — also the flight's landing rects. */
+  --tile-radius: 12px;
+  --hero-radius: 12px;
+  --hero-w: 95%;
+  --hero-height: 72svh;
+  --hero-pad-top: 18svh;
+  --tile-gap: 12px;
+  --work-pad-top: 24svh;
+}
+
 /* ---- Raw Figma Variables (first mode = :root default) ----
    Kept for parity with the export. FLOAT tokens are unitless. */
 :root {
