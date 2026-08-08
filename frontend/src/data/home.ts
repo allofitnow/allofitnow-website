@@ -97,9 +97,13 @@ export const services: ServiceItem[] = [
   },
 ];
 
-export const clientsLabels = { left: 'SELECTED', right: 'CLIENTS' };
+// Middle meta line in the Selected Clients header (uppercased by CSS).
+export const clientsMeta = 'realtime content — show integration';
 
-// Justified roster — the controller solves line breaks at runtime.
+// Roster, in order. The Selected Clients component builds its broken-measure
+// rows from this list (change/reorder freely — layout regenerates). Multi-word
+// names keep their internal spaces; the component swaps them to U+2007 so
+// justification stretches only the gaps between names.
 export const clients: string[] = [
   'BAD BUNNY', 'MARTIN GARRIX', 'CHILDISH GAMBINO', 'RENÉE RAPP', 'BAD OMENS',
   'THE KID LAROI', 'QUEVEDO', 'ANDERSON PAAK', 'LINKIN PARK', 'KENDRICK LAMAR',
@@ -107,7 +111,7 @@ export const clients: string[] = [
   'FLUME', 'KISS', 'COLDPLAY', 'BTS', 'MCENROE VS MCENROE', "AMERICA'S GOT TALENT",
   'KASKADE', 'DEMI LOVATO', 'FACEBOOK OCULUS', 'MTV MILLENNIAL AWARDS', 'J COLE',
   'HALSEY', 'AUDI', 'VOX', 'EPSON', 'PRIME VIDEO', 'FORTNITE', 'ROCKET LEAGUE',
-  'INFINITI', 'MOFAD', 'THE VOICE', 'EXTENDING REALITY',
+  'INFINITI', 'MOFAD', 'THE VOICE',
 ];
 
 export const footer = {

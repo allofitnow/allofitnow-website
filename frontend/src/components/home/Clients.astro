@@ -1,82 +1,187 @@
 ---
-import { clients, clientsLabels } from '@/data/home';
+import { clients, clientsMeta } from '@/data/home';
+
+// Broken-measure row builder (from the component's AOIN_CLIENTS_DATA notes).
+// Geometry is data-driven so the roster can change freely — edit data/home.ts.
+const rowCounts = [3, 2, 3];
+const rowGeometry: [number, number][] = [
+  [100, 0],
+  [70, 16],
+  [84, 8],
+  [100, 0],
+  [62, 0],
+  [78, 22],
+];
+const wordOffsets = [0, -1, 2, -3];
+const shiftEm = 2.4;
+const FIG = ' '; // figure space — justification leaves it tight
+
+interface Word {
+  text: string;
+  dx: string;
+  cls: string;
+}
+interface Row {
+  width: number;
+  ml: number;
+  words: Word[];
+}
+
+const rows: Row[] = [];
+let i = 0,
+  k = 0,
+  w = 0;
+while (i < clients.length) {
+  const count = rowCounts[k % rowCounts.length];
+  const [width, ml] = rowGeometry[k % rowGeometry.length];
+  const words: Word[] = [];
+  for (const name of clients.slice(i, i + count)) {
+    const dx = (wordOffsets[(w * 3 + k) % 4] * shiftEm).toFixed(2);
+    const cls = 'aoin-w' + ((w * 7 + k * 3) % 4); // stable shuffle — variety is the point
+    words.push({ text: name.replace(/ /g, FIG), dx, cls });
+    w++;
+  }
+  rows.push({ width, ml, words });
+  i += count;
+  k++;
+}
 ---
 
-<section class="clients" data-ref="clients" data-screen-label="Clients">
-  <div class="row">
-    <div data-ar="1" class="mask label-cell">
-      <div class="label" data-ref="cliLeft" data-clabel="1" data-ci="1">{clientsLabels.left}</div>
-    </div>
-
-    <div class="wrap" data-ref="clientsWrap">
-      <div class="src" data-ref="clientsSrc">
-        {
-          clients.map((n, i) => (
-            <>
-              {i > 0 && <span data-sep="1">|</span>} {n}{' '}
-            </>
-          ))
-        }
-      </div>
-      <div class="out" data-ref="clientsOut"></div>
-    </div>
-
-    <div data-ar="1" class="mask label-cell">
-      <div class="label" data-ref="cliRight" data-clabel="1" data-ci="1">{clientsLabels.right}</div>
-    </div>
+<section class="aoin-clients" data-screen-label="Clients">
+  <div class="aoin-meta">
+    <span>selected clients</span>
+    <span class="aoin-meta-mid">{clientsMeta}</span>
+    <span>{clients.length} / estd. 2014</span>
   </div>
+
+  {
+    rows.map((row) => (
+      <p class="aoin-line" style={`width:${row.width}%;margin-left:${row.ml}%`}>
+        {row.words.map((word, j) => (
+          <>
+            <span class={`aoin-word ${word.cls}`} style={`--dx:${word.dx}em`}>
+              {word.text}
+            </span>
+            {j < row.words.length - 1 && <span>{' '}</span>}
+          </>
+        ))}
+      </p>
+    ))
+  }
 </section>
 
 <style>
-  .clients {
-    position: relative;
-    z-index: 1;
+  .aoin-clients {
+    --lead: 1.35;
+    --gap: 0.34em;
+    --size: clamp(11px, 1.3cqw, 26px);
+    container-type: inline-size;
+    background: #000;
+    color: var(--aoin-cool-white);
     padding: 150px 48px 160px;
     box-sizing: border-box;
-    color: var(--aoin-cool-white);
-  }
-  .row {
-    display: flex;
-    align-items: flex-start;
-    justify-content: center;
-    gap: clamp(26px, 2vw, 36px);
-  }
-  .label-cell {
-    flex: 0 0 auto;
-    position: sticky;
-    top: 50vh;
-    transform: translateY(-50%);
-    align-self: flex-start;
-  }
-  .label {
-    transform: translateY(110%);
-    transition: transform 0.62s cubic-bezier(0.05, 0.89, 0, 0.99);
-    font-family: var(--font-headline);
-    font-weight: var(--weight-headline);
-    line-height: 1;
-    letter-spacing: -0.01em;
-    white-space: nowrap;
-  }
-
-  .wrap {
-    flex: 1 1 auto;
-    min-width: 0;
     position: relative;
+    z-index: 1;
+  }
+  .aoin-meta {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 8px clamp(20px, 3cqw, 60px);
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(217, 225, 234, 0.18);
     font-family: var(--font-mono);
     font-weight: var(--weight-mono);
-    font-size: 15px;
-    line-height: 1.18;
-    letter-spacing: 0.02em;
+    font-size: clamp(11px, 0.9cqw, 13px);
+    letter-spacing: clamp(0.14em, 0.3cqw, 0.3em);
+    text-transform: uppercase;
+    opacity: 0.7;
+    margin-bottom: 56px;
   }
-  /* hidden measurement source — the controller solves line breaks from it */
-  .src {
-    position: absolute;
-    left: 0;
-    right: 0;
-    top: 0;
-    visibility: hidden;
-    pointer-events: none;
+  .aoin-line {
+    margin: 0 0 var(--gap) 0;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: var(--size);
+    line-height: var(--lead);
     text-align: justify;
     text-align-last: justify;
+    word-spacing: 0.06em;
+  }
+  /* scroll-driven: horizontal settle (eased) + fade (linear), as two animations */
+  @keyframes aoin-shift {
+    from {
+      transform: translateX(var(--dx));
+    }
+    to {
+      transform: translateX(0);
+    }
+  }
+  @keyframes aoin-f0 {
+    0% { opacity: 0; }
+    22% { opacity: 1; }
+    74% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @keyframes aoin-f1 {
+    0% { opacity: 0; }
+    30% { opacity: 1; }
+    88% { opacity: 1; }
+    100% { opacity: 0; }
+  }
+  @keyframes aoin-f2 {
+    0% { opacity: 0; }
+    16% { opacity: 1; }
+    64% { opacity: 1; }
+    92% { opacity: 0; }
+    100% { opacity: 0; }
+  }
+  @keyframes aoin-f3 {
+    0% { opacity: 0; }
+    38% { opacity: 1; }
+    80% { opacity: 1; }
+    96% { opacity: 0; }
+    100% { opacity: 0; }
+  }
+  .aoin-word {
+    display: inline-block;
+    animation-duration: 1s, 1s;
+    animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1), linear;
+    animation-fill-mode: both, both;
+    animation-timeline: view(), view();
+  }
+  .aoin-w0 {
+    animation-name: aoin-shift, aoin-f0;
+    animation-range: cover 0% cover 56%, cover 0% cover 100%;
+  }
+  .aoin-w1 {
+    animation-name: aoin-shift, aoin-f1;
+    animation-range: cover 0% cover 72%, cover 0% cover 100%;
+  }
+  .aoin-w2 {
+    animation-name: aoin-shift, aoin-f2;
+    animation-range: cover 0% cover 48%, cover 0% cover 100%;
+  }
+  .aoin-w3 {
+    animation-name: aoin-shift, aoin-f3;
+    animation-range: cover 0% cover 64%, cover 0% cover 100%;
+  }
+  @container (max-width: 1100px) {
+    .aoin-meta-mid {
+      display: none;
+    }
+  }
+  @container (max-width: 640px) {
+    .aoin-line {
+      width: 100% !important;
+      margin-left: 0 !important;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .aoin-word {
+      animation: none !important;
+      transform: none;
+      opacity: 1;
+    }
   }
 </style>

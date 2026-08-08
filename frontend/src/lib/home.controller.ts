@@ -1,17 +1,17 @@
-// AOIN home — motion controller.
+// AOIN home - motion controller.
 //
 // Direct port of the prototype's `DCLogic` class to plain DOM. Faithful on
 // purpose: the structural data-* hooks are kept verbatim, `ref="{{x}}"` became
 // `data-ref="x"` (see `ref()`), and the tuned `props.X ?? default` values are
-// frozen in CFG below. Values are dialed — changing one changes the feel.
+// frozen in CFG below. Values are dialed - changing one changes the feel.
 //
 // Slice 1: preloader, intro lockup, scroll-scrubbed hero reel, nav reveal,
-// scroll cue, film grain, LA clock, foot bar. About → Footer land next.
+// scroll cue, film grain, LA clock, foot bar. About - Footer land next.
 
 import Lenis from 'lenis';
 
 const CFG = {
-  pinViewports: 2, // hero scroll length = 2 × 100vh
+  pinViewports: 2, // hero scroll length = 2 - 100vh
   showPreloader: true,
   preloadDuration: 1900,
   navStagger: 110,
@@ -34,24 +34,12 @@ const CFG = {
 } as const;
 
 // Gap between the statement and the bleed marquee, all views (px). Dialed down
-// from the prototype's 140 — the marquee sat too low.
+// from the prototype's 140 - the marquee sat too low.
 const STILL_GAP = 48;
 
 // Services sticky-label lead-in / settle, as % of viewport height.
 const SVC_LEAD_IN = 4;
 const SVC_SETTLE = 18;
-
-// Clients roster solver — tuned values (prototype Figma-variable defaults, not
-// the code's ?? fallbacks). Changing these changes the justified layout.
-const ROSTER = {
-  max: 21.5, // max font px the solver tries
-  min: 16, // floor font px
-  label: 76, // max flanking-label px
-  lines: 8, // target line count
-  leading: 1.72,
-  gap: 1.9, // min word gap as a multiple of font size
-  width: 0.8, // roster column width as fraction of available
-} as const;
 
 declare global {
   interface Window {
@@ -113,20 +101,8 @@ export class HomeController {
   private svcTimers: number[] = [];
   private svcIo?: IntersectionObserver;
 
-  // Clients
-  private cliHTML?: string;
-  private cliNames?: string[];
-  private cliScroll?: () => void;
-  private cliRO?: ResizeObserver;
-  private cliRetries: number[] = [];
-  private cliRaf = 0;
-  private cliW = 0;
-  private cliH = 0;
-
   // Footer
   private footerScroll?: () => void;
-
-  private mobile = false;
 
   constructor(root: HTMLElement) {
     this.root = root;
@@ -171,7 +147,6 @@ export class HomeController {
       this.applyServicesType();
       this.setNavReveal();
       this.layoutSlider();
-      this.layoutClients();
       this.sizeReel();
     };
     window.addEventListener('resize', this.onResize);
@@ -186,12 +161,10 @@ export class HomeController {
     this.watchAbout();
     this.wireServices();
     this.watchServices();
-    this.watchClients();
     this.watchFooter();
     this.applyResponsive();
     this.applyAboutType();
     this.applyServicesType();
-    this.layoutClients();
 
     const sw = this.ref('stmtWrap');
     if (window.ResizeObserver && sw) {
@@ -206,49 +179,23 @@ export class HomeController {
       this.stmtRO.observe(sw);
     }
 
-    const clients = this.ref('clients');
-    if (window.ResizeObserver && clients) {
-      this.cliRO = new ResizeObserver(() => {
-        const w = clients.clientWidth,
-          h = clients.clientHeight;
-        if (w === this.cliW && h === this.cliH) return;
-        this.cliW = w;
-        this.cliH = h;
-        cancelAnimationFrame(this.cliRaf);
-        this.cliRaf = requestAnimationFrame(() => {
-          this.layoutClients();
-          this.cliScroll?.();
-        });
-      });
-      this.cliRO.observe(clients);
-    }
-
     document.fonts.ready.then(() => {
       this.runPreload();
       this.fitDropcap();
       this.applyAboutType();
       this.applyServicesType();
       this.layoutSlider();
-      this.layoutClients();
       requestAnimationFrame(() =>
         requestAnimationFrame(() => {
           this.applyResponsive();
           this.fitAndBuild();
           this.applyServicesType();
-          this.layoutClients();
         })
-      );
-      // fonts can widen names after first paint — re-solve a few times as it settles
-      this.cliRetries = [400, 1200, 2600].map((t) =>
-        window.setTimeout(() => {
-          this.layoutClients();
-          this.cliScroll?.();
-        }, t)
       );
     });
   }
 
-  // ── Preloader ──────────────────────────────────────────────────────────
+  // - Preloader -
   private runPreload() {
     const wrap = this.ref('preloader');
     const num = this.ref('preCount');
@@ -294,7 +241,7 @@ export class HomeController {
     this.preRaf = requestAnimationFrame(step);
   }
 
-  // ── Intro lockup assembly ──────────────────────────────────────────────
+  // - Intro lockup assembly -
   private runIntro() {
     const words = [this.ref('wAll'), this.ref('wOf'), this.ref('wIt'), this.ref('wNow')];
     const introIcon = this.ref('introIcon');
@@ -373,7 +320,7 @@ export class HomeController {
     );
   }
 
-  // ── Scroll cue (SCROLL DOWN + bracket blink) ───────────────────────────
+  // - Scroll cue (SCROLL DOWN + bracket blink) -
   private wireCue() {
     const cue = this.ref('cue');
     if (!cue) return;
@@ -464,7 +411,7 @@ export class HomeController {
     });
   }
 
-  // ── Nav reveal handoff ─────────────────────────────────────────────────
+  // - Nav reveal handoff -
   // The site-wide nav (Base) reveals itself once scroll passes data-reveal-at.
   // Home sets that threshold to the hero-clear point so the nav stays hidden
   // through the cinematic hero, then slides in as About arrives. Everything
@@ -475,9 +422,11 @@ export class HomeController {
     if (!nav || !heroWrap) return;
     const at = Math.max(40, heroWrap.offsetTop + heroWrap.offsetHeight + this.cfg.navRevealOffset);
     nav.dataset.revealAt = String(Math.round(at));
+    // stay shown ~a viewport past reveal (through About) before hide-on-scroll
+    nav.dataset.hideBuffer = String(Math.round(window.innerHeight));
   }
 
-  // ── Film grain ─────────────────────────────────────────────────────────
+  // - Film grain -
   private startAtmosphere() {
     if (this.atmoOn) return;
     this.atmoOn = true;
@@ -512,7 +461,7 @@ export class HomeController {
     }, 42);
   }
 
-  // ── Reel sizing (cover-crop a 16:9 player) ─────────────────────────────
+  // - Reel sizing (cover-crop a 16:9 player) -
   private sizeReel() {
     const box = this.ref('reelFrame');
     const ifr = this.ref('reelIframe');
@@ -524,7 +473,7 @@ export class HomeController {
     ifr.style.height = Math.ceil(9 * scale) + 'px';
   }
 
-  // ── Foot bar ───────────────────────────────────────────────────────────
+  // - Foot bar -
   private footerActive() {
     const sec = this.ref('footer');
     if (!sec) return false;
@@ -549,10 +498,9 @@ export class HomeController {
     window.__aoinLenis?.on('scroll', this.footScroll);
   }
 
-  // ── Responsive (chrome subset for this slice) ──────────────────────────
+  // - Responsive (chrome subset for this slice) -
   private applyResponsive() {
     const m = window.innerWidth <= 720;
-    this.mobile = m;
     const pad = m ? 20 : 48;
     const cue = this.ref('cue');
     if (cue) {
@@ -592,26 +540,6 @@ export class HomeController {
       svc.style.padding = m ? '100px 20px 0' : '120px 48px 0';
     }
 
-    const cli = this.ref('clients');
-    if (cli) {
-      cli.style.padding = m ? '110px 20px 90px' : '150px 48px 160px';
-      const row = cli.firstElementChild as HTMLElement;
-      row.style.flexWrap = m ? 'wrap' : 'nowrap';
-      row.style.gap = m ? '10px' : 'clamp(20px,2.4vw,44px)';
-      const cw = this.ref('clientsWrap');
-      if (cw) {
-        cw.style.flexBasis = m ? '100%' : 'auto';
-        cw.style.order = m ? '3' : '0';
-        cw.style.marginTop = m ? '18px' : '0';
-      }
-      this.refs('[data-ref="clients"] [data-clabel]').forEach((el) => {
-        const cell = el.parentElement as HTMLElement;
-        cell.style.alignSelf = 'flex-start';
-        cell.style.position = m ? 'static' : 'sticky';
-        cell.style.transform = m ? 'none' : 'translateY(-50%)';
-      });
-    }
-
     const foot = this.ref('footer');
     if (foot) {
       foot.style.padding = m ? '96px 20px 0' : '110px 48px 0';
@@ -640,7 +568,7 @@ export class HomeController {
     }
   }
 
-  // ── Hero scroll scrub ──────────────────────────────────────────────────
+  // - Hero scroll scrub -
   private updateHero() {
     const wrap = this.ref('heroWrap');
     const box = this.ref('box');
@@ -691,7 +619,7 @@ export class HomeController {
     else window.scrollTo({ top: y, behavior: 'smooth' });
   }
 
-  // ── About: display type fitting ────────────────────────────────────────
+  // - About: display type fitting -
   private fitDisplay() {
     const wrap = this.ref('display');
     if (!wrap) return;
@@ -769,7 +697,7 @@ export class HomeController {
     if (denim > 0 && theran > 0) box.style.fontSize = (denim / theran).toFixed(3) + 'em';
   }
 
-  // ── About: statement line solver ───────────────────────────────────────
+  // - About: statement line solver -
   private stmtOverflow() {
     const wrap = this.ref('stmtWrap');
     const out = this.ref('stmtOut');
@@ -891,7 +819,7 @@ export class HomeController {
     at(size);
   }
 
-  // ── About: reveal ──────────────────────────────────────────────────────
+  // - About: reveal -
   private aboutEase() {
     return 'cubic-bezier(0.05,0.89,0,0.99)';
   }
@@ -1025,7 +953,7 @@ export class HomeController {
     this.aboutIo.observe(sec);
   }
 
-  // ── Bleed slider ───────────────────────────────────────────────────────
+  // - Bleed slider -
   private startSlider() {
     const track = this.ref('track');
     if (!track || this.sliderOn) return;
@@ -1117,7 +1045,7 @@ export class HomeController {
     }
   }
 
-  // ── Work cue ───────────────────────────────────────────────────────────
+  // - Work cue -
   private wireWorkCue() {
     const cue = this.ref('workCue');
     if (!cue) return;
@@ -1138,7 +1066,7 @@ export class HomeController {
     if (about) this.scrollToY(about.offsetTop + about.offsetHeight);
   }
 
-  // ── Services ───────────────────────────────────────────────────────────
+  // - Services -
   private wireServices() {
     this.refs('[data-ref="services"] [data-svc]').forEach((row) => {
       row.addEventListener('mouseenter', () => this.openService(row));
@@ -1268,174 +1196,7 @@ export class HomeController {
     this.svcIo.observe(sec);
   }
 
-  // ── Clients roster (justified line-break solver) ───────────────────────
-  private layoutClients() {
-    const sec = this.ref('clients');
-    const wrap = this.ref('clientsWrap');
-    const src = this.ref('clientsSrc');
-    const out = this.ref('clientsOut');
-    if (!wrap || !src || !out || !sec) return;
-    if (this.cliHTML === undefined) this.cliHTML = src.innerHTML;
-    const labels = this.refs('[data-ref="clients"] [data-clabel]');
-    if (labels.length) {
-      const rowW = (sec.firstElementChild as HTMLElement).getBoundingClientRect().width;
-      labels.forEach((el) => (el.style.fontSize = '100px'));
-      const at100 = labels.reduce((a, el) => a + el.getBoundingClientRect().width, 0);
-      const cap = at100 ? Math.floor((100 * (rowW * (this.mobile ? 0.9 : 0.42))) / at100) : 80;
-      labels.forEach((el) => (el.style.fontSize = Math.max(20, Math.min(ROSTER.label, cap)) + 'px'));
-    }
-    wrap.style.maxWidth = 'none';
-    const full = wrap.clientWidth;
-    wrap.style.maxWidth = this.mobile ? 'none' : Math.round(full * ROSTER.width) + 'px';
-    wrap.style.marginLeft = '0';
-    wrap.style.marginRight = '0';
-    wrap.style.lineHeight = String(ROSTER.leading);
-    const avail = wrap.clientWidth;
-    if (!avail) return;
-    const names =
-      this.cliNames || (this.cliNames = src.textContent!.split('|').map((t) => t.trim()).filter(Boolean));
-    type Tok = HTMLSpanElement & { __w: number };
-    const measure = (size: number) => {
-      wrap.style.fontSize = size + 'px';
-      out.innerHTML = '';
-      const tokens = names.map((n) => {
-        const sp = document.createElement('span') as Tok;
-        sp.style.whiteSpace = 'nowrap';
-        sp.dataset.name = n;
-        sp.textContent = n;
-        return sp;
-      });
-      tokens.forEach((t) => out.appendChild(t));
-      tokens.forEach((t) => (t.__w = t.getBoundingClientRect().width));
-      const w = tokens.map((t) => t.__w);
-      const minGap = size * ROSTER.gap;
-      const N = w.length;
-      const pre = [0];
-      for (let k = 0; k < N; k++) pre.push(pre[k] + w[k]);
-      const lineCost = (p: number, q: number) => {
-        const count = q - p;
-        const natural = pre[q] - pre[p] + minGap * (count - 1);
-        if (natural > avail) return Infinity;
-        const slack = avail - natural;
-        return slack * slack;
-      };
-      const target = Math.max(1, Math.round(ROSTER.lines));
-      const L = Math.min(N, Math.max(target, Math.ceil((N * (size * 6)) / Math.max(1, avail)) + 6));
-      const INF = Infinity;
-      const cost: number[][] = [],
-        back: number[][] = [];
-      for (let k = 0; k <= L; k++) {
-        cost.push(new Array(N + 1).fill(INF));
-        back.push(new Array(N + 1).fill(-1));
-      }
-      cost[0][0] = 0;
-      for (let k = 1; k <= L; k++) {
-        for (let q = 1; q <= N; q++) {
-          for (let p = q - 1; p >= 0; p--) {
-            if (cost[k - 1][p] === INF) continue;
-            const c = lineCost(p, q);
-            if (c === INF) break;
-            const tot = cost[k - 1][p] + c;
-            if (tot < cost[k][q]) {
-              cost[k][q] = tot;
-              back[k][q] = p;
-            }
-          }
-        }
-      }
-      let minK = -1;
-      for (let k = 1; k <= L; k++)
-        if (cost[k][N] !== INF) {
-          minK = k;
-          break;
-        }
-      if (minK === -1) return null;
-      let use = minK;
-      for (let k = Math.max(minK, target); k <= L; k++)
-        if (cost[k][N] !== INF) {
-          use = k;
-          break;
-        }
-      const breaks: [number, number][] = [];
-      let q = N;
-      for (let k = use; k > 0; k--) {
-        const p = back[k][q];
-        breaks.unshift([p, q]);
-        q = p;
-      }
-      const linesArr = breaks.map(([p, q2]) => ({ items: tokens.slice(p, q2) }));
-      const gaps = linesArr.map((l) =>
-        l.items.length < 2 ? avail : (avail - l.items.reduce((a, e) => a + e.__w, 0)) / (l.items.length - 1)
-      );
-      const sorted = gaps.slice().sort((x, y) => x - y);
-      const median = sorted[Math.floor(sorted.length / 2)] || 1;
-      return {
-        lines: linesArr,
-        deviation: Math.abs(gaps[gaps.length - 1] - median) / Math.max(1, median),
-        worst: Math.max.apply(null, gaps),
-      };
-    };
-    const FLOOR = ROSTER.min;
-    let chosen: number | null = null,
-      relaxed: { size: number; worst: number } | null = null;
-    for (let size = ROSTER.max; size >= FLOOR - 0.01; size -= 0.5) {
-      const r = measure(size);
-      if (!r) continue;
-      if (r.deviation <= 1 && r.worst / size <= 6) {
-        chosen = size;
-        break;
-      }
-      if (relaxed === null || r.worst < relaxed.worst) relaxed = { size, worst: r.worst };
-    }
-    if (chosen === null) chosen = relaxed !== null ? relaxed.size : FLOOR;
-    const res = measure(chosen);
-    if (!res) return;
-    out.innerHTML = '';
-    res.lines.forEach((line) => {
-      const mask = document.createElement('div');
-      mask.style.overflow = 'hidden';
-      const inner = document.createElement('div');
-      inner.setAttribute('data-ci', '1');
-      inner.style.transform = 'translateY(110%)';
-      inner.style.transition = 'transform .62s cubic-bezier(.05,.89,0,.99)';
-      inner.style.display = 'flex';
-      inner.style.whiteSpace = 'nowrap';
-      inner.style.justifyContent = 'space-between';
-      line.items.forEach((n) => {
-        n.textContent = n.dataset.name!;
-        inner.appendChild(n);
-      });
-      mask.appendChild(inner);
-      out.appendChild(mask);
-    });
-    this.cliScroll?.();
-  }
-  private watchClients() {
-    const sec = this.ref('clients');
-    if (!sec) return;
-    if (reducedMotion()) {
-      this.refs('[data-ref="clients"] [data-ci]').forEach((el) => (el.style.transform = 'none'));
-      return;
-    }
-    this.cliScroll = () => {
-      const all = this.refs('[data-ref="clients"] [data-ci]');
-      const labels = all.filter((el) => el.hasAttribute('data-clabel'));
-      const rows = all.filter((el) => !el.hasAttribute('data-clabel'));
-      const inView = sec.getBoundingClientRect().top < window.innerHeight * 0.9;
-      labels.forEach((el) => (el.style.transform = inView ? 'none' : 'translateY(110%)'));
-      const r = sec.getBoundingClientRect();
-      const vh = window.innerHeight;
-      const span = r.height + vh * 0.3;
-      const p = Math.max(0, Math.min(1, (vh * 0.9 - r.top) / span));
-      const n = Math.ceil(p * rows.length * 1.7);
-      rows.forEach((el, i) => (el.style.transform = i < n ? 'none' : 'translateY(110%)'));
-    };
-    this.cliScroll();
-    window.addEventListener('scroll', this.cliScroll, { passive: true });
-    window.__aoinLenis?.on('scroll', this.cliScroll);
-  }
-
-  // ── Footer reveal ──────────────────────────────────────────────────────
+  // - Footer reveal -
   private watchFooter() {
     const sec = this.ref('footer');
     if (!sec) return;
@@ -1481,11 +1242,7 @@ export class HomeController {
 
     if (this.svcIo) this.svcIo.disconnect();
     this.svcTimers.forEach(clearTimeout);
-    if (this.cliRO) this.cliRO.disconnect();
-    if (this.cliScroll) window.removeEventListener('scroll', this.cliScroll);
     if (this.footerScroll) window.removeEventListener('scroll', this.footerScroll);
-    this.cliRetries.forEach(clearTimeout);
-    cancelAnimationFrame(this.cliRaf);
   }
 }
 

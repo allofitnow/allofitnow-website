@@ -270,8 +270,10 @@ import { nav, location, tagline } from '@/data/home';
         nav!.classList.add('aoin-nav--revealed');
       }
       if (revealed && !menuOpen()) {
-        // hidden below the reveal point (e.g. back in the hero) or scrolling down
-        const hide = y < at || (y > last && y > at + 80);
+        // how far past the reveal point before scroll-down starts hiding the nav.
+        // Home sets this to ~a viewport so the nav lingers through About.
+        const buffer = +(nav!.dataset.hideBuffer || 120);
+        const hide = y < at || (y > last && y > at + buffer);
         nav!.classList.toggle('aoin-nav--hidden', hide);
       }
       last = y;
