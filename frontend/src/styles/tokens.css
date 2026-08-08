@@ -131,6 +131,9 @@ html,
 body {
   margin: 0;
   background: var(--surface-page);
+  /* Hardcode the base text colour so no element can fall back to the UA black.
+     The only intentional exception is the inverted About dropcap (.dropcap). */
+  color: var(--aoin-cool-white);
 }
 a {
   color: var(--aoin-cool-white);

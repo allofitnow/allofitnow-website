@@ -83,6 +83,9 @@ while (i < clients.length) {
     box-sizing: border-box;
     position: relative;
     z-index: 1;
+    /* the settle animation slides words in from a horizontal offset; clip the
+       transient overhang so a narrow screen never gets a sideways scrollbar */
+    overflow-x: clip;
   }
   .aoin-meta {
     display: flex;
@@ -169,6 +172,23 @@ while (i < clients.length) {
     .aoin-line {
       width: 100% !important;
       margin-left: 0 !important;
+    }
+  }
+  /* On phones the nav rail sits at 20px — match it so the names span the same
+     width instead of being boxed in tighter than the chrome. */
+  @media (max-width: 720px) {
+    .aoin-clients {
+      padding: 110px 20px 40px;
+    }
+  }
+  /* Scroll-driven timelines aren't universal (older iOS Safari). Without them the
+     fade would fall back to a time-based run that ends at opacity 0 and the names
+     disappear — so if view() isn't supported, just show them statically. */
+  @supports not (animation-timeline: view()) {
+    .aoin-word {
+      animation: none;
+      transform: none;
+      opacity: 1;
     }
   }
   @media (prefers-reduced-motion: reduce) {

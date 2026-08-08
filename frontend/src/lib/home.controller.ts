@@ -117,7 +117,7 @@ export class HomeController {
 
   init() {
     const heroWrap = this.ref('heroWrap');
-    if (heroWrap) heroWrap.style.height = this.cfg.pinViewports * 100 + 'vh';
+    if (heroWrap) heroWrap.style.height = this.cfg.pinViewports * 100 + 'svh';
 
     this.onScroll = () => {
       if (this.raf) return;
@@ -511,13 +511,13 @@ export class HomeController {
     const about = this.ref('about');
     if (about) {
       about.style.padding = m ? '120px 20px 80px' : '160px 48px 120px';
-      about.style.minHeight = m ? 'auto' : '100vh';
+      about.style.minHeight = m ? 'auto' : '100svh';
     }
     const portrait = this.ref('portrait');
     if (portrait) {
       portrait.style.marginLeft = '-' + pad + 'px';
       portrait.style.marginRight = '-' + pad + 'px';
-      portrait.style.minHeight = m ? '28vh' : '40vh';
+      portrait.style.minHeight = m ? '28svh' : '40svh';
       portrait.style.marginTop = STILL_GAP + 'px';
       portrait.style.flex = m ? '0 0 auto' : '1 1 auto';
     }
@@ -544,8 +544,8 @@ export class HomeController {
     const foot = this.ref('footer');
     if (foot) {
       foot.style.padding = m ? '96px 20px 0' : '110px 48px 0';
-      foot.style.height = m ? 'auto' : '100vh';
-      foot.style.minHeight = m ? '100vh' : '560px';
+      foot.style.height = m ? 'auto' : '100svh';
+      foot.style.minHeight = m ? '100svh' : '560px';
       const grid = foot.firstElementChild as HTMLElement;
       grid.style.gridTemplateColumns = m ? '1fr 1fr' : '1.6fr 1fr 1fr .9fr';
       grid.style.rowGap = m ? '40px' : '';
@@ -556,7 +556,7 @@ export class HomeController {
         c.style.textAlign = m ? 'left' : i === 3 ? 'right' : 'left';
       });
       const mark = foot.lastElementChild as HTMLElement;
-      mark.style.paddingBottom = m ? 'clamp(20px,3vh,40px)' : 'clamp(28px,4vh,56px)';
+      mark.style.paddingBottom = m ? 'clamp(20px,3svh,40px)' : 'clamp(28px,4svh,56px)';
       mark.style.marginTop = m ? '64px' : '0';
     }
 
