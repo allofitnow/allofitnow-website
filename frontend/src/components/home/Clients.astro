@@ -78,7 +78,9 @@ while (i < clients.length) {
     container-type: inline-size;
     /* transparent — the fixed film grain shows through, like the other sections */
     color: var(--aoin-cool-white);
-    padding: 150px 48px 160px;
+    /* small bottom pad — the footer brings its own 110px top, and the 2.7 leading
+       already leaves space under the last row */
+    padding: 150px 48px 40px;
     box-sizing: border-box;
     position: relative;
     z-index: 1;
