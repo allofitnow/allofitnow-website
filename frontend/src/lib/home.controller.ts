@@ -142,11 +142,14 @@ export class HomeController {
       this.updateHero();
       this.applyResponsive();
       this.fitDisplay();
+      // NB: fitAndBuild owns the statement font size — do NOT call applyAboutType
+      // after it here, or its clamp() clobbers the fit and the blurb balloons to
+      // 8 lines on large screens (matches the prototype's onResize).
       this.fitAndBuild();
-      this.applyAboutType();
       this.applyServicesType();
       this.setNavReveal();
       this.layoutSlider();
+      this.applySliderStyle();
       this.sizeReel();
     };
     window.addEventListener('resize', this.onResize);
