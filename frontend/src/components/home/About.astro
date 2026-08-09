@@ -1,5 +1,6 @@
 ---
-import { about, bleed } from '@/data/home';
+import { about } from '@/data/home';
+import { projects } from '@/data/projects';
 ---
 
 <section class="about" data-ref="about" data-screen-label="About" id="work">
@@ -33,20 +34,21 @@ import { about, bleed } from '@/data/home';
       <div data-ai="1" class="portrait-inner">
         <div class="track" data-ref="track">
           {
-            bleed.map((src) => (
-              <div class="slide" data-slide="1">
-                <img src={src} alt="" draggable="false" loading="lazy" />
-              </div>
+            projects.map((p) => (
+              <a class="slide" data-slide="1" href={`/work/${p.slug}`} data-slug={p.slug}>
+                <img src={p.thumb} alt={p.title} draggable="false" loading="lazy" />
+              </a>
             ))
           }
           {/* mirror copy for the seamless loop — rendered in markup so it's
-              styled identically (JS cloning dropped the scoped styles) */}
+              styled identically (JS cloning dropped the scoped styles). The
+              duplicates are hidden from a11y/tab order since they're decorative. */}
           <div class="mirror" data-ref="mirror">
             {
-              bleed.map((src) => (
-                <div class="slide" data-slide="1">
-                  <img src={src} alt="" draggable="false" loading="lazy" />
-                </div>
+              projects.map((p) => (
+                <a class="slide" data-slide="1" href={`/work/${p.slug}`} data-slug={p.slug} aria-hidden="true" tabindex="-1">
+                  <img src={p.thumb} alt="" draggable="false" loading="lazy" />
+                </a>
               ))
             }
           </div>

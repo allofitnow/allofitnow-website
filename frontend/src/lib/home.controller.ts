@@ -44,6 +44,10 @@ const SVC_SETTLE = 18;
 declare global {
   interface Window {
     __aoinLenis?: Lenis;
+    // Handle for the Lenis rAF loop so destroy() can actually stop it — the loop
+    // is self-perpetuating and would otherwise keep driving Lenis (hijacking
+    // scroll) after the home page is torn down on a soft nav to a project.
+    __aoinLenisRaf?: number;
   }
 }
 
@@ -93,6 +97,12 @@ export class HomeController {
   private onMove?: (e: PointerEvent) => void;
   private onUp?: () => void;
   private noDrag?: (e: Event) => void;
+  // Marquee drag-vs-click: a press that moves past a small threshold is a drag,
+  // and its trailing click is suppressed so it doesn't navigate to a project.
+  private sdownX = 0;
+  private sdownY = 0;
+  private smoved = 0;
+  private onSliderClick?: (e: Event) => void;
   private onResizeSlider?: () => void;
 
   // Services
@@ -131,10 +141,11 @@ export class HomeController {
     if (!window.__aoinLenis) {
       window.__aoinLenis = new Lenis({ lerp: 0.09, wheelMultiplier: 1 });
       const raf = (time: number) => {
-        window.__aoinLenis!.raf(time);
-        requestAnimationFrame(raf);
+        if (!window.__aoinLenis) return; // stop once destroyed
+        window.__aoinLenis.raf(time);
+        window.__aoinLenisRaf = requestAnimationFrame(raf);
       };
-      requestAnimationFrame(raf);
+      window.__aoinLenisRaf = requestAnimationFrame(raf);
     }
     window.__aoinLenis.on('scroll', this.onScroll);
 
@@ -993,6 +1004,7 @@ export class HomeController {
         const dx = e.clientX - this.px;
         this.px = e.clientX;
         this.target += dx;
+        this.smoved = Math.max(this.smoved, Math.hypot(e.clientX - this.sdownX, e.clientY - this.sdownY));
       }
     };
     this.onUp = () => {
@@ -1013,8 +1025,20 @@ export class HomeController {
       e.preventDefault();
       this.dragging = true;
       this.px = (e as PointerEvent).clientX;
+      this.sdownX = (e as PointerEvent).clientX;
+      this.sdownY = (e as PointerEvent).clientY;
+      this.smoved = 0;
       (window as unknown as { aoinCursor?: { hold(on: boolean): void } }).aoinCursor?.hold(true);
     });
+    // Slides are project links; suppress the trailing click after a real drag so
+    // it doesn't navigate. A tap (barely moved) falls through and the flight runs.
+    this.onSliderClick = (e: Event) => {
+      if (this.smoved > 6) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    };
+    track.addEventListener('click', this.onSliderClick, true);
     window.addEventListener('pointermove', this.onMove);
     window.addEventListener('pointerup', this.onUp);
     this.onResizeSlider = () => measure();
@@ -1238,10 +1262,19 @@ export class HomeController {
     if (this.onMove) window.removeEventListener('pointermove', this.onMove);
     if (this.onUp) window.removeEventListener('pointerup', this.onUp);
     if (this.onResizeSlider) window.removeEventListener('resize', this.onResizeSlider);
+    if (this.onSliderClick)
+      this.ref('track')?.removeEventListener('click', this.onSliderClick, true);
 
     if (this.svcIo) this.svcIo.disconnect();
     this.svcTimers.forEach(clearTimeout);
     if (this.footerScroll) window.removeEventListener('scroll', this.footerScroll);
+
+    // Fully stop Lenis (the rAF loop is self-perpetuating) so it doesn't keep
+    // hijacking scroll on the destination after a soft nav off the home page.
+    if (window.__aoinLenisRaf) cancelAnimationFrame(window.__aoinLenisRaf);
+    window.__aoinLenis?.destroy();
+    window.__aoinLenis = undefined;
+    window.__aoinLenisRaf = undefined;
   }
 }
 

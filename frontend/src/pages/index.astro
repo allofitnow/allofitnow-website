@@ -33,5 +33,12 @@ import FootBar from '@/components/home/FootBar.astro';
 <script>
   import { mountHome } from '@/lib/home.controller';
   const root = document.querySelector<HTMLElement>('[data-home]');
-  if (root) mountHome(root);
+  if (root) {
+    const c = mountHome(root);
+    // A home marquee tile flies to its project as a soft (ClientRouter) nav, so
+    // tear the controller down on the way out — otherwise Lenis and its scroll
+    // listeners leak onto the project page. Returning to home is always a full
+    // load (every home-bound link is data-astro-reload), so it re-mounts fresh.
+    document.addEventListener('astro:before-swap', () => c.destroy(), { once: true });
+  }
 </script>

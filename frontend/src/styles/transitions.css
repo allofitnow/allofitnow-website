@@ -28,23 +28,97 @@
   mix-blend-mode: normal;
 }
 
-/* Everything that isn't travelling: a short, calm cross-fade. Shorter than the
-   morph so the destination has settled before the image lands. */
-::view-transition-old(root) {
-  animation: aoin-vt-out 420ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
-}
+/* No root cross-fade — the morph and the staggered copy sweep carry the whole
+   transition; the background swaps hard underneath them (per direction). */
+::view-transition-old(root),
 ::view-transition-new(root) {
-  animation: aoin-vt-in 460ms cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  animation: none;
 }
-@keyframes aoin-vt-out {
+
+/* ---- Staggered copy sweep -------------------------------------------------
+   On top of the image morph, the copy sweeps in/out in sequence — the reflow
+   prototype's signature. Each unit is its OWN named group so it exits and enters
+   independently of the morph and the root cross-fade. Names are page-specific
+   (wk-* vs pj-*) so old and new never share one: a shared name would morph the
+   label into the title instead of exit-then-enter. Source order == visual order
+   (top-to-bottom), so a plain incremental delay reads as a top-down sweep. */
+@keyframes aoin-unit-out {
   to {
     opacity: 0;
+    transform: translateY(-50%);
   }
 }
-@keyframes aoin-vt-in {
+@keyframes aoin-unit-in {
   from {
     opacity: 0;
+    transform: translateY(50%);
   }
+}
+
+::view-transition-old(aoin-wk-label),
+::view-transition-old(aoin-wk-back),
+::view-transition-old(aoin-pj-title),
+::view-transition-old(aoin-pj-meta),
+::view-transition-old(aoin-pj-body),
+::view-transition-old(aoin-pj-back) {
+  animation: aoin-unit-out var(--enter-dur) var(--exit-ease) both;
+}
+::view-transition-new(aoin-wk-label),
+::view-transition-new(aoin-wk-back),
+::view-transition-new(aoin-pj-title),
+::view-transition-new(aoin-pj-meta),
+::view-transition-new(aoin-pj-body),
+::view-transition-new(aoin-pj-back) {
+  animation: aoin-unit-in var(--enter-dur) var(--fly-ease) both;
+}
+/* Keep each unit's group container (default 0.25s) from clipping the longer
+   content animation. */
+::view-transition-group(aoin-wk-label),
+::view-transition-group(aoin-wk-back),
+::view-transition-group(aoin-pj-title),
+::view-transition-group(aoin-pj-meta),
+::view-transition-group(aoin-pj-body),
+::view-transition-group(aoin-pj-back) {
+  animation-duration: var(--enter-dur);
+}
+
+/* Exit sweep — top to bottom, accelerating out. */
+::view-transition-old(aoin-wk-label) {
+  animation-delay: 0ms;
+}
+::view-transition-old(aoin-wk-back) {
+  animation-delay: 60ms;
+}
+::view-transition-old(aoin-pj-title) {
+  animation-delay: 0ms;
+}
+::view-transition-old(aoin-pj-meta) {
+  animation-delay: 55ms;
+}
+::view-transition-old(aoin-pj-body) {
+  animation-delay: 110ms;
+}
+::view-transition-old(aoin-pj-back) {
+  animation-delay: 165ms;
+}
+/* Enter sweep — after the swap settles (--enter-delay), top to bottom. */
+::view-transition-new(aoin-wk-label) {
+  animation-delay: var(--enter-delay);
+}
+::view-transition-new(aoin-wk-back) {
+  animation-delay: calc(var(--enter-delay) + 60ms);
+}
+::view-transition-new(aoin-pj-title) {
+  animation-delay: var(--enter-delay);
+}
+::view-transition-new(aoin-pj-meta) {
+  animation-delay: calc(var(--enter-delay) + 60ms);
+}
+::view-transition-new(aoin-pj-body) {
+  animation-delay: calc(var(--enter-delay) + 120ms);
+}
+::view-transition-new(aoin-pj-back) {
+  animation-delay: calc(var(--enter-delay) + 180ms);
 }
 
 /* Astro already skips view transitions under reduced-motion; this is a belt-and

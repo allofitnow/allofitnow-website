@@ -30,17 +30,17 @@ const meta: [string, string][] = [
     </div>
 
     <div class="p-copy">
-      <h1 class="p-title" data-unit>{project.title}</h1>
+      <h1 class="p-title" data-unit transition:name="aoin-pj-title">{project.title}</h1>
 
-      <div class="p-meta" data-unit>
+      <div class="p-meta" data-unit transition:name="aoin-pj-meta">
         {meta.map(([k, v]) => (
           <div>{k}<b>{v}</b></div>
         ))}
       </div>
 
-      <p class="p-body" data-unit>{project.body}</p>
+      <p class="p-body" data-unit transition:name="aoin-pj-body">{project.body}</p>
 
-      <a class="back" href="/work" data-unit data-flight data-go="work">
+      <a class="back" href="/work" data-unit data-flight data-go="work" transition:name="aoin-pj-back">
         [&nbsp;&nbsp;ALL WORK&nbsp;&nbsp;]
       </a>
     </div>
