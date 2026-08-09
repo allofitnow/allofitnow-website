@@ -4,7 +4,7 @@ import { nav, location, tagline } from '@/data/home';
 
 <nav class="aoin-nav" data-aoin-nav aria-label="Primary" transition:persist="aoin-nav">
   <div class="aoin-nav__row aoin-nav__logo">
-    <a href="/" data-astro-reload><img src="/assets/aoin-logo.svg" alt="All Of It Now" /></a>
+    <a href="/" data-aoin-logo data-astro-reload><img src="/assets/aoin-logo.svg" alt="All Of It Now" /></a>
   </div>
 
   <div class="aoin-nav__col aoin-nav__col--links">
@@ -288,6 +288,11 @@ import { nav, location, tagline } from '@/data/home';
     function syncPage() {
       isHome = !!document.querySelector('[data-home]');
       footer = document.querySelector<HTMLElement>('[data-nav-hide]');
+      // The logo returns to the top of home from home itself, but lands on the
+      // About section from an interior page — "home" should reach content, not
+      // replay the hero.
+      const logo = nav!.querySelector('[data-aoin-logo]');
+      if (logo) logo.setAttribute('href', isHome ? '/' : '/#about');
       revealed = false;
       nav!.classList.remove('aoin-nav--revealed', 'aoin-nav--hidden');
       // Interior pages have no cinematic hero — reveal the nav on arrival rather

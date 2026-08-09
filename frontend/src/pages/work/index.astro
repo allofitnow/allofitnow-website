@@ -8,7 +8,7 @@ const count = String(projects.length).padStart(2, '0');
 
 <Base title="Work — All Of It Now" description="Selected work from All Of It Now.">
   <main class="work" data-screen-label="Work">
-    <div class="section-label" data-unit transition:name="aoin-wk-label">
+    <div class="section-label" data-unit>
       <span>[ SELECTED WORK ]</span>
       <span>{count} PROJECTS</span>
     </div>
@@ -17,7 +17,7 @@ const count = String(projects.length).padStart(2, '0');
       {projects.map((p) => <ProjectTile project={p} />)}
     </div>
 
-    <a class="back" href="/" data-unit data-flight data-go="home" data-astro-reload transition:name="aoin-wk-back">
+    <a class="back" href="/#about" data-unit data-flight data-go="home" data-astro-reload>
       [&nbsp;&nbsp;BACK&nbsp;&nbsp;]
     </a>
   </main>

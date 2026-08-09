@@ -219,11 +219,26 @@ export class HomeController {
       this.runIntro();
       this.runCue();
     };
+    // Arriving via an interior page's "home" affordance (/#about): skip the hero
+    // intro entirely and land on the About section. runIntro still runs so the
+    // hero is at rest if the visitor scrolls back up.
+    if (location.hash === '#about') {
+      wrap.style.display = 'none';
+      go();
+      const about = this.ref('about');
+      if (about) {
+        const y = about.offsetTop;
+        window.scrollTo(0, y);
+        window.__aoinLenis?.scrollTo(y, { immediate: true });
+      }
+      return;
+    }
     if (reducedMotion() || window.scrollY > 50 || !this.cfg.showPreloader) {
       wrap.style.display = 'none';
       go();
       return;
     }
+
     const dur = this.cfg.preloadDuration;
     const t0 = performance.now();
     const ease = (t: number) => 1 - Math.pow(1 - t, 3);

@@ -1,65 +1,231 @@
-// Work / Home <-> Project flight, on Astro's ClientRouter + the native View
-// Transitions API. A single shared view-transition-name ("aoin-flight") is
-// applied at runtime to the one element that should morph — the clicked tile's
-// image (work grid OR the home marquee) on the way in, and the matching grid
-// tile on the way back — so the browser tweens it from the tile crop to the
-// project hero and back. Everything else swaps hard (no root cross-fade); the
-// copy sweeps in/out via its own named groups (see styles/transitions.css).
+// Work / Home <-> Project flight — a faithful port of the reflow prototype's
+// flyer engine, running on top of Astro's ClientRouter (for fetch/history/scroll)
+// with the native View Transition neutralised (see styles/transitions.css).
 //
-// Naming exactly one element per document is the whole trick: two elements
-// sharing a name aborts the group. The source is tagged in before-preparation
-// (which only fires on a REAL navigation — so a suppressed marquee drag never
-// tags anything), the target in before-swap, and everything is cleared after.
+// A REAL element flies the artwork — not a composited snapshot — animating its
+// true width/height so `object-fit: cover` reframes it crisply. The page commits
+// the swap PART WAY through the flight (--swap-at) so the destination assembles
+// under the flyer, and the outgoing / incoming copy + tiles hard-cut out/in in a
+// staggered top-to-bottom cascade.
+//
+// The flyer lives in a transition:persist layer (#aoin-flight-layer) so it keeps
+// travelling across ClientRouter's DOM swap. The initial destination rect is an
+// approximation from layout tokens; once the destination is live (after-swap) the
+// flyer is RE-TARGETED to the element's real measured rect, so it always lands
+// pixel-exact regardless of section labels, scrollbars, breakpoints, etc.
 
-const NAME = 'aoin-flight';
+import { projects } from '@/data/projects';
 
+const ORDER = projects.map((p) => p.slug);
+
+const root = document.documentElement;
+const cssVar = (n: string) => getComputedStyle(root).getPropertyValue(n).trim();
+const numVar = (n: string, f: number) => {
+  const v = parseFloat(cssVar(n));
+  return Number.isNaN(v) ? f : v;
+};
 const isWorkPath = (p: string) => /^\/work\/?$/.test(p);
 const isProjectPath = (p: string) => /^\/work\/[^/]+\/?$/.test(p);
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-function tag(el: Element | null | undefined) {
-  if (!el) return;
-  const h = el as HTMLElement;
-  h.style.viewTransitionName = NAME;
-  h.setAttribute('data-flight-name', '');
+interface Rect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+  radius: string;
 }
 
-function clearNames() {
-  document.querySelectorAll<HTMLElement>('[data-flight-name]').forEach((el) => {
-    el.style.viewTransitionName = '';
-    el.removeAttribute('data-flight-name');
-  });
+function layer() {
+  return document.getElementById('aoin-flight-layer');
 }
 
-// OUTGOING source — tag the element leaving, keyed off whatever actually
-// triggered the navigation. before-preparation (not click) means a suppressed
-// marquee drag never tags anything, and it fires before the old snapshot.
+// The element on the CURRENT page that should fly, plus its live rect + image.
+function source(toPath: string, sourceEl: Element | undefined) {
+  let el: Element | null = null;
+  if (isProjectPath(toPath)) el = sourceEl?.closest?.('a[data-slug]') ?? null;
+  else if (isWorkPath(toPath)) el = document.querySelector('.hero[data-slug]');
+  if (!el) return null;
+  const img = el.querySelector('img');
+  if (!img) return null;
+  const r = img.getBoundingClientRect();
+  if (!r.width || !r.height) return null;
+  return {
+    el,
+    slug: el.getAttribute('data-slug') || '',
+    src: (img as HTMLImageElement).currentSrc || (img as HTMLImageElement).src,
+    from: { left: r.left, top: r.top, width: r.width, height: r.height, radius: getComputedStyle(el).borderRadius } as Rect,
+  };
+}
+
+// Approximate destination rect from the layout tokens — just enough to aim the
+// flyer the right way for the first ~half; after-swap re-targets it precisely.
+function approxDest(toPath: string, slug: string): Rect | null {
+  const vw = root.clientWidth; // excludes the scrollbar
+  const vh = innerHeight;
+  const radius = cssVar('--hero-radius') || '12px';
+
+  if (isProjectPath(toPath)) {
+    const w = vw * (numVar('--hero-w', 95) / 100);
+    return { left: (vw - w) / 2, top: vh * (numVar('--hero-pad-top', 18) / 100), width: w, height: vh * (numVar('--hero-height', 72) / 100), radius };
+  }
+
+  const idx = ORDER.indexOf(slug);
+  if (idx < 0) return null;
+  const side = vw <= 560 ? numVar('--margin-edge-mobile', 20) : numVar('--margin-edge', 48);
+  const gap = numVar('--tile-gap', 12);
+  const cols = vw <= 560 ? 1 : vw <= 900 ? 2 : 3;
+  const colW = (vw - 2 * side - (cols - 1) * gap) / cols;
+  const tileH = (colW * 3) / 4;
+  const topPad = vh * (numVar('--work-pad-top', 24) / 100) + 42; // + section label
+  const rowN = Math.floor(idx / cols);
+  const colN = idx % cols;
+  return { left: side + colN * (colW + gap), top: topPad + rowN * (tileH + gap), width: colW, height: tileH, radius: cssVar('--tile-radius') || '12px' };
+}
+
+// Live rect of an element's image (for measuring the real destination).
+function rectOf(el: Element): Rect {
+  const img = el.querySelector('img') || el;
+  const r = img.getBoundingClientRect();
+  return { left: r.left, top: r.top, width: r.width, height: r.height, radius: getComputedStyle(el).borderRadius };
+}
+
+function keyframes(a: Rect, b: Rect) {
+  return [
+    { transform: `translate(${a.left}px, ${a.top}px)`, width: `${a.width}px`, height: `${a.height}px`, borderRadius: a.radius },
+    { transform: `translate(${b.left}px, ${b.top}px)`, width: `${b.width}px`, height: `${b.height}px`, borderRadius: b.radius },
+  ];
+}
+
+function makeFlyer(src: string, from: Rect) {
+  const host = layer();
+  if (!host) return null;
+  const f = document.createElement('div');
+  f.className = 'aoin-flyer';
+  f.style.width = `${from.width}px`;
+  f.style.height = `${from.height}px`;
+  f.style.transform = `translate(${from.left}px, ${from.top}px)`;
+  f.style.borderRadius = from.radius;
+  const img = document.createElement('img');
+  img.src = src;
+  img.alt = '';
+  f.appendChild(img);
+  host.appendChild(f);
+  return f;
+}
+
+// [data-unit] copy + grid tiles (never the marquee) — the things that hard-cut.
+function sweepItems(exceptSlug: string) {
+  const units = Array.from(document.querySelectorAll<HTMLElement>('[data-unit]'));
+  const tiles = Array.from(document.querySelectorAll<HTMLElement>('#grid [data-slug]')).filter(
+    (el) => el.getAttribute('data-slug') !== exceptSlug,
+  );
+  return [...units, ...tiles];
+}
+const topDown = (els: HTMLElement[]) =>
+  els
+    .map((el) => ({ el, r: el.getBoundingClientRect() }))
+    .sort((a, b) => a.r.top - b.r.top || a.r.left - b.r.left)
+    .map((o) => o.el);
+
+interface Active {
+  slug: string;
+  flyer: HTMLElement | null;
+  flight: Animation | null;
+}
+let active: Active | null = null;
+
 document.addEventListener('astro:before-preparation', (e: any) => {
   const toPath: string = e.to?.pathname ?? '';
-  const src: Element | undefined = e.sourceElement;
-  if (isProjectPath(toPath)) {
-    // work grid OR home marquee -> project: the clicked tile's image morphs.
-    tag(src?.closest?.('a[data-slug]')?.querySelector('img'));
-  } else if (isWorkPath(toPath)) {
-    // project -> work: the current hero morphs back into its grid tile.
-    tag(document.querySelector('.hero[data-slug] img'));
+  if (reduced() || (!isProjectPath(toPath) && !isWorkPath(toPath))) return;
+
+  const dur = numVar('--fly-dur', 940);
+  const ease = cssVar('--fly-ease');
+  const swapAt = Math.min(1, Math.max(0, numVar('--swap-at', 0.55)));
+
+  root.classList.add('aoin-flighting'); // lock scroll for the flight
+  const src = source(toPath, e.sourceElement);
+  active = { slug: src?.slug ?? '', flyer: null, flight: null };
+
+  // The flyer — the real artwork travelling from source rect toward the dest.
+  if (src) {
+    const to = approxDest(toPath, src.slug);
+    if (to) {
+      const f = makeFlyer(src.src, src.from);
+      if (f) {
+        active.flyer = f;
+        active.flight = f.animate(keyframes(src.from, to), { duration: dur, easing: ease, fill: 'both' });
+        (src.el as HTMLElement).style.visibility = 'hidden'; // the real source steps aside
+      }
+    }
   }
+
+  // Hard-cut the outgoing copy + tiles, staggered top-to-bottom (no fade/slide).
+  const items = topDown(sweepItems(src?.slug ?? '').filter((el) => el !== src?.el));
+  const st = numVar('--exit-stagger', 40);
+  items.forEach((el, i) => {
+    setTimeout(() => (el.style.visibility = 'hidden'), i * st);
+  });
+
+  // Commit the swap part-way through the flight, not at the end.
+  const orig = e.loader;
+  e.loader = async () => {
+    await Promise.all([orig(), sleep(dur * swapAt)]);
+  };
 });
 
-// INCOMING target — tag the matching element inside the parsed destination
-// document so the new snapshot carries the same name.
-document.addEventListener('astro:before-swap', (e: any) => {
-  const doc: Document | undefined = e.newDocument;
-  if (!doc) return;
-  const toPath: string = e.to?.pathname ?? location.pathname;
-
-  if (isProjectPath(toPath)) {
-    tag(doc.querySelector('.hero[data-slug] img'));
-  } else if (isWorkPath(toPath)) {
-    const slug = document.querySelector('.hero[data-slug]')?.getAttribute('data-slug');
-    if (slug) tag(doc.querySelector(`a[data-slug="${slug}"] img`));
+document.addEventListener('astro:after-swap', () => {
+  const a = active;
+  active = null;
+  if (!a) {
+    root.classList.remove('aoin-flighting');
+    return;
   }
-});
 
-// Snapshots are already captured by now, so clearing the live names cannot
-// disturb the running animation — it just leaves the DOM clean for the next one.
-document.addEventListener('astro:after-swap', clearNames);
+  const dur = numVar('--fly-dur', 940);
+  const ease = cssVar('--fly-ease');
+  const enterDelay = numVar('--enter-delay', 80);
+  const enterStagger = numVar('--enter-stagger', 60);
+
+  // The destination's own copy of the flying element stays hidden until the flyer
+  // touches down, so there is never two of it.
+  const destShared = a.slug ? document.querySelector<HTMLElement>(`[data-slug="${a.slug}"]`) : null;
+  if (destShared) destShared.style.visibility = 'hidden';
+
+  // Re-target the flyer to the destination's REAL measured rect (the initial aim
+  // was a token approximation). Steer the remaining travel from where it is now.
+  if (a.flyer && a.flight && destShared) {
+    const real = rectOf(destShared);
+    const fr = a.flyer.getBoundingClientRect();
+    const cur: Rect = { left: fr.left, top: fr.top, width: fr.width, height: fr.height, radius: getComputedStyle(a.flyer).borderRadius };
+    const elapsed = typeof a.flight.currentTime === 'number' ? a.flight.currentTime : dur * 0.55;
+    const remaining = Math.max(140, dur - elapsed);
+    // Pin the flyer to its current visual state so cancel() doesn't snap it back.
+    a.flyer.style.width = `${cur.width}px`;
+    a.flyer.style.height = `${cur.height}px`;
+    a.flyer.style.transform = `translate(${cur.left}px, ${cur.top}px)`;
+    a.flyer.style.borderRadius = cur.radius;
+    try {
+      a.flight.cancel();
+    } catch {
+      /* already done */
+    }
+    a.flight = a.flyer.animate(keyframes(cur, real), { duration: remaining, easing: ease, fill: 'both' });
+  }
+
+  // Hard-cut the destination copy + tiles IN, staggered, under the travelling flyer.
+  const items = topDown(sweepItems(a.slug));
+  items.forEach((el) => (el.style.visibility = 'hidden'));
+  items.forEach((el, i) => {
+    setTimeout(() => (el.style.visibility = 'visible'), enterDelay + i * enterStagger);
+  });
+
+  const land = () => {
+    if (destShared) destShared.style.visibility = '';
+    a.flyer?.remove();
+    root.classList.remove('aoin-flighting');
+  };
+  if (a.flight) a.flight.finished.then(land).catch(land);
+  else land();
+});

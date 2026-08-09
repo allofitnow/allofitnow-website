@@ -45,6 +45,10 @@ const {
     <slot />
     <Cursor />
 
+    {/* The flyer travels in here; transition:persist keeps the layer (and the
+        in-flight artwork) alive across the ClientRouter DOM swap. */}
+    <div id="aoin-flight-layer" transition:persist="aoin-flight-layer" aria-hidden="true"></div>
+
     <script>
       import '@/lib/flight';
     </script>

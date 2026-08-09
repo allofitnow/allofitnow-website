@@ -1,133 +1,62 @@
 /* ============================================================
-   Work <-> Project flight — native View Transitions tuning
+   Work / Home <-> Project flight — support styles
    ------------------------------------------------------------
-   The morph is driven by a single shared view-transition-name,
-   "aoin-flight", applied at runtime by lib/flight.ts to the one
-   element that should travel (the clicked grid tile's image on
-   the way in, the matching tile on the way back). The browser
-   tweens that element's box from the tile crop to the project
-   hero; everything else cross-fades as the root.
-
-   Timing/easing come from the same --fly-* tokens as the
-   reflow prototype so the whole transition stays tunable in
-   tokens.css. Only tile<->hero navigations are soft; all chrome
-   and home links carry data-astro-reload and full-load.
+   The transition is driven entirely by lib/flight.ts (a WAAPI flyer + staggered
+   exit/enter, ported from docs/prototypes/reflow-transition.html). ClientRouter
+   is used only for fetch/history/scroll, so its native View Transition is
+   NEUTRALISED here — every ::view-transition animation is turned off so the DOM
+   swap is instant and never competes with the flyer. Timing/easing live in the
+   --fly-* tokens in tokens.css.
    ============================================================ */
 
-/* The travelling image: box morph + crop cross-fade, full flight length. */
-::view-transition-group(aoin-flight) {
-  animation-duration: var(--fly-dur);
-  animation-timing-function: var(--fly-ease);
-}
-::view-transition-old(aoin-flight),
-::view-transition-new(aoin-flight) {
-  animation-duration: var(--fly-dur);
-  animation-timing-function: var(--fly-ease);
-  /* Both crops are the same photograph — a plain cross-fade reads as a reframe
-     rather than a dissolve. mix-blend keeps the overlap from washing brighter. */
+/* Kill the native View Transition. The swap still happens inside
+   startViewTransition, but with no animation it is instant and invisible. */
+::view-transition-group(*),
+::view-transition-old(*),
+::view-transition-new(*) {
+  animation: none !important;
   mix-blend-mode: normal;
 }
 
-/* No root cross-fade — the morph and the staggered copy sweep carry the whole
-   transition; the background swaps hard underneath them (per direction). */
-::view-transition-old(root),
-::view-transition-new(root) {
-  animation: none;
+/* The flyer layer. transition:persist (in Base) keeps this element — and the
+   travelling artwork inside it — alive across the swap. */
+#aoin-flight-layer {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  pointer-events: none;
 }
 
-/* ---- Staggered copy sweep -------------------------------------------------
-   On top of the image morph, the copy sweeps in/out in sequence — the reflow
-   prototype's signature. Each unit is its OWN named group so it exits and enters
-   independently of the morph and the root cross-fade. Names are page-specific
-   (wk-* vs pj-*) so old and new never share one: a shared name would morph the
-   label into the title instead of exit-then-enter. Source order == visual order
-   (top-to-bottom), so a plain incremental delay reads as a top-down sweep. */
-@keyframes aoin-unit-out {
-  to {
-    opacity: 0;
-    transform: translateY(-50%);
-  }
+/* The flyer itself — the real artwork travelling. Fixed, above everything, no
+   blending, no opacity: it IS the image, animating true width/height so the
+   cover-crop reframes instead of stretching a snapshot. */
+.aoin-flyer {
+  position: fixed;
+  left: 0;
+  top: 0;
+  overflow: hidden;
+  will-change: transform, width, height;
+  pointer-events: none;
 }
-@keyframes aoin-unit-in {
-  from {
-    opacity: 0;
-    transform: translateY(50%);
-  }
+.aoin-flyer img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
 }
 
-::view-transition-old(aoin-wk-label),
-::view-transition-old(aoin-wk-back),
-::view-transition-old(aoin-pj-title),
-::view-transition-old(aoin-pj-meta),
-::view-transition-old(aoin-pj-body),
-::view-transition-old(aoin-pj-back) {
-  animation: aoin-unit-out var(--enter-dur) var(--exit-ease) both;
-}
-::view-transition-new(aoin-wk-label),
-::view-transition-new(aoin-wk-back),
-::view-transition-new(aoin-pj-title),
-::view-transition-new(aoin-pj-meta),
-::view-transition-new(aoin-pj-body),
-::view-transition-new(aoin-pj-back) {
-  animation: aoin-unit-in var(--enter-dur) var(--fly-ease) both;
-}
-/* Keep each unit's group container (default 0.25s) from clipping the longer
-   content animation. */
-::view-transition-group(aoin-wk-label),
-::view-transition-group(aoin-wk-back),
-::view-transition-group(aoin-pj-title),
-::view-transition-group(aoin-pj-meta),
-::view-transition-group(aoin-pj-body),
-::view-transition-group(aoin-pj-back) {
-  animation-duration: var(--enter-dur);
+/* Scroll is locked for the duration of the flight (released when the flyer
+   lands) so nothing shifts under the travelling artwork. */
+html.aoin-flighting,
+html.aoin-flighting body {
+  overflow: hidden;
 }
 
-/* Exit sweep — top to bottom, accelerating out. */
-::view-transition-old(aoin-wk-label) {
-  animation-delay: 0ms;
-}
-::view-transition-old(aoin-wk-back) {
-  animation-delay: 60ms;
-}
-::view-transition-old(aoin-pj-title) {
-  animation-delay: 0ms;
-}
-::view-transition-old(aoin-pj-meta) {
-  animation-delay: 55ms;
-}
-::view-transition-old(aoin-pj-body) {
-  animation-delay: 110ms;
-}
-::view-transition-old(aoin-pj-back) {
-  animation-delay: 165ms;
-}
-/* Enter sweep — after the swap settles (--enter-delay), top to bottom. */
-::view-transition-new(aoin-wk-label) {
-  animation-delay: var(--enter-delay);
-}
-::view-transition-new(aoin-wk-back) {
-  animation-delay: calc(var(--enter-delay) + 60ms);
-}
-::view-transition-new(aoin-pj-title) {
-  animation-delay: var(--enter-delay);
-}
-::view-transition-new(aoin-pj-meta) {
-  animation-delay: calc(var(--enter-delay) + 60ms);
-}
-::view-transition-new(aoin-pj-body) {
-  animation-delay: calc(var(--enter-delay) + 120ms);
-}
-::view-transition-new(aoin-pj-back) {
-  animation-delay: calc(var(--enter-delay) + 180ms);
-}
-
-/* Astro already skips view transitions under reduced-motion; this is a belt-and
-   -braces fallback so nothing lingers if a swap does run. */
 @media (prefers-reduced-motion: reduce) {
-  ::view-transition-group(*),
-  ::view-transition-old(*),
-  ::view-transition-new(*) {
-    animation-duration: 0.001ms !important;
-    animation-delay: 0ms !important;
+  /* flight.ts already bails under reduced-motion; this just guarantees no lock
+     lingers if anything slips through. */
+  html.aoin-flighting,
+  html.aoin-flighting body {
+    overflow: auto;
   }
 }
