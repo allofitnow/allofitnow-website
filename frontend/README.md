@@ -1,43 +1,31 @@
-# Astro Starter Kit: Minimal
+# AOIN frontend (Astro)
 
-```sh
-npm create astro@latest -- --template minimal
+The Astro app for the All Of It Now site. Project overview, repo shape, and the
+flight-transition notes live in the [root README](../README.md); the coworking
+workflow is in [CONTRIBUTING](../CONTRIBUTING.md).
+
+## Commands
+
+Run from this `frontend/` folder (Node ≥ 22.12):
+
+| Command             | Action                                        |
+| :------------------ | :-------------------------------------------- |
+| `npm install`       | Install dependencies                          |
+| `npm run dev`       | Dev server (LAN-exposed) → `localhost:4321`   |
+| `npm run dev:local` | Dev server, localhost only                    |
+| `npm run build`     | Production build → `./dist/`                  |
+| `npm run preview`   | Preview the production build                  |
+| `npm run check`     | Astro + TypeScript diagnostics                |
+| `npm run format`    | Prettier (writes `src/**`)                    |
+
+## Layout
+
 ```
-
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
-
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+src/
+├─ styles/tokens.css   # dialed :root tokens + @font-face — do not "round" values
+├─ lib/                # flight.ts, hovercard.ts, home.controller.ts (framework-agnostic)
+├─ data/               # hardcoded, Payload-shaped content (phase 1)
+├─ layouts/            # Base.astro (ClientRouter, persisted chrome, flyer + hover card)
+├─ components/         # chrome/, home/, work/
+└─ pages/              # index.astro, work/
 ```
-
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
-
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
-
-Any static assets, like images, can be placed in the `public/` directory.
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
