@@ -125,6 +125,11 @@
   --enter-delay: 80ms;    /* after the swap, before arriving content moves */
   --enter-stagger: 60ms;
 
+  /* Work-grid hover card (lib/hovercard.ts) — a cursor-following plate. */
+  --card-lerp: 0.18;      /* cursor-follow smoothing — lower is heavier/laggier */
+  --card-offset: 20px;    /* gap between the pointer and the card */
+  --card-w: 300px;        /* max card width before the copy wraps */
+
   /* Work grid + project hero geometry — also the flight's landing rects. */
   --tile-radius: 12px;
   --hero-radius: 12px;

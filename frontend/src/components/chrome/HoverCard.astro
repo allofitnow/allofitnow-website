@@ -1,0 +1,67 @@
+---
+// Work-grid hover card — a cursor-following plate that names the tile under the
+// pointer. Ported from docs/prototypes/reflow-transition.html (#hovercard): the
+// copy sits on cool-white plates with box-decoration-break:clone, so every
+// wrapped line gets its own box and the ragged right edge is the whole look.
+//
+// The element persists across ClientRouter swaps (like the flyer + cursor) so
+// lib/hovercard.ts can bind its pointer listeners once. It shows over the work
+// grid tiles and the home bleed-carousel slides ([data-slug] things that fly);
+// pages without either just never trigger it.
+//
+// Each group nests a block .rise inside an overflow-clipped .grp: the prototype
+// animated translateY on the inline plate directly, where transforms are a
+// no-op, so the staggered reveal never rendered. The .rise carries the motion;
+// the inline .plate keeps the clone boxes.
+---
+
+<div id="aoin-hovercard" aria-hidden="true" transition:persist="aoin-hovercard">
+  <div class="grp"><span class="rise"><span class="plate" data-hc="code"></span></span></div>
+  <div class="grp"><span class="rise"><span class="plate" data-hc="title"></span></span></div>
+  <div class="grp"><span class="rise"><span class="plate" data-hc="caps"></span></span></div>
+</div>
+
+<style>
+  #aoin-hovercard {
+    position: fixed;
+    left: 0;
+    top: 0;
+    z-index: 60;
+    pointer-events: none;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    line-height: 1.62;
+    width: max-content;
+    max-width: var(--card-w, 300px);
+    will-change: transform;
+    visibility: hidden;
+  }
+  #aoin-hovercard.on {
+    visibility: visible;
+  }
+
+  /* clip mask — the riser slides up out of it */
+  .grp {
+    overflow: hidden;
+    margin-bottom: 9px;
+  }
+  .grp:last-child {
+    margin-bottom: 0;
+  }
+  .rise {
+    display: block;
+  }
+
+  /* the cool-white plate; clone so each line (wrapped, or split by the title's
+     <br>) carries its own box with a ragged right edge */
+  .plate {
+    display: inline;
+    background: var(--aoin-cool-white);
+    color: var(--aoin-black);
+    padding: 3px 7px;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+  }
+</style>

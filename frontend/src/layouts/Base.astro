@@ -4,6 +4,7 @@ import '@/styles/transitions.css';
 import { ClientRouter } from 'astro:transitions';
 import Nav from '@/components/chrome/Nav.astro';
 import Cursor from '@/components/chrome/Cursor.astro';
+import HoverCard from '@/components/chrome/HoverCard.astro';
 
 interface Props {
   title?: string;
@@ -46,6 +47,7 @@ const {
     <Nav />
     <slot />
     <Cursor />
+    <HoverCard />
 
     {/* The flyer travels in here; transition:persist keeps the layer (and the
         in-flight artwork) alive across the ClientRouter DOM swap. */}
@@ -53,6 +55,7 @@ const {
 
     <script>
       import '@/lib/flight';
+      import '@/lib/hovercard';
     </script>
   </body>
 </html>
