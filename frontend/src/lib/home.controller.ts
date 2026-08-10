@@ -33,9 +33,10 @@ const CFG = {
   reelHold: 0.3,
 } as const;
 
-// Gap between the statement and the bleed marquee, all views (px). Dialed down
-// from the prototype's 140 - the marquee sat too low.
-const STILL_GAP = 48;
+// Uniform vertical gap between the About blocks — headline / copy / marquee /
+// view-work — so the section reads with one even rhythm (matches .stmt-row and
+// .work-cue margins in About.astro). Dialed down from the prototype's 140.
+const STILL_GAP = 44;
 
 // Services sticky-label lead-in / settle, as % of viewport height.
 const SVC_LEAD_IN = 4;
@@ -225,6 +226,12 @@ export class HomeController {
     if (location.hash === '#about') {
       wrap.style.display = 'none';
       go();
+      // Land already-fitted: applyResponsive fixes the About padding (so the
+      // scroll target is right) and fitAndBuild sizes the statement to its final
+      // size before it's ever revealed, so there's no size "pop" a beat later.
+      this.applyResponsive();
+      this.applyAboutType();
+      this.fitAndBuild();
       const about = this.ref('about');
       if (about) {
         const y = about.offsetTop;
@@ -536,7 +543,7 @@ export class HomeController {
     }
     const about = this.ref('about');
     if (about) {
-      about.style.padding = m ? '120px 20px 80px' : '160px 48px 120px';
+      about.style.padding = m ? '104px 20px 80px' : '120px 48px 120px';
       about.style.minHeight = m ? 'auto' : '100svh';
     }
     const portrait = this.ref('portrait');
@@ -549,7 +556,8 @@ export class HomeController {
     }
     const stmtWrap = this.ref('stmtWrap');
     if (stmtWrap && stmtWrap.parentElement) {
-      stmtWrap.parentElement.style.flex = m ? '0 1 100%' : '0 1 min(62%,760px)';
+      // Narrower column => the 4-line fit lands ~1.5x smaller on big screens.
+      stmtWrap.parentElement.style.flex = m ? '0 1 100%' : '0 1 min(62%,510px)';
     }
 
     const svc = this.ref('services');
@@ -666,7 +674,8 @@ export class HomeController {
     });
     const fitted = widest > 0 ? (W / widest) * base : base;
     const floor = Math.min(46, fitted);
-    const size = Math.max(floor, Math.min(168, fitted));
+    // Cap ~1.5x smaller than fill so the display doesn't get huge on big screens.
+    const size = Math.max(floor, Math.min(100, fitted));
     wrap.style.fontSize = size + 'px';
     // displayAlign default 'centered'
     lines.forEach((line) => {
@@ -678,7 +687,10 @@ export class HomeController {
   private applyAboutType() {
     const el = this.ref('stmtWrap');
     if (el) {
-      el.style.fontSize = 'clamp(20px,2.2vw,40px)';
+      // fitAndBuild owns the statement font size. Setting a clamp() here too made
+      // the blurb briefly balloon to its rough fallback size and then "pop" to the
+      // fitted size — most visible when deep-linking to #about. Only the box
+      // styling fitAndBuild reads is set here now.
       el.style.lineHeight = '1.5';
       el.style.textAlign = 'justify';
       el.style.textAlignLast = 'justify';
@@ -982,10 +994,34 @@ export class HomeController {
   }
 
   // - Bleed slider -
+  // Fresh marquee order on each load. Shuffle the real slides, then rebuild the
+  // mirror to match so the seamless loop stays in step.
+  private shuffleMarquee() {
+    const track = this.ref('track');
+    const mirror = this.ref('mirror');
+    if (!track || !mirror) return;
+    const originals = (Array.prototype.slice.call(track.children) as HTMLElement[]).filter(
+      (c) => c !== mirror,
+    );
+    for (let i = originals.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [originals[i], originals[j]] = [originals[j], originals[i]];
+    }
+    originals.forEach((o) => track.insertBefore(o, mirror));
+    mirror.innerHTML = '';
+    originals.forEach((o) => {
+      const c = o.cloneNode(true) as HTMLElement;
+      c.setAttribute('aria-hidden', 'true');
+      c.setAttribute('tabindex', '-1');
+      mirror.appendChild(c);
+    });
+  }
+
   private startSlider() {
     const track = this.ref('track');
     if (!track || this.sliderOn) return;
     this.sliderOn = true;
+    this.shuffleMarquee(); // fresh order each load (marquee is still masked here)
     this.x = 0;
     this.target = 0;
     const mirror = this.ref('mirror');

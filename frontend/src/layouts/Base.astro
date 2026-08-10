@@ -32,9 +32,11 @@ const {
     <link rel="preload" href="/fonts/SNJaMono-Light.otf" as="font" type="font/otf" crossorigin />
     <link rel="preload" href="/fonts/OOTheran-Light.otf" as="font" type="font/otf" crossorigin />
 
-    {/* SPA soft-nav for the Work<->Project flight. Only tile<->hero links are
-        soft; chrome/home links carry data-astro-reload and full-load, so the
-        home controller never has to survive a swap. */}
+    {/* SPA soft-nav powers the flight. Work-bound links — grid tiles, the hero
+        back, the nav/footer WORK, the About cue — soft-nav so the flyer runs.
+        Everything else (logo, hash links, the #about deep-link) carries
+        data-astro-reload and full-loads, and the home controller tears itself
+        down on astro:before-swap, so it never has to survive a swap. */}
     <ClientRouter />
   </head>
   <body>

@@ -123,11 +123,17 @@ function sweepItems(exceptSlug: string) {
   );
   return [...units, ...tiles];
 }
-const topDown = (els: HTMLElement[]) =>
-  els
-    .map((el) => ({ el, r: el.getBoundingClientRect() }))
-    .sort((a, b) => a.r.top - b.r.top || a.r.left - b.r.left)
-    .map((o) => o.el);
+// Randomised stagger: evenly-spaced time slots, shuffled into a random order,
+// each nudged by a little jitter — so the hard cut scatters instead of marching
+// strictly top-to-bottom. Returns one delay per item, aligned to the input order.
+function scatter(count: number, step: number, base = 0): number[] {
+  const slots = Array.from({ length: count }, (_, i) => base + i * step);
+  for (let i = slots.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [slots[i], slots[j]] = [slots[j], slots[i]];
+  }
+  return slots.map((d) => Math.max(base, d + (Math.random() - 0.5) * step * 0.9));
+}
 
 interface Active {
   slug: string;
@@ -161,18 +167,32 @@ document.addEventListener('astro:before-preparation', (e: any) => {
     }
   }
 
-  // Hard-cut the outgoing copy + tiles, staggered top-to-bottom (no fade/slide).
-  const items = topDown(sweepItems(src?.slug ?? '').filter((el) => el !== src?.el));
-  const st = numVar('--exit-stagger', 40);
-  items.forEach((el, i) => {
-    setTimeout(() => (el.style.visibility = 'hidden'), i * st);
+  // Outgoing copy + tiles: each rises a touch on the brand ease and then cuts,
+  // scattered (randomised) so they don't leave in strict order. The visibility
+  // "pop" stays — the translation is layered on top of it.
+  const shift = numVar('--sweep-shift', 44);
+  const exitMove = Math.round(numVar('--enter-dur', 650) * 0.36);
+  const outItems = sweepItems(src?.slug ?? '').filter((el) => el !== src?.el);
+  const outDelays = scatter(outItems.length, numVar('--exit-stagger', 40));
+  outItems.forEach((el, i) => {
+    const d = outDelays[i];
+    el.animate(
+      [{ transform: 'translateY(0)' }, { transform: `translateY(-${shift}px)` }],
+      { duration: exitMove, delay: d, easing: ease, fill: 'forwards' },
+    );
+    setTimeout(() => (el.style.visibility = 'hidden'), d + exitMove);
   });
 
-  // Commit the swap part-way through the flight, not at the end.
-  const orig = e.loader;
-  e.loader = async () => {
-    await Promise.all([orig(), sleep(dur * swapAt)]);
-  };
+  // Commit the swap part-way through the flight — but only when a flyer is
+  // actually travelling. With no shared element (e.g. the nav/cue WORK link from
+  // home) there's nothing to cover the wait, so swap right away and let the
+  // destination hard-cut its copy in.
+  if (active.flyer) {
+    const orig = e.loader;
+    e.loader = async () => {
+      await Promise.all([orig(), sleep(dur * swapAt)]);
+    };
+  }
 });
 
 document.addEventListener('astro:after-swap', () => {
@@ -187,6 +207,8 @@ document.addEventListener('astro:after-swap', () => {
   const ease = cssVar('--fly-ease');
   const enterDelay = numVar('--enter-delay', 80);
   const enterStagger = numVar('--enter-stagger', 60);
+  const enterDur = numVar('--enter-dur', 650);
+  const shift = numVar('--sweep-shift', 44);
 
   // The destination's own copy of the flying element stays hidden until the flyer
   // touches down, so there is never two of it.
@@ -214,11 +236,25 @@ document.addEventListener('astro:after-swap', () => {
     a.flight = a.flyer.animate(keyframes(cur, real), { duration: remaining, easing: ease, fill: 'both' });
   }
 
-  // Hard-cut the destination copy + tiles IN, staggered, under the travelling flyer.
-  const items = topDown(sweepItems(a.slug));
+  // Destination copy + tiles arrive under the travelling flyer: each pops in and
+  // rises from just below into place on the brand ease, scattered (randomised).
+  const items = sweepItems(a.slug);
   items.forEach((el) => (el.style.visibility = 'hidden'));
+  const delays = scatter(items.length, enterStagger, enterDelay);
   items.forEach((el, i) => {
-    setTimeout(() => (el.style.visibility = 'visible'), enterDelay + i * enterStagger);
+    setTimeout(() => {
+      el.style.visibility = 'visible';
+      const anim = el.animate(
+        [{ transform: `translateY(${shift}px)` }, { transform: 'translateY(0)' }],
+        { duration: enterDur, easing: ease, fill: 'both' },
+      );
+      anim.finished
+        .then(() => {
+          el.style.transform = '';
+          anim.cancel();
+        })
+        .catch(() => {});
+    }, delays[i]);
   });
 
   const land = () => {

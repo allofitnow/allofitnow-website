@@ -17,6 +17,22 @@ const count = String(projects.length).padStart(2, '0');
       {projects.map((p) => <ProjectTile project={p} />)}
     </div>
 
+    {/* Shuffle the grid order on every load. is:inline so it re-runs on each
+        ClientRouter navigation and executes synchronously (before paint, and
+        before the flight measures the destination, so re-targeting stays exact). */}
+    <script is:inline>
+      (() => {
+        const grid = document.getElementById('grid');
+        if (!grid) return;
+        const kids = Array.from(grid.children);
+        for (let i = kids.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1));
+          [kids[i], kids[j]] = [kids[j], kids[i]];
+        }
+        kids.forEach((k) => grid.appendChild(k));
+      })();
+    </script>
+
     <a class="back" href="/#about" data-unit data-flight data-go="home" data-astro-reload>
       [&nbsp;&nbsp;BACK&nbsp;&nbsp;]
     </a>

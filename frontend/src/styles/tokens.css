@@ -120,6 +120,7 @@
   --exit-ease: cubic-bezier(0.5, 0, 0.75, 0); /* accelerating — things leave, not drift */
   --enter-dur: 650ms;
   --exit-dist: 110%;      /* travel distance of an exiting/entering unit */
+  --sweep-shift: 44px;    /* how far swept copy/tiles translate as they pop in/out */
   --swap-at: 0.55;        /* the page commits at this fraction of the flight, not the end */
   --enter-delay: 80ms;    /* after the swap, before arriving content moves */
   --enter-stagger: 60ms;

@@ -57,7 +57,7 @@ import { projects } from '@/data/projects';
     </div>
   </div>
 
-  <a class="work-cue" href="/work" data-ref="workCue" data-flight data-go="work" data-astro-reload>
+  <a class="work-cue" href="/work" data-ref="workCue" data-flight data-go="work">
     <div data-ar="1" class="mask">
       <div data-ai="1" class="work-cue-inner">
         <span data-wb="-1" class="bracket">[</span>
@@ -94,7 +94,7 @@ import { projects } from '@/data/projects';
     gap: 0;
     font-family: var(--font-headline);
     font-weight: var(--weight-headline);
-    font-size: clamp(46px, 8.6vw, 168px);
+    font-size: clamp(46px, 8.6vw, 100px);
     line-height: 0.96;
     letter-spacing: -0.012em;
     text-align: justify;
@@ -116,10 +116,10 @@ import { projects } from '@/data/projects';
     display: flex;
     justify-content: center;
     gap: clamp(24px, 3vw, 56px);
-    margin-top: clamp(28px, 3.2vw, 58px);
+    margin-top: 44px;
   }
   .stmt-cell {
-    flex: 0 1 min(62%, 760px);
+    flex: 0 1 min(62%, 510px);
   }
   .stmt-wrap {
     position: relative;
@@ -161,7 +161,7 @@ import { projects } from '@/data/projects';
 
   /* bleed carousel */
   .portrait {
-    margin-top: 48px;
+    margin-top: 44px;
     flex: 1 1 auto;
     min-height: 40svh;
     margin-left: -48px;
@@ -210,7 +210,7 @@ import { projects } from '@/data/projects';
 
   /* work cue */
   .work-cue {
-    margin-top: 34px;
+    margin-top: 44px;
     display: flex;
     justify-content: center;
     cursor: pointer;
