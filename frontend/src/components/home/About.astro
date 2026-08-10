@@ -4,7 +4,7 @@ import { projects } from '@/data/projects';
 ---
 
 <section class="about" data-ref="about" data-screen-label="About" id="about">
-  <div class="display" data-ref="display">
+  <div class="display" data-ref="display" data-unit>
     {
       about.display.map((line) => (
         <div data-ar="1" class="mask">
@@ -18,7 +18,7 @@ import { projects } from '@/data/projects';
     }
   </div>
 
-  <div class="stmt-row">
+  <div class="stmt-row" data-unit>
     <div data-ar="1" class="mask stmt-cell">
       <div class="stmt-wrap" data-ref="stmtWrap">
         <div class="stmt-src" data-ref="statement">
@@ -57,7 +57,7 @@ import { projects } from '@/data/projects';
     </div>
   </div>
 
-  <a class="work-cue" href="/work" data-ref="workCue" data-flight data-go="work">
+  <a class="work-cue" href="/work" data-ref="workCue" data-flight data-go="work" data-unit>
     <div data-ar="1" class="mask">
       <div data-ai="1" class="work-cue-inner">
         <span data-wb="-1" class="bracket">[</span>

@@ -112,18 +112,20 @@ export const clients: string[] = [
 ];
 
 export const footer = {
+  // One sentence — the footer lets it wrap and balances the lines (see
+  // .info in Footer.astro), so no hand-placed breaks to orphan words.
   info: [
-    'ALL OF IT NOW IS A TECHNICAL SOLUTIONS',
-    'PROVIDER FOR REAL-TIME CONTENT ACROSS',
-    'TV / FILM, CORPORATE EVENTS, AND LIVE MUSIC.',
+    'AOIN IS A CREATIVE TECHNOLOGY STUDIO, PARTNERING WITH AGENCIES AND ARTISTS TO PUSH THE BOUNDARIES OF REAL-TIME DESIGN ACROSS TV, FILM, CORPORATE EVENTS, AND LIVE MUSIC.',
   ],
   legal: ['ALL OF IT NOW. ESTD. 2014.', '2026 ALL RIGHTS RESERVED.'],
   navPrimary: [
     { label: 'WORK', href: '/work' },
     { label: 'SERVICES', href: '#services' },
-    { label: 'STUDIO', href: '#studio' },
   ] as NavLink[],
-  navSecondary: [{ label: 'CONTACT', href: '#contact' }] as NavLink[],
+  navSecondary: [
+    { label: 'STUDIO', href: '#studio' },
+    { label: 'CONTACT', href: '#contact' },
+  ] as NavLink[],
   social: [
     ...social,
     { label: 'INFO@ALLOFITNOW.COM', href: 'mailto:info@allofitnow.com' },

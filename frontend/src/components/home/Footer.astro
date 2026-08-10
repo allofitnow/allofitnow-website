@@ -9,7 +9,7 @@ import { footer } from '@/data/home';
     <div class="col">
       <div data-fr="1" class="mask lbl"><div data-fi="1">[INFO]</div></div>
       <div data-fr="1" class="mask">
-        <div data-fi="1">
+        <div data-fi="1" class="info">
           {footer.info.map((l, i) => (<>{i > 0 && <br />}{l}</>))}
         </div>
       </div>
@@ -113,6 +113,12 @@ import { footer } from '@/data/home';
   }
   .spaced {
     margin-top: 26px;
+  }
+  /* Let the statement wrap to the column and even out the lines so no stray
+     word is orphaned. balance handles up to ~6 lines; pretty is the fallback. */
+  .info {
+    text-wrap: pretty;
+    text-wrap: balance;
   }
 
   .navgrid {
