@@ -188,6 +188,17 @@ export function initWorkPage(root: HTMLElement) {
   let lastRow: HTMLElement | null = null;
   let raf = 0;
 
+  // The thumbnail's X is LOCKED — it only tracks the cursor vertically. The row
+  // is year | name(30%) | tour(14%) | chips(1fr), so year+name+tour never pass
+  // ~62% of the row; park the thumbnail just right of that so it never covers
+  // the artist or tour names, clamped to stay inside the row.
+  function lockedX() {
+    const r = listPane.getBoundingClientRect();
+    const half = thumb.offsetWidth / 2;
+    const x = r.left + r.width * 0.62 + half + 12;
+    return Math.min(r.right - half, Math.max(r.left + half, x));
+  }
+
   function follow() {
     if (cx === null || cy === null) {
       raf = requestAnimationFrame(follow);
@@ -225,10 +236,10 @@ export function initWorkPage(root: HTMLElement) {
   }
 
   root.addEventListener('mousemove', (e) => {
-    tx = e.clientX;
+    tx = lockedX(); // X is pinned; only Y follows the cursor
     ty = e.clientY;
     if (cx === null) {
-      cx = e.clientX;
+      cx = tx;
       cy = e.clientY;
     }
   });
