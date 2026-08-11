@@ -1,63 +1,131 @@
 ---
 import type { Project } from '@/data/projects';
-
 interface Props {
   project: Project;
 }
-const { project } = Astro.props;
+const { project: p } = Astro.props;
 ---
 
-{/* A real anchor so the grid works with JS off; the flight engine intercepts the
-    click. data-slug is the shared-element key the flight matches across pages. */}
+{/* data-slug + data-flight + a real /work/{slug} href keep the forward flight:
+    clicking the tile morphs this image into the project hero. The VIEW PROJECT
+    cursor card also triggers on .tile[data-slug], so both hovers coexist. */}
 <a
   class="tile"
-  href={`/work/${project.slug}`}
-  data-slug={project.slug}
+  href={`/work/${p.slug}`}
+  data-slug={p.slug}
   data-flight
-  aria-label={project.title}
+  data-cap={p.capabilities.join('|')}
+  aria-label={p.title}
 >
-  <img src={project.thumb} alt={project.title} draggable="false" />
-  <span class="cap">
-    <span class="code">{project.code}</span>
-    <span class="name">{project.title}</span>
+  <img class="tile-img" src={p.thumb} alt={p.title} draggable="false" loading="lazy" />
+  <span class="ovl">
+    <span class="ovl-artist">{p.title}</span>
+    <span class="ovl-tour">{p.tour}</span>
+    <span class="ovl-services"><i>{p.capabilities[0]}</i><i>{p.capabilities[1]}</i></span>
+    <span class="ovl-collab">{p.collaborator}</span>
   </span>
 </a>
 
 <style>
   .tile {
+    container-type: inline-size;
     position: relative;
     display: block;
-    width: 100%;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: var(--tile-ar, 4 / 3);
     overflow: hidden;
-    border-radius: var(--tile-radius, 12px);
+    border-radius: var(--tile-radius);
     background: #0a0a0a;
   }
-  .tile img {
+  .tile-img {
     position: absolute;
     inset: 0;
     width: 100%;
     height: 100%;
     object-fit: cover;
+    transition: transform 0.6s var(--ease-brand);
   }
-  .cap {
+  .tile:hover .tile-img {
+    transform: scale(1.03);
+  }
+
+  /* Hover overlay — handoff ANIMATION_SPEC §4 */
+  .ovl {
     position: absolute;
-    left: 14px;
-    bottom: 12px;
-    right: 14px;
+    inset: 0;
     display: flex;
-    justify-content: space-between;
-    align-items: flex-end;
-    gap: 12px;
-    font-family: var(--font-mono);
-    font-weight: var(--weight-mono);
-    font-size: 10px;
-    letter-spacing: 0.28em;
-    color: var(--aoin-cool-white);
-    mix-blend-mode: difference;
-    pointer-events: none;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 8% 6%;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.55);
+    opacity: 0;
+    transition: opacity 0.35s ease;
   }
-  .cap .name {
-    text-align: right;
+  .tile:hover .ovl {
+    opacity: 1;
+  }
+
+  .ovl > span {
+    opacity: 0;
+    transform: translateY(var(--ry, 22px));
+    transition:
+      transform 0.6s var(--ease-brand),
+      opacity 0s;
+  }
+  .tile:hover .ovl > span {
+    opacity: 1;
+    transform: translateY(0);
+  }
+  .ovl > span:nth-child(1) {
+    --ry: 30px;
+    transition-delay: 0ms;
+  }
+  .ovl > span:nth-child(2) {
+    --ry: 14px;
+    transition-delay: 110ms;
+  }
+  .ovl > span:nth-child(3) {
+    --ry: 24px;
+    transition-delay: 170ms;
+  }
+  .ovl > span:nth-child(4) {
+    --ry: 18px;
+    transition-delay: 230ms;
+  }
+
+  .ovl-artist {
+    font-family: var(--font-headline);
+    font-weight: 500;
+    font-size: clamp(18px, 8.5cqw, 52px);
+    line-height: 0.9;
+    color: var(--aoin-cool-white);
+  }
+  .ovl-tour {
+    font-family: var(--font-headline);
+    font-weight: 400;
+    letter-spacing: 0.02em;
+    font-size: clamp(16px, 7cqw, 30px);
+    color: var(--aoin-cool-white);
+  }
+  .ovl-services {
+    display: flex;
+    gap: 18px;
+    font-family: var(--font-mono);
+    font-weight: 300;
+    letter-spacing: 0.24em;
+    font-size: clamp(10px, 3.6cqw, 13px);
+    color: var(--aoin-cool-white-80);
+  }
+  .ovl-services i {
+    font-style: normal;
+  }
+  .ovl-collab {
+    font-family: var(--font-mono);
+    font-weight: 300;
+    letter-spacing: 0.24em;
+    font-size: clamp(10px, 3.6cqw, 13px);
+    color: var(--aoin-cool-white-80);
   }
 </style>

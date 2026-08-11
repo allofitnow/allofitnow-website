@@ -1,0 +1,39 @@
+---
+// SELECTED / WORK — masked baseline reveal + centre-to-edges spread.
+// Motion is driven from lib/work-page.ts (§2 of the handoff ANIMATION_SPEC).
+// data-unit lets the flight sweep it out when a tile flies to a project.
+---
+
+<div class="display" data-title data-unit>
+  <span class="mask"><span class="word" data-word>SELECTED</span></span>
+  <span class="mask"><span class="word" data-word>WORK</span></span>
+</div>
+
+<style>
+  .display {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.25em;
+    font-family: var(--font-headline);
+    font-weight: 500;
+    /* cqw, NOT vw — the stage is the query container, so the headline can
+       never break the 48px page margin. */
+    font-size: min(12cqw, 180px);
+    line-height: 0.72;
+    letter-spacing: -0.01em;
+    color: var(--aoin-cool-white);
+  }
+  .mask {
+    display: block;
+    /* Clip on Y only: the words travel sideways during the intro and
+       overflow:hidden would cut them off. */
+    overflow-x: visible;
+    overflow-y: clip;
+    padding-bottom: 0.06em;
+  }
+  .word {
+    display: block;
+    transform: translateY(110%);
+  }
+</style>

@@ -1,0 +1,86 @@
+---
+import type { Project } from '@/data/projects';
+interface Props {
+  project: Project;
+}
+const { project: p } = Astro.props;
+// Rows navigate to the project (soft-nav, no flyer — there's no persistent
+// image to morph). data-thumb feeds the cursor-following reveal in work-page.ts.
+---
+
+<a class="row" href={`/work/${p.slug}`} data-cap={p.capabilities.join('|')} data-thumb={p.thumb}>
+  <span class="row-year">{p.year}</span>
+  <span class="row-name-cell"><span class="row-name">{p.title}</span></span>
+  <span class="row-tour">{p.tour}</span>
+  <span class="row-chips">
+    {p.capabilities.map((c) => <span class="chip">{c}</span>)}
+  </span>
+</a>
+
+<style>
+  /* All four tracks are container-relative so every row shares the same column
+     edges — never content-sized (max-content / auto / fr on content). */
+  .row {
+    display: grid;
+    grid-template-columns: min(var(--year-col), 18%) 30% 14% 1fr;
+    align-items: baseline;
+    gap: clamp(16px, 2vw, 32px);
+    padding: 26px 4px;
+    min-width: 0;
+    border-bottom: 1px solid var(--rule);
+  }
+  .row:hover {
+    color: var(--aoin-cool-white);
+  } /* beats the global a:hover dim */
+
+  .row-year {
+    font-family: var(--font-mono);
+    font-weight: 300;
+    font-size: 11px;
+    letter-spacing: 0.24em;
+    color: var(--aoin-cool-white-45);
+    white-space: nowrap;
+  }
+
+  /* The name cell is its own query container so the type can never outgrow the
+     track it sits in. See ANIMATION_SPEC §7. */
+  .row-name-cell {
+    container-type: inline-size;
+    min-width: 0;
+  }
+  .row-name {
+    display: block;
+    font-family: var(--font-headline);
+    font-weight: 500;
+    font-size: min(var(--name-size), 9.4cqw);
+    line-height: 0.9;
+    white-space: nowrap;
+  }
+
+  .row-tour {
+    font-family: var(--font-mono);
+    font-weight: 300;
+    font-size: 11px;
+    letter-spacing: 0.24em;
+    color: var(--aoin-cool-white-45);
+    white-space: nowrap;
+    text-align: left;
+  }
+
+  .row-chips {
+    display: flex;
+    gap: 6px;
+    white-space: nowrap;
+    justify-self: end;
+  }
+  .chip {
+    font-family: var(--font-mono);
+    font-weight: 300;
+    font-size: clamp(8px, 0.72vw, 10px);
+    letter-spacing: 0.14em;
+    white-space: nowrap;
+    background: var(--aoin-cool-white);
+    color: #000;
+    padding: 5px 9px 4px; /* optical: 1px less at the bottom */
+  }
+</style>

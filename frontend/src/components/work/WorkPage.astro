@@ -1,0 +1,158 @@
+---
+import { projects } from '@/data/projects';
+import SelectedWorkTitle from './SelectedWorkTitle.astro';
+import FilterBar from './FilterBar.astro';
+import ProjectTile from './ProjectTile.astro';
+import ProjectRow from './ProjectRow.astro';
+
+interface Props {
+  columns?: number; // small-grid column count      (design default 4)
+  tileGap?: number; // px                           (18)
+  tileRadius?: number; // px                        (12)
+  yearGap?: number; // px, list year track cap      (340)
+  nameSize?: number; // px, list artist name cap    (52)
+  introDuration?: number; // ms                     (1400)
+  introOverlap?: number; // 0..1                    (0.9)
+  titleLead?: number; // 0..1.2, fraction of dur    (0)
+  staggerAmount?: number; // 0..3                   (1.3)
+}
+const {
+  columns = 4,
+  tileGap = 18,
+  tileRadius = 12,
+  yearGap = 340,
+  nameSize = 52,
+  introDuration = 1400,
+  introOverlap = 0.9,
+  titleLead = 0,
+  staggerAmount = 1.3,
+} = Astro.props;
+---
+
+{/* No <nav> here — the shared, persisted Nav (Base.astro) provides it and owns
+    the clock + its own reveal. This root only holds the stage + footer. */}
+<div
+  class="work"
+  data-work
+  data-columns={columns}
+  data-intro-duration={introDuration}
+  data-intro-overlap={introOverlap}
+  data-title-lead={titleLead}
+  data-stagger={staggerAmount}
+  style={`--tile-gap:${tileGap}px; --tile-radius:${tileRadius}px; --year-col:${yearGap}px; --name-size:${nameSize}px;`}
+>
+  <section class="stage">
+    <SelectedWorkTitle />
+    <FilterBar />
+
+    {/* id="grid" so the flight's exit sweep still finds #grid [data-slug]. */}
+    <div class="grid-pane" id="grid" data-pane="grid">
+      {projects.map((p) => <ProjectTile project={p} />)}
+    </div>
+
+    <div class="list-pane" data-pane="list">
+      {projects.map((p) => <ProjectRow project={p} />)}
+    </div>
+
+    {/* cursor-following reveal stack, list view only */}
+    <div class="hover-thumb" data-hover-thumb></div>
+
+    <a class="back" href="/#about" data-unit data-astro-reload>[&nbsp;&nbsp;BACK&nbsp;&nbsp;]</a>
+  </section>
+
+  <div class="chrome-foot" data-foot>
+    <span>AOIN IS A CREATIVE TECHNOLOGY STUDIO</span>
+    <span>ESTD. 2014</span>
+  </div>
+</div>
+
+<script>
+  import { initWorkPage } from '@/lib/work-page';
+  // /work is reached via soft-nav (so the return flyer survives the swap), so
+  // (re)init on every page-load, not just the first module execution. The
+  // per-root `booted` guard in initWorkPage stops a double-init.
+  const boot = () => {
+    const root = document.querySelector('[data-work]');
+    if (root) initWorkPage(root as HTMLElement);
+  };
+  boot();
+  document.addEventListener('astro:page-load', boot);
+</script>
+
+<style>
+  .work {
+    --cols: 4;
+    background: #000;
+    color: var(--aoin-cool-white);
+    min-height: 100vh;
+    font-family: var(--font-headline);
+    position: relative;
+    overflow-x: hidden;
+  }
+
+  /* Query container for the display type; capped + centred on ultrawide like
+     the rest of the site (the cqw headline then scales to the capped width). */
+  .stage {
+    container-type: inline-size;
+    max-width: var(--content-max);
+    margin-inline: auto;
+    padding: 14vh 48px 220px;
+    box-sizing: border-box;
+  }
+
+  .grid-pane {
+    display: grid;
+    grid-template-columns: repeat(var(--cols), 1fr);
+    gap: var(--tile-gap);
+  }
+  .list-pane {
+    display: none;
+    flex-direction: column;
+    border-top: 1px solid var(--rule);
+  }
+
+  .hover-thumb {
+    position: fixed;
+    left: 0;
+    top: 0;
+    width: 15vw;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--tile-radius);
+    overflow: hidden;
+    visibility: hidden;
+    pointer-events: none;
+    z-index: 15;
+  }
+
+  .back {
+    display: inline-block;
+    margin-top: 60px;
+    font-family: var(--font-mono);
+    font-weight: 300;
+    font-size: 12px;
+    letter-spacing: 0.28em;
+    color: var(--aoin-cool-white);
+    cursor: pointer;
+  }
+
+  .chrome-foot {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 8;
+    max-width: var(--content-max);
+    margin-inline: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 48px 22px;
+    box-sizing: border-box;
+    font-family: var(--font-mono);
+    font-weight: 300;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--aoin-cool-white-45);
+    pointer-events: none;
+  }
+</style>

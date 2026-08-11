@@ -1,0 +1,120 @@
+---
+import { CAPABILITIES } from '@/data/projects';
+// Capability filters + view toggles. data-unit → flight sweeps it on exit.
+---
+
+<div class="filterbar" data-filterbar data-unit>
+  <div class="filters">
+    <button class="filt" type="button" data-cap="ALL" aria-pressed="true">ALL</button>
+    {CAPABILITIES.map((c) => <button class="filt" type="button" data-cap={c} aria-pressed="false">{c}</button>)}
+  </div>
+
+  <div class="views">
+    <button type="button" data-view="large" title="Large" aria-label="Large grid" aria-pressed="true">
+      <i></i><i></i><i></i><i></i>
+    </button>
+    <button type="button" data-view="grid" title="Grid" aria-label="Grid" aria-pressed="false">
+      <i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i>
+    </button>
+    <button type="button" data-view="list" title="List" aria-label="List" aria-pressed="false">
+      <i></i><i></i><i></i><i></i>
+    </button>
+  </div>
+</div>
+
+<style>
+  .filterbar {
+    display: flex;
+    align-items: center;
+    gap: 36px;
+    padding: 34px 0 26px;
+    font-family: var(--font-mono);
+    font-weight: 300;
+    font-size: 15px;
+    letter-spacing: 0.2em;
+  }
+  .filters {
+    display: flex;
+    flex: 1;
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  /* Inverted highlight wipes up from the bottom edge on hover. */
+  .filt {
+    position: relative;
+    isolation: isolate;
+    padding: 5px 9px 4px;
+    font: inherit;
+    letter-spacing: inherit;
+    border: 0;
+    background: none;
+    color: var(--aoin-cool-white-45);
+    cursor: pointer;
+  }
+  .filt[aria-pressed='true'] {
+    color: var(--aoin-cool-white);
+  }
+  .filt::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--aoin-cool-white);
+    transform: scaleY(0);
+    transform-origin: bottom;
+    transition: transform 0.35s var(--ease-brand);
+  }
+  .filt:hover::before {
+    transform: scaleY(1);
+  }
+  .filt:hover {
+    color: #000;
+  }
+
+  .views {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex: none;
+  }
+  .views button {
+    width: 20px;
+    height: 20px;
+    padding: 0;
+    border: 0;
+    background: none;
+    cursor: pointer;
+    color: var(--aoin-cool-white-35);
+  }
+  .views button[aria-pressed='true'] {
+    color: var(--aoin-cool-white);
+  }
+  .views button i {
+    display: block;
+    border: 1px solid currentColor;
+  }
+
+  .views button[data-view='large'] {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 3px;
+  }
+  .views button[data-view='grid'] {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    grid-template-rows: repeat(3, 1fr);
+    gap: 2px;
+  }
+  .views button[data-view='list'] {
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+  .views button[data-view='list'] i {
+    height: 0;
+    border: 0;
+    border-top: 1px solid currentColor;
+  }
+</style>
