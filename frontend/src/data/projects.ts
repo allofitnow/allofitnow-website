@@ -44,7 +44,26 @@ export interface Project {
   tour: string;
   /** Overlay bottom line, e.g. "ALL OF IT NOW X PHNTM". Placeholder. */
   collaborator: string;
+  // --- Project-page fields (PLACEHOLDER copy, replace via CMS) --------------
+  /** Short lede beside the meta block — distinct from `body`. Placeholder. */
+  summary: string;
+  /** Gallery tiles, laid out on the repeating 6-slot grid pattern. Seeded by
+   *  rotating our one still per project — REPLACE with real per-project art. */
+  gallery: string[];
+  /** Figure row under the gallery. Invented placeholder numbers. */
+  stats: { label: string; value: string }[];
+  /** Credit groups; handles are IG usernames (lowercase, uppercased in CSS). */
+  credits: { title: string; entries: { role: string; handle: string }[] }[];
+  /** The expandable write-up panel: one lede + body paragraphs. Placeholder. */
+  writeup: { lead: string; body: string[] };
 }
+
+// The authored slice of a project: everything except the derived `code` and the
+// shared project-page placeholders that `enrich` fills in (see below).
+type ProjectSeed = Omit<
+  Project,
+  'code' | 'summary' | 'gallery' | 'stats' | 'credits' | 'writeup'
+>;
 
 // PLACEHOLDER seed copy — titles are AOIN's real clients (see the roster in
 // data/home.ts); the CLIENT/YEAR/ROLE/SCOPE meta and body are stand-ins to be
@@ -54,7 +73,50 @@ export interface Project {
 const BODY =
   'Real-time content built for LED and driven live at show resolution. Generative systems, camera-aware grading, and a playback architecture that survives contact with a touring schedule.';
 
-const seed: Omit<Project, 'code'>[] = [
+// --- Shared project-page placeholders --------------------------------------
+// Uniform stand-in copy so every project has a full page to lay out; the CMS
+// port replaces these per-project. Only `writeup.lead` is personalised (name
+// woven in) so the panel doesn't read identically across projects.
+const SUMMARY =
+  'A touring show built on real-time content — generative systems cut to the music and driven live at full show resolution, engineered to hold up night after night on a moving schedule.';
+
+const STATS: Project['stats'] = [
+  { label: 'LED SURFACE', value: '1,240m²' },
+  { label: 'SHOWS', value: '38' },
+  { label: 'PIXEL PITCH', value: '3.9mm' },
+  { label: 'RUNTIME', value: '2H 15M' },
+];
+
+const CREDITS: Project['credits'] = [
+  {
+    title: 'ALL OF IT NOW',
+    entries: [
+      { role: 'CREATIVE DIRECTION', handle: 'allofitnow' },
+      { role: 'CONTENT LEAD', handle: 'aoin.realtime' },
+      { role: 'SYSTEMS ENGINEER', handle: 'aoin.systems' },
+      { role: 'PRODUCER', handle: 'aoin.prod' },
+    ],
+  },
+  {
+    title: 'COLLABORATORS',
+    entries: [
+      { role: 'PRODUCTION DESIGN', handle: 'sturdy.co' },
+      { role: 'CREATIVE STUDIO', handle: 'phntm' },
+      { role: 'LIGHTING DESIGN', handle: 'ld.studio' },
+    ],
+  },
+];
+
+const WRITEUP_BODY = [
+  'The brief was a stage that could change character between songs without a hard cut — so the content had to be generative rather than baked, reacting to timecode and to the band on stage instead of running as a fixed film.',
+  'We built the look as a set of real-time systems in a single scene graph: camera-aware grading, particle fields tied to the low end, and a set of LED-native transitions that never resolve to a seam. Playback ran redundant, with a warm spare tracking the show frame-for-frame.',
+  'Everything was authored to survive the tour: one operator, a fixed I/O map, and content that degrades gracefully if a panel drops rather than tearing the whole surface.',
+];
+
+const leadFor = (name: string) =>
+  `${name} needed content that could carry a full arena show and still feel live — not a video playing behind the artist, but a stage that responds in the moment.`;
+
+const seed: ProjectSeed[] = [
   {
     slug: 'bad-bunny',
     title: 'BAD BUNNY',
@@ -166,7 +228,7 @@ const seed: Omit<Project, 'code'>[] = [
 // initials of each non-stopword word, capped at 3, with a zero-padded per-code
 // collision counter. Non-A–Z characters are stripped first (so RENÉE → RENE → R).
 const STOPWORDS = new Set(['THE', 'A', 'AN', 'OF', 'AND']);
-function assignCodes(list: Omit<Project, 'code'>[]): Project[] {
+function assignCodes(list: ProjectSeed[]): (ProjectSeed & { code: string })[] {
   const seen: Record<string, number> = {};
   return list.map((p) => {
     const ini =
@@ -183,7 +245,23 @@ function assignCodes(list: Omit<Project, 'code'>[]): Project[] {
   });
 }
 
-export const projects: Project[] = assignCodes(seed).sort((a, b) => a.order - b.order);
+// Enrich the authored seed with the shared project-page placeholders. The
+// gallery seeds 6 tiles by rotating through every project's still (so each
+// project's grid isn't just its own image repeated) — REPLACE with real art.
+function enrich(list: ProjectSeed[]): Project[] {
+  const coded = assignCodes(list);
+  const stills = coded.map((p) => p.thumb);
+  return coded.map((p, i) => ({
+    ...p,
+    summary: SUMMARY,
+    gallery: Array.from({ length: 6 }, (_, k) => stills[(i + k) % stills.length]),
+    stats: STATS,
+    credits: CREDITS,
+    writeup: { lead: leadFor(p.title), body: WRITEUP_BODY },
+  }));
+}
+
+export const projects: Project[] = enrich(seed).sort((a, b) => a.order - b.order);
 
 export const getProject = (slug: string): Project | undefined =>
   projects.find((p) => p.slug === slug);

@@ -45,7 +45,7 @@ function layer() {
 function source(toPath: string, sourceEl: Element | undefined) {
   let el: Element | null = null;
   if (isProjectPath(toPath)) el = sourceEl?.closest?.('a[data-slug]') ?? null;
-  else if (isWorkPath(toPath)) el = document.querySelector('.hero[data-slug]');
+  else if (isWorkPath(toPath)) el = document.querySelector('[data-flight][data-slug]');
   if (!el) return null;
   const img = el.querySelector('img');
   if (!img) return null;
@@ -72,8 +72,15 @@ function approxDest(toPath: string, slug: string): Rect | null {
   const gx = (vw - cw) / 2; // side gutter when the frame is narrower than the viewport
 
   if (isProjectPath(toPath)) {
+    // The reworked hero is left-aligned to the 2.5% content gutter and sits
+    // BELOW the title row, so aim at gutter-left and offset the top by the title
+    // row (top pad + headline height + its bottom pad). after-swap re-targets to
+    // the real rect, so this just needs to be close enough to not visibly jump.
+    const side = cw * 0.025;
     const w = cw * (numVar('--hero-w', 95) / 100);
-    return { left: (vw - w) / 2, top: vh * (numVar('--hero-pad-top', 18) / 100), width: w, height: vh * (numVar('--hero-height', 72) / 100), radius };
+    const titleH = Math.min(cw * 0.094, 148) * 0.9; // clamp(46,9.4cqw,148) × lh .9
+    const top = vh * (numVar('--hero-pad-top', 12) / 100) + titleH + 50; // + title bottom pad
+    return { left: gx + side, top, width: w, height: vh * (numVar('--hero-height', 82) / 100), radius };
   }
 
   // Work (return morph): the after-swap puts the grid in the 2-up view and,

@@ -1,0 +1,738 @@
+---
+/* AOIN — Project page. Ported from the design handoff (project-page.components.html
+ * + project-page.spec.md). One boolean (data-expanded on the shell) drives a
+ * full-page reflow: every block narrows to ~49% and the write-up panel opens in
+ * the freed right column. Behaviour + the four measured values live in
+ * lib/project-page.ts.
+ *
+ * Adapted for our app:
+ *  - We keep the shared, persisted Nav + our real-timezone clock; the handoff's
+ *    SiteNav is dropped (same call as the Work page).
+ *  - The page caps at --content-max and centres, like the rest of the site. All
+ *    the handoff's cqw math lives on an inner [data-pp-frame] that carries
+ *    container-type; the FIXED chrome (toggle, panel, footer meta) sits OUTSIDE
+ *    that frame so it stays viewport-fixed, and JS aligns it to the capped frame
+ *    (--pp-edge) instead of the raw viewport.
+ *  - The hero keeps data-slug + data-flight so the Work↔Project flight morph
+ *    still lands on / launches from it.
+ */
+import { projects, type Project } from '@/data/projects';
+
+interface Props {
+  project: Project;
+}
+const { project } = Astro.props;
+
+// Meta data-block columns, derived from the authored fields (no new data).
+const metaCols: { label: string; values: string[] }[] = [
+  { label: 'CLIENT', values: [project.client] },
+  { label: 'YEAR', values: [project.year] },
+  { label: 'DISCIPLINE', values: project.capabilities },
+];
+
+// Next project — wraps around the ordered roster.
+const idx = projects.findIndex((p) => p.slug === project.slug);
+const next = projects[(idx + 1) % projects.length];
+
+// The repeating 6-slot gallery pattern (see spec §7).
+const TILE = ['pp__g--a', 'pp__g--b', 'pp__g--full', 'pp__g--c', 'pp__g--d', 'pp__g--full'];
+const tileClass = (i: number) => `pp__g ${TILE[i % TILE.length]}`;
+---
+
+<main class="pp" data-pp data-expanded="false" data-screen-label={project.title}>
+  <div class="pp__frame" data-pp-frame>
+    {/* ---- Title: artist (flows) + tour (slides in on expand) ---- */}
+    <div class="pp__titleRow" data-pp-title-row data-unit>
+      <h1 class="pp__title"><span data-pp-title>{project.title}</span></h1>
+      <div class="pp__tour" data-pp-tour>{project.tour}</div>
+    </div>
+
+    {/* ---- Hero: the flight landing/launch element ---- */}
+    <div class="pp__hero" data-pp-hero data-slug={project.slug} data-flight>
+      <img src={project.hero} alt={project.title} />
+      <div class="pp__heroScrim"></div>
+      <div class="pp__heroGrad"></div>
+    </div>
+
+    {/* ---- Content column ---- */}
+    <div class="pp__content">
+      <div class="pp__meta" data-unit>
+        <div class="pp__metaCols">
+          {metaCols.map((col) => (
+            <div class="pp__metaCol">
+              <div class="pp__metaLabel">{col.label}</div>
+              {col.values.map((v) => <div>{v}</div>)}
+            </div>
+          ))}
+        </div>
+        <p class="pp__desc">{project.summary}</p>
+      </div>
+
+      <div class="pp__galleryWrap">
+        <section class="pp__gallery">
+          {project.gallery.map((src, i) => (
+            <div class={tileClass(i)}>
+              <img src={src} alt="" loading="lazy" />
+            </div>
+          ))}
+        </section>
+      </div>
+
+      <section class="pp__stats">
+        {project.stats.map((s) => (
+          <div class="pp__stat">{s.label}<b>{s.value}</b></div>
+        ))}
+      </section>
+
+      <section class="pp__credits">
+        {project.credits.map((group) => (
+          <>
+            <div class="pp__creditsTitle">{group.title}</div>
+            {group.entries.map((c) => (
+              <div class="pp__credit">{c.role}
+                <b><a href={`https://instagram.com/${c.handle}`} target="_blank" rel="noopener">@{c.handle}</a></b>
+              </div>
+            ))}
+          </>
+        ))}
+      </section>
+
+      <section class="pp__next" data-pp-next>
+        <a class="pp__nextLink" href={`/work/${next.slug}`} data-pp-next-link data-open="false">
+          <span>NEXT</span>
+          <span class="pp__nextPlate" data-pp-next-plate>
+            <span class="pp__nextPlateInner">
+              <span class="pp__nextMask"><span class="pp__nextLine" data-pp-next-line="0">{next.title}</span></span>
+              <span class="pp__nextMask"><span class="pp__nextLine" data-pp-next-line="1">{next.tour}</span></span>
+            </span>
+          </span>
+          <span>PROJECT</span>
+        </a>
+      </section>
+
+      <div class="pp__allwork">
+        <a href="/work">[&nbsp;&nbsp;ALL WORK&nbsp;&nbsp;]</a>
+      </div>
+    </div>
+  </div>
+
+  {/* ---- Fixed chrome (outside the container-type frame; aligned to it by JS) ---- */}
+  <button
+    type="button"
+    class="pp__toggle"
+    data-pp-toggle
+    aria-expanded="false"
+    aria-controls="pp-writeup"
+  ><span data-pp-toggle-label>FULL WRITE-UP</span></button>
+
+  <aside class="pp__aside" id="pp-writeup" data-pp-aside aria-hidden="true">
+    <div class="pp__notes" data-pp-notes>
+      <div class="pp__notesLabel">[ PRODUCTION NOTES ]</div>
+      <p class="pp__notesLead">{project.writeup.lead}</p>
+      {project.writeup.body.map((par) => <p class="pp__notesBody">{par}</p>)}
+    </div>
+  </aside>
+
+  <div class="pp__footmeta" aria-hidden="true">
+    <span>CREATIVE TECHNOLOGY STUDIO</span>
+    <span>ESTD. 2014</span>
+  </div>
+</main>
+
+<style>
+  /* ============================ shell ============================ */
+  .pp {
+    position: relative;
+    min-height: 100vh;
+    max-width: var(--content-max);
+    margin-inline: auto;
+    padding-bottom: 120px;
+    color: var(--aoin-cool-white);
+    /* Shared layout-transition timing (spec §0). --pp-edge / --pp-panel-w /
+       --pp-*-top are written by JS; the fallbacks cover the pre-JS first paint. */
+    --dl: 620ms cubic-bezier(0.16, 1, 0.3, 1);
+    --pp-edge: 2.5%;
+    --panel-delay: 0ms;
+  }
+  /* container-type lives HERE, not on .pp — so the fixed chrome (a .pp child,
+     but NOT a frame descendant) stays viewport-fixed instead of scrolling. */
+  .pp__frame {
+    container-type: inline-size;
+    width: 100%;
+  }
+
+  /* ============================ title ============================ */
+  .pp__titleRow {
+    position: relative;
+    width: 95%;
+    margin-left: 2.5%;
+    box-sizing: content-box;
+    padding-top: 12vh;
+    padding-bottom: 50px;
+    height: calc(clamp(46px, 9.4cqw, 148px) * 0.9);
+    display: flex;
+    flex-direction: row;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 48px;
+    transition: gap var(--dl);
+    transition-delay: 168ms; /* stage 0, closing */
+  }
+  [data-expanded='true'] .pp__titleRow {
+    justify-content: flex-start;
+    gap: 0;
+    transition-delay: 0ms; /* stage 0, opening */
+  }
+  .pp__title {
+    margin: 0;
+    flex: 0 1 auto;
+    font-family: var(--font-headline);
+    font-weight: var(--weight-headline);
+    line-height: 0.9;
+    letter-spacing: 0.01em;
+    font-size: clamp(46px, 9.4cqw, 148px);
+    /* The name scales with the reflow, on the same stage-0 timing as the hero.
+       The fit script sets an explicit px target; this transitions between them. */
+    transition: font-size var(--dl);
+    transition-delay: 168ms; /* stage 0, closing */
+  }
+  [data-expanded='true'] .pp__title {
+    transition-delay: 0ms; /* stage 0, opening */
+  }
+  .pp__title span {
+    display: block;
+    white-space: nowrap;
+    max-width: 100%;
+  }
+  [data-expanded='true'] .pp__title span {
+    max-width: calc(49cqw - 24px);
+  }
+  .pp__tour {
+    position: absolute;
+    left: 49cqw;
+    bottom: 50px;
+    width: max-content;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: clamp(13px, 1.25cqw, 21px);
+    line-height: 1;
+    letter-spacing: 0.14em;
+    white-space: nowrap;
+    transform: translateX(calc(46cqw - 100%));
+    transition: transform var(--dl);
+    transition-delay: 168ms;
+  }
+  [data-expanded='true'] .pp__tour {
+    transform: translateX(0);
+    transition-delay: 0ms;
+  }
+
+  /* ============================ hero ============================ */
+  .pp__hero {
+    position: relative;
+    width: 95%;
+    margin-left: 2.5%;
+    height: 82vh;
+    min-height: 520px;
+    overflow: hidden;
+    border-radius: var(--hero-radius);
+    transition: width var(--dl), height var(--dl);
+    transition-delay: 168ms; /* stage 0 */
+  }
+  [data-expanded='true'] .pp__hero {
+    width: 46.55%;
+    height: 46vh;
+    min-height: 300px;
+    transition-delay: 0ms;
+  }
+  .pp__hero img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .pp__heroScrim {
+    position: absolute;
+    inset: 0;
+    background: #000;
+    opacity: 0; /* dial per bright hero (scrimOpacity prop) */
+  }
+  .pp__heroGrad {
+    position: absolute;
+    inset: 0;
+    opacity: 0; /* protection gradient (gradientOpacity prop) */
+    background: linear-gradient(180deg, #000 8.9%, transparent 49.2%, #000 86.1%);
+  }
+
+  /* ============================ content ============================ */
+  .pp__content {
+    width: 95%;
+    margin: 0 auto;
+  }
+
+  /* ---- meta ---- */
+  .pp__meta {
+    margin-top: 44px;
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 0;
+    width: 100%;
+    transition: width var(--dl), gap var(--dl);
+    transition-delay: 112ms; /* stage 2, closing */
+  }
+  [data-expanded='true'] .pp__meta {
+    flex-direction: column;
+    gap: 28px;
+    width: 49%;
+    transition-delay: 110ms; /* stage 2, opening */
+  }
+  .pp__metaCols {
+    width: 40%;
+    display: flex;
+    justify-content: space-between;
+    gap: 24px;
+    align-items: baseline;
+    transition: width var(--dl);
+    transition-delay: 140ms; /* stage 1, closing */
+  }
+  [data-expanded='true'] .pp__metaCols {
+    width: 100%;
+    transition-delay: 55ms; /* stage 1, opening */
+  }
+  .pp__metaCol {
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 12px;
+    letter-spacing: 0.14em;
+    line-height: 1.5;
+    text-box: trim-end alphabetic;
+  }
+  .pp__metaLabel {
+    color: var(--aoin-cool-white-45);
+  }
+  .pp__desc {
+    width: 45%;
+    margin: 0;
+    font-family: var(--font-headline);
+    font-weight: var(--weight-body);
+    font-size: clamp(18px, 1.5cqw, 32px);
+    line-height: 1.25;
+    text-box: trim-both cap alphabetic;
+    text-wrap: pretty;
+    transition: width var(--dl), font-size var(--dl);
+    transition-delay: 140ms; /* stage 1 */
+  }
+  [data-expanded='true'] .pp__desc {
+    width: 100%;
+    font-size: 20px;
+    transition-delay: 55ms;
+  }
+
+  /* ---- gallery ---- */
+  .pp__galleryWrap {
+    display: block; /* the panel is fixed, so no flex row is needed here */
+  }
+  .pp__gallery {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 80px;
+    margin-top: 72px;
+    align-items: start;
+    transition: width var(--dl), gap var(--dl);
+    transition-delay: 84ms; /* stage 3, closing */
+  }
+  [data-expanded='true'] .pp__gallery {
+    width: 49%;
+    gap: 24px;
+    transition-delay: 165ms; /* stage 3, opening */
+  }
+  .pp__g {
+    position: relative;
+    overflow: hidden;
+    border-radius: 10px;
+  }
+  .pp__g img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .pp__g--a { grid-column: 1 / span 8; aspect-ratio: 16 / 9; }
+  .pp__g--b { grid-column: 9 / span 4; align-self: end; aspect-ratio: 1 / 1; }
+  .pp__g--c { grid-column: 1 / span 5; aspect-ratio: 4 / 3; }
+  .pp__g--d { grid-column: 6 / span 7; align-self: end; aspect-ratio: 16 / 9; }
+  .pp__g--full {
+    grid-column: 1 / -1;
+    height: calc((95cqw - 550px) * 0.5 + 262.5px);
+  }
+
+  /* ---- stats ---- */
+  .pp__stats {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 12px;
+    margin-top: 72px;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    color: var(--aoin-cool-white-45);
+    transition: width var(--dl);
+    transition-delay: 56ms; /* stage 4, closing */
+  }
+  [data-expanded='true'] .pp__stats {
+    width: 49%;
+    font-size: 10px; /* step change, NOT transitioned (only width is) */
+    transition-delay: 220ms; /* stage 4, opening */
+  }
+  .pp__stat { grid-column: span 3; }
+  .pp__stat b {
+    display: block;
+    font-weight: var(--weight-mono);
+    color: var(--aoin-cool-white);
+    margin-top: 8px;
+    font-size: 2.4em;
+    letter-spacing: 0.04em;
+  }
+
+  /* ---- credits ---- */
+  .pp__credits {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 34px 12px;
+    margin-top: 48px;
+    font-family: var(--font-headline);
+    font-weight: var(--weight-body);
+    font-size: 18px;
+    letter-spacing: 0.04em;
+    transition: width var(--dl);
+    transition-delay: 28ms; /* stage 5, closing */
+  }
+  [data-expanded='true'] .pp__credits {
+    width: 49%;
+    font-size: 15px; /* step change, NOT transitioned */
+    transition-delay: 275ms; /* stage 5, opening */
+  }
+  .pp__creditsTitle {
+    grid-column: 1 / -1;
+    font-family: var(--font-headline);
+    font-weight: var(--weight-headline);
+    font-size: 2em;
+    letter-spacing: 0.1em;
+    margin-bottom: 2px;
+  }
+  .pp__credit {
+    grid-column: span 3;
+    color: var(--aoin-cool-white-45);
+    font-size: 14px;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+  }
+  .pp__credit b {
+    display: block;
+    font-family: var(--font-headline);
+    font-weight: var(--weight-body);
+    color: var(--aoin-cool-white);
+    margin-top: 8px;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    word-break: break-word;
+  }
+  .pp__credit a {
+    color: inherit;
+    text-decoration: none;
+    text-transform: uppercase; /* visible text only — href keeps the real handle */
+    border-bottom: 1px solid rgba(217, 225, 234, 0.28);
+  }
+
+  /* ---- next project ---- */
+  .pp__next {
+    margin-top: 96px;
+    border-top: 2px solid var(--aoin-cool-white-45);
+    padding-top: 26px;
+  }
+  .pp__nextLink {
+    display: flex;
+    width: max-content;
+    margin: 14vh auto 16vh;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-headline);
+    font-weight: var(--weight-headline);
+    font-size: clamp(40px, 9cqw, 150px);
+    line-height: 1;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    color: var(--aoin-cool-white);
+  }
+  .pp__nextPlate {
+    display: inline-flex;
+    justify-content: center;
+    overflow: hidden;
+    max-width: 0;
+    margin-inline: 1.6cqw;
+    transition:
+      max-width 420ms cubic-bezier(0.16, 1, 0.3, 1),
+      margin-inline 420ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .pp__nextLink[data-open='true'] .pp__nextPlate {
+    max-width: 30cqw;
+    margin-inline: 2.2cqw;
+  }
+  .pp__nextPlateInner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.18em;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: clamp(10px, 1.5cqw, 26px);
+    letter-spacing: 0.08em;
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+  .pp__nextMask {
+    overflow: hidden;
+    display: block;
+  }
+  .pp__nextLine {
+    display: block;
+    background: var(--aoin-cool-white);
+    color: #000;
+    padding: 0.22em 0.55em;
+    transform: translateY(110%); /* JS raises it on plate open */
+  }
+
+  /* ---- all work ---- */
+  .pp__allwork {
+    margin-top: 44px;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 12px;
+    letter-spacing: 0.28em;
+  }
+
+  /* ============================ fixed chrome ============================ */
+  .pp__toggle {
+    position: fixed;
+    top: var(--pp-title-top, 92px);
+    right: var(--pp-edge);
+    z-index: 30;
+    background: #000;
+    border: 1px solid rgba(217, 225, 234, 0.28);
+    color: var(--aoin-cool-white);
+    border-radius: 6px;
+    font-family: var(--font-headline);
+    font-weight: var(--weight-headline);
+    font-size: 15px;
+    letter-spacing: 0.06em;
+    padding: 9px 18px;
+    cursor: pointer;
+    animation: pp-blink 3.2s ease-in-out infinite;
+  }
+  [data-expanded='true'] .pp__toggle {
+    animation: none;
+  }
+  .pp__toggle:hover {
+    border-color: var(--aoin-cool-white);
+  }
+  @keyframes pp-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+
+  .pp__aside {
+    position: fixed;
+    top: var(--pp-aside-top, 148px);
+    right: var(--pp-edge);
+    width: 0;
+    max-height: var(--pp-aside-maxh, calc(100vh - 148px - 92px));
+    overflow: hidden;
+    box-sizing: border-box;
+    z-index: 15;
+    pointer-events: none;
+    opacity: 0;
+    transition:
+      width 500ms cubic-bezier(0.16, 1, 0.3, 1) var(--panel-delay),
+      opacity 500ms cubic-bezier(0.16, 1, 0.3, 1) var(--panel-delay);
+  }
+  [data-expanded='true'] .pp__aside {
+    width: var(--pp-panel-w, 46vw);
+    opacity: 1;
+    pointer-events: auto;
+  }
+  .pp__notes {
+    width: var(--pp-panel-w, 46vw);
+    box-sizing: border-box;
+    padding-right: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+  }
+  .pp__notesLabel {
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    color: var(--aoin-cool-white-45);
+  }
+  .pp__notesLead {
+    margin: 0;
+    font-family: var(--font-headline);
+    font-weight: var(--weight-body);
+    font-size: 20px;
+    line-height: 1.45;
+    text-wrap: pretty;
+  }
+  .pp__notesBody {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 14px;
+    line-height: 1.85;
+    color: var(--aoin-cool-white-45);
+  }
+
+  .pp__footmeta {
+    position: fixed;
+    left: var(--pp-edge);
+    right: var(--pp-edge);
+    bottom: 22px;
+    z-index: 8;
+    display: flex;
+    justify-content: space-between;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    color: var(--aoin-cool-white-45);
+    pointer-events: none;
+  }
+
+  /* ============================ reduced motion ============================ */
+  @media (prefers-reduced-motion: reduce) {
+    .pp *,
+    .pp .pp__toggle {
+      transition: none !important;
+      animation: none !important;
+    }
+  }
+
+  /* ============================ mobile ============================
+     Desktop-first per the handoff. On phones the expand interaction is
+     dropped: the write-up surfaces inline at the bottom, the toggle is
+     hidden, and everything stacks to a single column. */
+  @media (max-width: 720px) {
+    .pp {
+      padding-bottom: 96px;
+    }
+    .pp__titleRow {
+      display: block;
+      height: auto;
+      width: 90%;
+      margin-left: 5%;
+      padding-top: 16vh;
+      padding-bottom: 28px;
+    }
+    .pp__title {
+      font-size: clamp(40px, 15vw, 88px);
+    }
+    .pp__title span {
+      max-width: 100% !important;
+    }
+    .pp__tour {
+      position: static;
+      transform: none !important;
+      margin-top: 12px;
+    }
+    .pp__hero {
+      width: 90%;
+      margin-left: 5%;
+      height: 62vh;
+      min-height: 360px;
+    }
+    .pp__content {
+      width: 90%;
+    }
+    .pp__meta {
+      flex-direction: column;
+      gap: 24px;
+    }
+    .pp__metaCols,
+    .pp__desc {
+      width: 100% !important;
+    }
+    .pp__desc {
+      margin-top: 4px;
+      font-size: clamp(18px, 5vw, 24px);
+    }
+    .pp__gallery {
+      gap: 12px;
+    }
+    .pp__g,
+    .pp__g--full {
+      grid-column: 1 / -1 !important;
+      align-self: auto !important;
+      height: auto;
+      aspect-ratio: 16 / 9;
+    }
+    .pp__stats {
+      gap: 24px 12px;
+      font-size: 11px;
+    }
+    .pp__stat {
+      grid-column: span 6;
+    }
+    .pp__credits {
+      font-size: 16px;
+    }
+    .pp__credit {
+      grid-column: span 6;
+    }
+    .pp__nextLink {
+      font-size: clamp(34px, 12vw, 64px);
+    }
+
+    /* Toggle hidden; the panel becomes an inline block at the end. */
+    .pp__toggle {
+      display: none;
+    }
+    .pp__aside {
+      position: static;
+      width: 100% !important;
+      max-width: 90%;
+      margin: 64px auto 0;
+      max-height: none;
+      overflow: visible;
+      opacity: 1;
+      pointer-events: auto;
+      transition: none;
+    }
+    .pp__notes {
+      width: 100% !important;
+      padding-right: 0;
+    }
+    .pp__notesLead {
+      font-size: 18px;
+    }
+  }
+</style>
+
+<script>
+  import { initProjectPage } from '@/lib/project-page';
+
+  const boot = () => {
+    const root = document.querySelector<HTMLElement>('[data-pp]');
+    if (root) initProjectPage(root);
+  };
+
+  boot();
+  // Under the ClientRouter, a soft-nav arrival (the flight) fires page-load.
+  document.addEventListener('astro:page-load', boot);
+</script>

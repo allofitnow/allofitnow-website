@@ -138,12 +138,16 @@
   --card-offset: 20px;    /* gap between the pointer and the card */
   --card-w: 300px;        /* max card width before the copy wraps */
 
-  /* Work grid + project hero geometry — also the flight's landing rects. */
+  /* Work grid + project hero geometry — also the flight's landing rects.
+     The reworked project page puts a title row ABOVE the hero, so --hero-pad-top
+     is now the title row's top padding and the flight adds the title height on
+     top (see approxDest). The hero is left-aligned to the 2.5% content gutter
+     (not centred) and taller in its collapsed/landing state. */
   --tile-radius: 12px;
   --hero-radius: 12px;
   --hero-w: 95%;
-  --hero-height: 72svh;
-  --hero-pad-top: 18svh;
+  --hero-height: 82svh;
+  --hero-pad-top: 12svh;
   --tile-gap: 12px;
   --work-pad-top: 24svh;
 }
