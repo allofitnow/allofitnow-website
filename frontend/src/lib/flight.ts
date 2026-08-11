@@ -65,9 +65,14 @@ function approxDest(toPath: string, slug: string): Rect | null {
   const vw = root.clientWidth; // excludes the scrollbar
   const vh = innerHeight;
   const radius = cssVar('--hero-radius') || '12px';
+  // The grid + hero live inside a centred, capped frame on wide screens (see
+  // --content-max), so aim the flyer inside that frame — otherwise the after-swap
+  // re-target has to yank it back from a full-width guess and the flight jumps.
+  const cw = Math.min(vw, numVar('--content-max', 1920));
+  const gx = (vw - cw) / 2; // side gutter when the frame is narrower than the viewport
 
   if (isProjectPath(toPath)) {
-    const w = vw * (numVar('--hero-w', 95) / 100);
+    const w = cw * (numVar('--hero-w', 95) / 100);
     return { left: (vw - w) / 2, top: vh * (numVar('--hero-pad-top', 18) / 100), width: w, height: vh * (numVar('--hero-height', 72) / 100), radius };
   }
 
@@ -76,12 +81,12 @@ function approxDest(toPath: string, slug: string): Rect | null {
   const side = vw <= 560 ? numVar('--margin-edge-mobile', 20) : numVar('--margin-edge', 48);
   const gap = numVar('--tile-gap', 12);
   const cols = vw <= 560 ? 1 : vw <= 900 ? 2 : 3;
-  const colW = (vw - 2 * side - (cols - 1) * gap) / cols;
+  const colW = (cw - 2 * side - (cols - 1) * gap) / cols;
   const tileH = (colW * 3) / 4;
   const topPad = vh * (numVar('--work-pad-top', 24) / 100) + 42; // + section label
   const rowN = Math.floor(idx / cols);
   const colN = idx % cols;
-  return { left: side + colN * (colW + gap), top: topPad + rowN * (tileH + gap), width: colW, height: tileH, radius: cssVar('--tile-radius') || '12px' };
+  return { left: gx + side + colN * (colW + gap), top: topPad + rowN * (tileH + gap), width: colW, height: tileH, radius: cssVar('--tile-radius') || '12px' };
 }
 
 // Live rect of an element's image (for measuring the real destination).

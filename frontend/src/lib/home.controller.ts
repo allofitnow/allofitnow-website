@@ -536,6 +536,13 @@ export class HomeController {
   private applyResponsive() {
     const m = window.innerWidth <= 720;
     const pad = m ? 20 : 48;
+    // Content is capped + centred on wide screens (--content-max); frameGutter is
+    // the empty space outside that frame on one side. Chrome that aligns to the
+    // frame ADDS it to its inset; the marquee SUBTRACTS it to bleed full-width.
+    const clientW = document.documentElement.clientWidth;
+    const cmax =
+      parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--content-max')) || 1920;
+    const frameGutter = Math.max(0, (clientW - cmax) / 2);
     const cue = this.ref('cue');
     if (cue) {
       cue.style.fontSize = (m ? 10 : 11) + 'px';
@@ -548,8 +555,10 @@ export class HomeController {
     }
     const portrait = this.ref('portrait');
     if (portrait) {
-      portrait.style.marginLeft = '-' + pad + 'px';
-      portrait.style.marginRight = '-' + pad + 'px';
+      // Bleed the marquee to the full viewport, past the capped About frame.
+      const bleed = frameGutter + pad;
+      portrait.style.marginLeft = '-' + bleed + 'px';
+      portrait.style.marginRight = '-' + bleed + 'px';
       portrait.style.minHeight = m ? '28svh' : '40svh';
       portrait.style.marginTop = STILL_GAP + 'px';
       portrait.style.flex = m ? '0 0 auto' : '1 1 auto';
@@ -596,8 +605,11 @@ export class HomeController {
 
     const fbar = this.ref('footBar');
     if (fbar) {
-      fbar.style.left = pad + 'px';
-      fbar.style.right = pad + 'px';
+      // Fixed + full-width, so align it to the capped frame like the nav: pad on
+      // normal screens, pad + the ultrawide gutter beyond it.
+      const edge = pad + frameGutter;
+      fbar.style.left = edge + 'px';
+      fbar.style.right = edge + 'px';
       fbar.style.fontSize = (m ? 9 : 11) + 'px';
       fbar.style.bottom = (m ? 16 : 24) + 'px';
     }

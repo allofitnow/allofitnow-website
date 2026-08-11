@@ -100,6 +100,9 @@
   --margin-cover: 31px;         /* cover edge inset */
   --margin-edge: 48px;          /* the home page's live edge inset (desktop) */
   --margin-edge-mobile: 20px;   /* the home page's live edge inset (<=720px) */
+  --content-max: 2432px;        /* cap for full-width content; centres on wide screens
+                                   (~64px gutter on a 2560 display), no effect below it.
+                                   ~2464 = the standard 48px edge margin (no extra frame). */
 
   /* Corners: the brand is square. No border-radius anywhere. */
   --radius-none: 0;

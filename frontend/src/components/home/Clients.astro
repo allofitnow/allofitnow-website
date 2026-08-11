@@ -75,6 +75,9 @@ while (i < clients.length) {
     --gap: 0.34em;
     --size: clamp(11px, 1.3cqw, 26px);
     container-type: inline-size;
+    /* cap + centre on ultrawide (also stabilises the cqw-based sizing there) */
+    max-width: var(--content-max);
+    margin-inline: auto;
     /* transparent — the fixed film grain shows through, like the other sections */
     color: var(--aoin-cool-white);
     /* small bottom pad — the footer brings its own 110px top, and the 2.7 leading
@@ -191,6 +194,20 @@ while (i < clients.length) {
       opacity: 1;
     }
   }
+  /* JS fallback (the script below adds .js-reveal only when view() timelines are
+     unsupported — e.g. older iOS Safari): reveal each name with the same settle +
+     fade as it scrolls into view, instead of leaving them static. */
+  .aoin-clients.js-reveal .aoin-word {
+    opacity: 0;
+    transform: translateX(var(--dx));
+    transition:
+      opacity 0.7s linear,
+      transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .aoin-clients.js-reveal .aoin-word.in {
+    opacity: 1;
+    transform: translateX(0);
+  }
   @media (prefers-reduced-motion: reduce) {
     .aoin-word {
       animation: none !important;
@@ -199,3 +216,29 @@ while (i < clients.length) {
     }
   }
 </style>
+
+<script>
+  // Fallback for browsers without scroll-driven animations (e.g. older iOS
+  // Safari): reveal each client name with the same settle + fade as it scrolls
+  // into view. Browsers that support `animation-timeline: view()` use the CSS
+  // path above and skip this; reduced-motion users keep the static names.
+  (() => {
+    const section = document.querySelector<HTMLElement>('.aoin-clients');
+    if (!section) return;
+    if (CSS.supports('animation-timeline', 'view()')) return;
+    if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    section.classList.add('js-reveal');
+    const io = new IntersectionObserver(
+      (entries, obs) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) {
+            e.target.classList.add('in');
+            obs.unobserve(e.target);
+          }
+        });
+      },
+      { threshold: 0.2 },
+    );
+    section.querySelectorAll<HTMLElement>('.aoin-word').forEach((w) => io.observe(w));
+  })();
+</script>

@@ -81,6 +81,9 @@ import { projects } from '@/data/projects';
     justify-content: flex-start;
     padding: 120px 48px 0;
     box-sizing: border-box;
+    /* cap + centre on ultrawide; the carousel below still bleeds to this frame */
+    max-width: var(--content-max);
+    margin-inline: auto;
   }
 
   .mask {

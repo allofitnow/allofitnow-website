@@ -43,8 +43,12 @@ import { nav, location, tagline } from '@/data/home';
   .aoin-nav {
     position: fixed;
     top: 30px;
-    left: 48px;
-    right: 48px;
+    left: 0;
+    right: 0;
+    margin-inline: auto;
+    max-width: var(--content-max);
+    padding-inline: 48px;
+    box-sizing: border-box;
     z-index: 20;
     display: grid;
     grid-template-columns: 1fr 1fr 1fr 1fr;
@@ -197,8 +201,7 @@ import { nav, location, tagline } from '@/data/home';
   @media (max-width: 720px) {
     .aoin-nav {
       top: 16px;
-      left: 20px;
-      right: 20px;
+      padding-inline: 20px;
       grid-template-columns: 1fr auto;
       row-gap: 16px;
       column-gap: 16px;
