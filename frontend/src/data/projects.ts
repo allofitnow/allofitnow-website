@@ -8,6 +8,22 @@
 // the hero image, so a differing crop would jump mid-transition. Swap in a real
 // wider hero later and the flight still works, it just re-crops on landing.
 
+// The Work page's four capability filters — also the shared service taxonomy
+// used for the tile-overlay tags and list chips (we picked ONE wording, the
+// brand's own service names, resolving the handoff's open taxonomy question).
+export type Capability =
+  | 'REAL-TIME CONTENT'
+  | 'SCREENS PRODUCTION'
+  | 'MIXED REALITY'
+  | 'EQUIPMENT RENTAL';
+
+export const CAPABILITIES: Capability[] = [
+  'REAL-TIME CONTENT',
+  'SCREENS PRODUCTION',
+  'MIXED REALITY',
+  'EQUIPMENT RENTAL',
+];
+
 export interface Project {
   slug: string;
   title: string;
@@ -21,11 +37,23 @@ export interface Project {
   hero: string;
   body: string;
   order: number;
+  // --- Work-page fields (PLACEHOLDER copy, replace via CMS) -----------------
+  /** Drives the filters + overlay tags + list chips. 2 per project today. */
+  capabilities: Capability[];
+  /** Overlay + list secondary line, ALL CAPS, e.g. "WORLD TOUR". Placeholder. */
+  tour: string;
+  /** Overlay bottom line, e.g. "ALL OF IT NOW X PHNTM". Placeholder. */
+  collaborator: string;
 }
 
 // PLACEHOLDER seed copy — titles are AOIN's real clients (see the roster in
 // data/home.ts); the CLIENT/YEAR/ROLE/SCOPE meta and body are stand-ins to be
 // replaced per-project via the CMS. Reusing the stills we already have as art.
+// capabilities/tour/collaborator are Work-page placeholders (capability[0] is
+// each project's real role; the rest is invented for the filter/overlay demo).
+const BODY =
+  'Real-time content built for LED and driven live at show resolution. Generative systems, camera-aware grading, and a playback architecture that survives contact with a touring schedule.';
+
 const seed: Omit<Project, 'code'>[] = [
   {
     slug: 'bad-bunny',
@@ -36,8 +64,11 @@ const seed: Omit<Project, 'code'>[] = [
     scope: 'LED / PLAYBACK',
     thumb: '/assets/bad-bunny.webp',
     hero: '/assets/bad-bunny.webp',
-    body: 'Real-time content built for LED and driven live at show resolution. Generative systems, camera-aware grading, and a playback architecture that survives contact with a touring schedule.',
+    body: BODY,
     order: 1,
+    capabilities: ['REAL-TIME CONTENT', 'SCREENS PRODUCTION'],
+    tour: 'WORLD TOUR',
+    collaborator: 'ALL OF IT NOW X PHNTM',
   },
   {
     slug: 'rauw-alejandro',
@@ -48,8 +79,11 @@ const seed: Omit<Project, 'code'>[] = [
     scope: 'LED / XR',
     thumb: '/assets/rauw-alejandro.webp',
     hero: '/assets/rauw-alejandro.webp',
-    body: 'Real-time content built for LED and driven live at show resolution. Generative systems, camera-aware grading, and a playback architecture that survives contact with a touring schedule.',
+    body: BODY,
     order: 2,
+    capabilities: ['SCREENS PRODUCTION', 'MIXED REALITY'],
+    tour: 'SATURNO TOUR',
+    collaborator: 'ALL OF IT NOW X STURDY.CO',
   },
   {
     slug: 'martin-garrix',
@@ -60,8 +94,11 @@ const seed: Omit<Project, 'code'>[] = [
     scope: 'LED / PLAYBACK',
     thumb: '/assets/martin-garrix.webp',
     hero: '/assets/martin-garrix.webp',
-    body: 'Real-time content built for LED and driven live at show resolution. Generative systems, camera-aware grading, and a playback architecture that survives contact with a touring schedule.',
+    body: BODY,
     order: 3,
+    capabilities: ['REAL-TIME CONTENT', 'MIXED REALITY'],
+    tour: 'FESTIVAL RUN',
+    collaborator: 'ALL OF IT NOW X STURDY.CO',
   },
   {
     slug: 'peso-pluma',
@@ -72,8 +109,11 @@ const seed: Omit<Project, 'code'>[] = [
     scope: 'LED / PLAYBACK',
     thumb: '/assets/peso-pluma.webp',
     hero: '/assets/peso-pluma.webp',
-    body: 'Real-time content built for LED and driven live at show resolution. Generative systems, camera-aware grading, and a playback architecture that survives contact with a touring schedule.',
+    body: BODY,
     order: 4,
+    capabilities: ['SCREENS PRODUCTION', 'EQUIPMENT RENTAL'],
+    tour: 'ARENA TOUR',
+    collaborator: 'ALL OF IT NOW X STURDY.CO',
   },
   {
     slug: 'melanie-martinez',
@@ -84,8 +124,11 @@ const seed: Omit<Project, 'code'>[] = [
     scope: 'XR / COMPOSITING',
     thumb: '/assets/melanie-martinez.webp',
     hero: '/assets/melanie-martinez.webp',
-    body: 'Real-time content built for LED and driven live at show resolution. Generative systems, camera-aware grading, and a playback architecture that survives contact with a touring schedule.',
+    body: BODY,
     order: 5,
+    capabilities: ['MIXED REALITY', 'REAL-TIME CONTENT'],
+    tour: 'TRILOGY TOUR',
+    collaborator: 'ALL OF IT NOW X PHNTM',
   },
   {
     slug: 'good-charlotte',
@@ -96,8 +139,11 @@ const seed: Omit<Project, 'code'>[] = [
     scope: 'LED / PLAYBACK',
     thumb: '/assets/good-charlote.webp',
     hero: '/assets/good-charlote.webp',
-    body: 'Real-time content built for LED and driven live at show resolution. Generative systems, camera-aware grading, and a playback architecture that survives contact with a touring schedule.',
+    body: BODY,
     order: 6,
+    capabilities: ['REAL-TIME CONTENT', 'EQUIPMENT RENTAL'],
+    tour: 'GENERATION RX',
+    collaborator: 'ALL OF IT NOW X PHNTM',
   },
   {
     slug: 'renee-rapp',
@@ -108,8 +154,11 @@ const seed: Omit<Project, 'code'>[] = [
     scope: 'LED / XR',
     thumb: '/assets/renee-rapp.webp',
     hero: '/assets/renee-rapp.webp',
-    body: 'Real-time content built for LED and driven live at show resolution. Generative systems, camera-aware grading, and a playback architecture that survives contact with a touring schedule.',
+    body: BODY,
     order: 7,
+    capabilities: ['REAL-TIME CONTENT', 'SCREENS PRODUCTION'],
+    tour: 'THEATRE TOUR',
+    collaborator: 'ALL OF IT NOW X PHNTM',
   },
 ];
 

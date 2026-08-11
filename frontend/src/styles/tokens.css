@@ -41,8 +41,11 @@
   --aoin-black: rgb(0, 0, 0);            /* primary canvas */
   --aoin-ink: rgb(10, 10, 10);           /* near-black, soft canvas / text on light */
   --aoin-cool-white: rgb(217, 225, 234); /* THE brand foreground — "coolWhite" (#DDE7F4) */
+  --aoin-cool-white-80: rgba(217, 225, 234, 0.8);  /* Work tile-overlay meta */
   --aoin-cool-white-45: rgba(217, 225, 234, 0.45); /* muted / secondary */
+  --aoin-cool-white-35: rgba(217, 225, 234, 0.35); /* inactive view icons / dimmed rows */
   --aoin-white: rgb(255, 255, 255);      /* pure white, sparing (photo-heavy slides) */
+  --rule: rgba(217, 225, 234, 0.22);     /* hairline rules (Work list) */
 
   /* Semantic */
   --surface-page: var(--aoin-black);
@@ -118,6 +121,8 @@
 :root {
   --fly-dur: 940ms;
   --fly-ease: cubic-bezier(0.05, 0.89, 0, 0.99);
+  --ease-brand: cubic-bezier(0.05, 0.89, 0, 0.99); /* alias of --fly-ease — the brand curve, reused on the Work page */
+  --ease-hard: cubic-bezier(0.87, 0, 0.13, 1);     /* Work list hover-thumbnail curtain wipe */
   --exit-lead: 0.55;      /* outgoing content is gone by this fraction of the flight */
   --exit-stagger: 40ms;   /* per-item offset; auto-compressed to fit the envelope */
   --exit-ease: cubic-bezier(0.5, 0, 0.75, 0); /* accelerating — things leave, not drift */
