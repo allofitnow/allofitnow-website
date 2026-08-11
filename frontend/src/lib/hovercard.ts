@@ -34,7 +34,6 @@ const flighting = () => root.classList.contains('aoin-flighting');
 // gets its own full ragged plate.
 const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 interface Card {
-  code: string;
   titleHTML: string;
   caps: string;
 }
@@ -42,7 +41,6 @@ const DATA = new Map<string, Card>(
   projects.map((p) => [
     p.slug,
     {
-      code: p.code,
       titleHTML: `${esc(p.title)}<br>${esc(p.client)} — ${esc(p.year)}`,
       caps: [p.role, ...p.scope.split('/').map((s) => s.trim())].filter(Boolean).join(', '),
     },
@@ -52,10 +50,9 @@ const DATA = new Map<string, Card>(
 function init() {
   const card = document.getElementById('aoin-hovercard');
   if (!card) return;
-  const elCode = card.querySelector<HTMLElement>('[data-hc="code"]');
   const elTitle = card.querySelector<HTMLElement>('[data-hc="title"]');
   const elCaps = card.querySelector<HTMLElement>('[data-hc="caps"]');
-  if (!elCode || !elTitle || !elCaps) return;
+  if (!elTitle || !elCaps) return;
 
   const HC = { x: 0, y: 0, tx: 0, ty: 0, on: false, raf: 0, slug: '' };
 
@@ -71,7 +68,6 @@ function init() {
     const d = DATA.get(slug);
     if (!d || HC.slug === slug) return;
     HC.slug = slug;
-    elCode!.textContent = d.code;
     elTitle!.innerHTML = d.titleHTML;
     elCaps!.textContent = d.caps;
     if (HC.on) return; // tile→tile: swap copy, don't replay the reveal
