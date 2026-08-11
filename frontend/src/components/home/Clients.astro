@@ -181,6 +181,11 @@ while (i < clients.length) {
      width instead of being boxed in tighter than the chrome. */
   @media (max-width: 720px) {
     .aoin-clients {
+      /* Much taller rows than desktop's 2.7: the mobile font is small (11px), so
+         without extra lead the whole roster fits on one screen and there's no
+         scroll range for the reveal to play across. This makes the section taller
+         than the viewport so names settle/fade in as you scroll past them. */
+      --lead: 6;
       padding: 110px 20px 40px;
     }
   }
