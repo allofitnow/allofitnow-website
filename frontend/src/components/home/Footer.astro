@@ -30,7 +30,7 @@ import { footer } from '@/data/home';
         </div>
         <div data-fr="1" class="mask">
           <div data-fi="1">
-            {footer.navSecondary.map((l, i) => (<>{i > 0 && <br />}<a href={l.href} data-astro-reload>{l.label}</a></>))}
+            {footer.navSecondary.map((l, i) => (<>{i > 0 && <br />}<a href={l.href} {...(l.href.startsWith('/work') ? {} : { 'data-astro-reload': true })}>{l.label}</a></>))}
           </div>
         </div>
       </div>

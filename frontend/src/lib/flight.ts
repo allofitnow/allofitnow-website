@@ -76,17 +76,21 @@ function approxDest(toPath: string, slug: string): Rect | null {
     return { left: (vw - w) / 2, top: vh * (numVar('--hero-pad-top', 18) / 100), width: w, height: vh * (numVar('--hero-height', 72) / 100), radius };
   }
 
+  // Work (return morph): the after-swap puts the grid in the 2-up view and,
+  // for a project below the top row, pulls its tile up to the 2nd slot (col 1).
+  // The FIRST project stays top-left (col 0) — aim at the column it will land in
+  // so the flyer doesn't overshoot to col 1 and then jump back. The top estimate
+  // clears the 14vh pad + the display headline + the filter bar.
   const idx = ORDER.indexOf(slug);
   if (idx < 0) return null;
   const side = vw <= 560 ? numVar('--margin-edge-mobile', 20) : numVar('--margin-edge', 48);
-  const gap = numVar('--tile-gap', 12);
-  const cols = vw <= 560 ? 1 : vw <= 900 ? 2 : 3;
-  const colW = (cw - 2 * side - (cols - 1) * gap) / cols;
-  const tileH = (colW * 3) / 4;
-  const topPad = vh * (numVar('--work-pad-top', 24) / 100) + 42; // + section label
-  const rowN = Math.floor(idx / cols);
-  const colN = idx % cols;
-  return { left: gx + side + colN * (colW + gap), top: topPad + rowN * (tileH + gap), width: colW, height: tileH, radius: cssVar('--tile-radius') || '12px' };
+  const gap = 18; // large-view --tile-gap (WorkPage prop)
+  const colW = (cw - 2 * side - gap) / 2;
+  const tileH = (colW * 9) / 16;
+  const headline = Math.min(cw * 0.12, 180) * 0.78; // min(12cqw,180), lh .72 + pad
+  const top = vh * 0.14 + headline + 78; // + filter bar
+  const col = idx === 0 ? 0 : 1; // idx 0 stays top-left; the rest land at slot 2
+  return { left: gx + side + col * (colW + gap), top, width: colW, height: tileH, radius: cssVar('--tile-radius') || '12px' };
 }
 
 // Live rect of an element's image (for measuring the real destination).
@@ -149,6 +153,11 @@ let active: Active | null = null;
 
 document.addEventListener('astro:before-preparation', (e: any) => {
   const toPath: string = e.to?.pathname ?? '';
+  // Forward flights (tile/slide → project) AND the return (project hero → work
+  // grid tile). On the return, the reworked /work grid sits far down under a
+  // full-height headline, so the after-swap pulls the returning tile up to a
+  // visible slot (see __aoinReturnSlug + the work-return block below).
+  (window as any).__aoinReturnSlug = null;
   if (reduced() || (!isProjectPath(toPath) && !isWorkPath(toPath))) return;
 
   const dur = numVar('--fly-dur', 940);
@@ -171,6 +180,10 @@ document.addEventListener('astro:before-preparation', (e: any) => {
       }
     }
   }
+
+  // The return flight (project → /work) flags itself, keyed by the tile it lands
+  // on, so the after-swap block + the work page treat it as a morph-back.
+  if (isWorkPath(toPath) && active.flyer) (window as any).__aoinReturnSlug = active.slug;
 
   // Outgoing copy + tiles: each rises a touch on the brand ease and then cuts,
   // scattered (randomised) so they don't leave in strict order. The visibility
@@ -220,6 +233,33 @@ document.addEventListener('astro:after-swap', () => {
   const destShared = a.slug ? document.querySelector<HTMLElement>(`[data-slug="${a.slug}"]`) : null;
   if (destShared) destShared.style.visibility = 'hidden';
 
+  // Return morph: the reworked /work grid sits far down under a full-height
+  // headline, so put it in the default 2-up view and pull the returning tile up
+  // to a visible top slot (2nd) — the flyer then lands on-screen. Other tiles
+  // reflow around it; the list pane keeps its own (canonical) order. work-page.ts
+  // sees __aoinReturnSlug and skips its intro/stagger so it doesn't undo this.
+  const workRoot = document.querySelector<HTMLElement>('[data-work]');
+  if (workRoot && a.flyer && destShared) {
+    workRoot.style.setProperty('--cols', '2');
+    workRoot.style.setProperty('--tile-ar', '16/9');
+    const gridPane = workRoot.querySelector<HTMLElement>('[data-pane="grid"]');
+    const listPane = workRoot.querySelector<HTMLElement>('[data-pane="list"]');
+    if (gridPane) gridPane.style.display = 'grid';
+    if (listPane) listPane.style.display = 'none';
+    if (gridPane) {
+      const tiles = Array.from(gridPane.children) as HTMLElement[];
+      if (tiles.indexOf(destShared) >= 2) {
+        // Reorder VISUALLY via CSS `order`, not insertBefore — moving a DOM node
+        // mid view-transition aborts it. 1st tile stays 1st, the returning tile
+        // becomes 2nd, the rest keep source order behind it. work-page.ts clears
+        // these on the next view/filter change.
+        tiles.forEach((t, i) => {
+          t.style.order = i === 0 ? '0' : t === destShared ? '1' : '2';
+        });
+      }
+    }
+  }
+
   // Re-target the flyer to the destination's REAL measured rect (the initial aim
   // was a token approximation). Steer the remaining travel from where it is now.
   if (a.flyer && a.flight && destShared) {
@@ -243,7 +283,8 @@ document.addEventListener('astro:after-swap', () => {
 
   // Destination copy + tiles arrive under the travelling flyer: each pops in and
   // rises from just below into place on the brand ease, scattered (randomised).
-  const items = sweepItems(a.slug);
+  // A plain /work nav (no flyer) skips this — the Work page runs its own intro.
+  const items = workRoot && !a.flyer ? [] : sweepItems(a.slug);
   items.forEach((el) => (el.style.visibility = 'hidden'));
   const delays = scatter(items.length, enterStagger, enterDelay);
   items.forEach((el, i) => {
