@@ -1,23 +1,20 @@
 ---
-// Work-grid hover card — a cursor-following plate that names the tile under the
-// pointer. Ported from docs/prototypes/reflow-transition.html (#hovercard): the
-// copy sits on cool-white plates with box-decoration-break:clone, so every
-// wrapped line gets its own box and the ragged right edge is the whole look.
+// Work-grid / home-marquee hover card — a cursor-following "VIEW PROJECT" plate.
+// Ported look from docs/prototypes/reflow-transition.html (#hovercard): a
+// cool-white highlight. The label writes on character-by-character (staggered)
+// each time the card appears (see lib/hovercard.ts).
 //
 // The element persists across ClientRouter swaps (like the flyer + cursor) so
 // lib/hovercard.ts can bind its pointer listeners once. It shows over the work
 // grid tiles and the home bleed-carousel slides ([data-slug] things that fly);
 // pages without either just never trigger it.
-//
-// Each group nests a block .rise inside an overflow-clipped .grp: the prototype
-// animated translateY on the inline plate directly, where transforms are a
-// no-op, so the staggered reveal never rendered. The .rise carries the motion;
-// the inline .plate keeps the clone boxes.
+const LABEL = 'VIEW PROJECT';
 ---
 
 <div id="aoin-hovercard" aria-hidden="true" transition:persist="aoin-hovercard">
-  <div class="grp"><span class="rise"><span class="plate" data-hc="title"></span></span></div>
-  <div class="grp"><span class="rise"><span class="plate" data-hc="caps"></span></span></div>
+  <span class="plate">
+    {LABEL.split('').map((c) => <span class="ch">{c}</span>)}
+  </span>
 </div>
 
 <style>
@@ -29,11 +26,10 @@
     pointer-events: none;
     font-family: var(--font-mono);
     font-weight: var(--weight-mono);
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    line-height: 1.62;
+    font-size: 12px;
+    letter-spacing: 0.2em;
+    line-height: 1;
     width: max-content;
-    max-width: var(--card-w, 300px);
     will-change: transform;
     visibility: hidden;
   }
@@ -41,26 +37,16 @@
     visibility: visible;
   }
 
-  /* clip mask — the riser slides up out of it */
-  .grp {
-    overflow: hidden;
-    margin-bottom: 9px;
-  }
-  .grp:last-child {
-    margin-bottom: 0;
-  }
-  .rise {
-    display: block;
-  }
-
-  /* the cool-white plate; clone so each line (wrapped, or split by the title's
-     <br>) carries its own box with a ragged right edge */
+  /* the cool-white highlight plate; pre keeps the space between the two words */
   .plate {
-    display: inline;
+    display: inline-block;
+    white-space: pre;
     background: var(--aoin-cool-white);
     color: var(--aoin-black);
-    padding: 3px 7px;
-    -webkit-box-decoration-break: clone;
-    box-decoration-break: clone;
+    padding: 6px 10px 5px;
+    overflow: hidden; /* safety while the letters rise into place */
+  }
+  .ch {
+    display: inline-block;
   }
 </style>

@@ -1,18 +1,14 @@
-// Work-grid hover card — the cursor-following plate ported from the reflow
-// prototype (docs/prototypes/reflow-transition.html, #hovercard). It names the
-// tile under the pointer: code, title + client/year, and roles, each on a
-// cool-white box-decoration-break:clone plate. See HoverCard.astro for markup.
+// Work-grid / home-marquee hover card — a cursor-following "VIEW PROJECT" plate
+// whose label writes on character-by-character each time it appears. See
+// HoverCard.astro for markup.
 //
 // The follow is LERPED, not locked — the lag is what makes it feel attached to
-// something rather than glued to the pointer. On first appearance each line
-// rises out of its clip mask, staggered on the brand ease.
+// something rather than glued to the pointer.
 //
 // Bound once at import (the element is transition:persist, so it survives soft
 // swaps). It shows over the things that fly to a project — work-grid tiles and
 // the home bleed-carousel slides — and stays hidden while a flight is in
 // progress, on touch devices, and while a pointer button is held (drag/press).
-
-import { projects } from '@/data/projects';
 
 const root = document.documentElement;
 const getVar = (n: string) => getComputedStyle(root).getPropertyValue(n).trim();
@@ -24,37 +20,14 @@ const canHover = () => matchMedia('(hover: hover) and (pointer: fine)').matches;
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 const flighting = () => root.classList.contains('aoin-flighting');
 
-// Build the per-tile copy once. scope ("LED / XR") splits into its own ragged
-// items so the roles line reads like a real credit list.
-//
-// The title stacks two lines with a <br>, NOT block children: box-decoration-
-// break:clone only paints the inline fragments, and a block child (e.g. a
-// <div>/<i style=display:block>) escapes the inline, leaving its text with no
-// plate behind it. A <br> keeps one inline box across two lines, so each line
-// gets its own full ragged plate.
-const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-interface Card {
-  titleHTML: string;
-  caps: string;
-}
-const DATA = new Map<string, Card>(
-  projects.map((p) => [
-    p.slug,
-    {
-      titleHTML: `${esc(p.title)}<br>${esc(p.client)} — ${esc(p.year)}`,
-      caps: [p.role, ...p.scope.split('/').map((s) => s.trim())].filter(Boolean).join(', '),
-    },
-  ]),
-);
-
 function init() {
   const card = document.getElementById('aoin-hovercard');
   if (!card) return;
-  const elTitle = card.querySelector<HTMLElement>('[data-hc="title"]');
-  const elCaps = card.querySelector<HTMLElement>('[data-hc="caps"]');
-  if (!elTitle || !elCaps) return;
+  const plate = card.querySelector<HTMLElement>('.plate');
+  const chars = Array.from(card.querySelectorAll<HTMLElement>('.ch'));
+  if (!plate || !chars.length) return;
 
-  const HC = { x: 0, y: 0, tx: 0, ty: 0, on: false, raf: 0, slug: '' };
+  const HC = { x: 0, y: 0, tx: 0, ty: 0, on: false, raf: 0 };
 
   function follow() {
     const k = numVar('--card-lerp', 0.18);
@@ -64,36 +37,38 @@ function init() {
     HC.raf = requestAnimationFrame(follow);
   }
 
-  function show(slug: string) {
-    const d = DATA.get(slug);
-    if (!d || HC.slug === slug) return;
-    HC.slug = slug;
-    elTitle!.innerHTML = d.titleHTML;
-    elCaps!.textContent = d.caps;
-    if (HC.on) return; // tile→tile: swap copy, don't replay the reveal
+  // The plate fades in (so there's never a blank box) while each letter rises
+  // into place, staggered left-to-right on the brand ease — the "write on".
+  function writeOn() {
+    const ease = getVar('--fly-ease');
+    plate!.getAnimations().forEach((a) => a.cancel());
+    plate!.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 160, easing: 'linear', fill: 'both' });
+    chars.forEach((ch, i) => {
+      ch.getAnimations().forEach((a) => a.cancel());
+      ch.animate(
+        [
+          { opacity: 0, transform: 'translateY(0.3em)' },
+          { opacity: 1, transform: 'translateY(0)' },
+        ],
+        { duration: 280, delay: i * 32, easing: ease, fill: 'both' },
+      );
+    });
+  }
 
+  function show() {
+    if (HC.on) return; // moving tile→tile: keep it up, don't replay the write-on
     HC.on = true;
     card!.classList.add('on');
     HC.x = HC.tx; // snap to the pointer on first appearance
     HC.y = HC.ty;
     card!.style.transform = `translate3d(${HC.x}px, ${HC.y}px, 0)`;
-    if (!reduced()) {
-      const ease = getVar('--fly-ease');
-      [...card!.children].forEach((g, i) => {
-        const rise = g.firstElementChild as HTMLElement | null;
-        rise?.animate(
-          [{ transform: 'translateY(110%)' }, { transform: 'translateY(0)' }],
-          { duration: 420, delay: i * 55, easing: ease, fill: 'both' },
-        );
-      });
-    }
+    if (!reduced()) writeOn();
     if (!HC.raf) HC.raf = requestAnimationFrame(follow);
   }
 
   function hide() {
     if (!HC.on) return;
     HC.on = false;
-    HC.slug = '';
     card!.classList.remove('on');
     cancelAnimationFrame(HC.raf);
     HC.raf = 0;
@@ -115,15 +90,13 @@ function init() {
   );
 
   addEventListener('pointerover', (e: PointerEvent) => {
-    // Skip while flighting, on touch, or with a button held — the home marquee
-    // scrubs on a held pointer (e.buttons is set through a drag), and the card
-    // shouldn't flicker in behind it.
+    // Not while flighting, on touch, or with a button held (the home marquee
+    // scrubs on a held pointer).
     if (!canHover() || flighting() || e.buttons) return hide();
-    // Work grid tiles AND the home bleed-carousel slides both fly to a project,
-    // so both get the card.
-    const t = (e.target as Element)?.closest?.('.tile[data-slug], .slide[data-slug]') as HTMLElement | null;
+    // Work grid tiles AND home bleed-carousel slides both fly to a project.
+    const t = (e.target as Element)?.closest?.('.tile[data-slug], .slide[data-slug]');
     if (!t) return hide();
-    show(t.dataset.slug || '');
+    show();
   });
 
   addEventListener('pointerdown', hide);
