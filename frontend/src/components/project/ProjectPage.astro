@@ -17,6 +17,7 @@
  *    still lands on / launches from it.
  */
 import { projects, type Project } from '@/data/projects';
+import FootBar from '@/components/home/FootBar.astro';
 
 interface Props {
   project: Project;
@@ -37,10 +38,17 @@ const next = projects[(idx + 1) % projects.length];
 // The repeating 6-slot gallery pattern (see spec §7).
 const TILE = ['pp__g--a', 'pp__g--b', 'pp__g--full', 'pp__g--c', 'pp__g--d', 'pp__g--full'];
 const tileClass = (i: number) => `pp__g ${TILE[i % TILE.length]}`;
+
+// Mobile swipe-cue copy — PLACEHOLDER labels, pending the naming call.
+const CUE_STORY = 'THE STORY'; // page 1 → write-up
+const CUE_WORK = 'THE WORK'; //   write-up → page 1
 ---
 
 <main class="pp" data-pp data-expanded="false" data-screen-label={project.title}>
   <div class="pp__frame" data-pp-frame>
+    {/* Mobile-only swipe cue (above the artist) — tap or swipe to the write-up. */}
+    <button class="pp__cue pp__cue--fwd" data-pp-cue="open" type="button">»»»&nbsp;&nbsp;SWIPE FOR {CUE_STORY}&nbsp;&nbsp;»»»</button>
+
     {/* ---- Title: artist (flows) + tour (slides in on expand) ---- */}
     <div class="pp__titleRow" data-pp-title-row data-unit>
       <h1 class="pp__title"><span data-pp-title>{project.title}</span></h1>
@@ -127,16 +135,15 @@ const tileClass = (i: number) => `pp__g ${TILE[i % TILE.length]}`;
 
   <aside class="pp__aside" id="pp-writeup" data-pp-aside aria-hidden="true">
     <div class="pp__notes" data-pp-notes>
+      {/* Mobile-only swipe cue (top of the write-up) — tap or swipe back. */}
+      <button class="pp__cue pp__cue--back" data-pp-cue="close" type="button">«««&nbsp;&nbsp;SWIPE FOR {CUE_WORK}&nbsp;&nbsp;«««</button>
       <div class="pp__notesLabel">[ PRODUCTION NOTES ]</div>
       <p class="pp__notesLead">{project.writeup.lead}</p>
       {project.writeup.body.map((par) => <p class="pp__notesBody">{par}</p>)}
     </div>
   </aside>
 
-  <div class="pp__footmeta" aria-hidden="true">
-    <span>CREATIVE TECHNOLOGY STUDIO</span>
-    <span>ESTD. 2014</span>
-  </div>
+  <FootBar />
 </main>
 
 <style>
@@ -599,20 +606,19 @@ const tileClass = (i: number) => `pp__g ${TILE[i % TILE.length]}`;
     color: var(--aoin-cool-white-45);
   }
 
-  .pp__footmeta {
-    position: fixed;
-    left: var(--pp-edge);
-    right: var(--pp-edge);
-    bottom: 22px;
-    z-index: 8;
-    display: flex;
-    justify-content: space-between;
-    font-family: var(--font-mono);
-    font-weight: var(--weight-mono);
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    color: var(--aoin-cool-white-45);
-    pointer-events: none;
+  /* ---- mobile swipe cue (desktop: hidden; shown in the mobile block) ---- */
+  .pp__cue {
+    display: none;
+  }
+  /* A soft black gradient sweeps through the text to denote the swipe
+     direction — forward (»») sweeps left→right, back («») sweeps right→left. */
+  @keyframes pp-cue-sweep-r {
+    from { transform: translateX(-110%); }
+    to { transform: translateX(110%); }
+  }
+  @keyframes pp-cue-sweep-l {
+    from { transform: translateX(110%); }
+    to { transform: translateX(-110%); }
   }
 
   /* ============================ reduced motion ============================ */
@@ -625,20 +631,61 @@ const tileClass = (i: number) => `pp__g ${TILE[i % TILE.length]}`;
   }
 
   /* ============================ mobile ============================
-     Desktop-first per the handoff. On phones the expand interaction is
-     dropped: the write-up surfaces inline at the bottom, the toggle is
-     hidden, and everything stacks to a single column. */
+     Phones can't do the desktop 2-up compress, so the write-up is a full-screen
+     panel you swipe (or tap the bottom button) to: the project content slides
+     off-left and the notes slide in from the right (see project-page.ts). */
   @media (max-width: 720px) {
+    :global(html) {
+      overflow-x: hidden; /* contain the off-screen slide panels */
+    }
     .pp {
-      padding-bottom: 96px;
+      padding-bottom: 128px;
     }
     .pp__titleRow {
       display: block;
       height: auto;
       width: 90%;
       margin-left: 5%;
-      padding-top: 16vh;
+      padding-top: 6px; /* the swipe cue above provides the top clearance now */
       padding-bottom: 28px;
+    }
+
+    /* The swipe cue — a small mono line with a black gradient sweeping through
+       it to hint the direction. Tappable, and the whole page is swipeable. */
+    .pp__cue {
+      display: block;
+      position: relative;
+      overflow: hidden;
+      width: max-content;
+      max-width: 90%;
+      margin: 0 auto;
+      padding: 5px 2px;
+      background: none;
+      border: 0;
+      cursor: pointer;
+      font-family: var(--font-mono);
+      font-weight: var(--weight-mono);
+      font-size: 11px;
+      letter-spacing: 0.22em;
+      color: var(--aoin-cool-white);
+      white-space: nowrap;
+    }
+    .pp__cue::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: linear-gradient(90deg, transparent 32%, #000 50%, transparent 68%);
+    }
+    .pp__cue--fwd {
+      margin-top: 13vh; /* clears the fixed nav */
+      margin-bottom: 22px;
+    }
+    .pp__cue--fwd::after {
+      animation: pp-cue-sweep-r 2.6s linear infinite;
+    }
+    .pp__cue--back::after {
+      animation: pp-cue-sweep-l 2.6s linear infinite;
     }
     .pp__title {
       font-size: clamp(40px, 15vw, 88px);
@@ -649,7 +696,9 @@ const tileClass = (i: number) => `pp__g ${TILE[i % TILE.length]}`;
     .pp__tour {
       position: static;
       transform: none !important;
+      width: 100%;
       margin-top: 12px;
+      text-align: center; /* centre the tour under the artist name */
     }
     .pp__hero {
       width: 90%;
@@ -699,20 +748,70 @@ const tileClass = (i: number) => `pp__g ${TILE[i % TILE.length]}`;
       font-size: clamp(34px, 12vw, 64px);
     }
 
-    /* Toggle hidden; the panel becomes an inline block at the end. */
-    .pp__toggle {
-      display: none;
+    /* Page 1 (the project content) slides off-left when the write-up opens —
+       a clean linear screen-slide, like paging between two app screens. */
+    .pp__frame {
+      transition: transform 0.45s linear;
     }
+    [data-expanded='true'] .pp__frame {
+      transform: translateX(-100%);
+    }
+
+    /* The expand is a SLIDE here, not the desktop compress: freeze the frame's
+       content at its mobile layout in BOTH states and kill the per-element
+       transitions, so nothing scales or reflows as a screen slides in/out. */
+    .pp__frame * {
+      transition: none !important;
+    }
+    [data-expanded='true'] .pp__hero {
+      width: 90%;
+      height: 62vh;
+      min-height: 360px;
+    }
+    [data-expanded='true'] .pp__meta {
+      width: 100%;
+    }
+    [data-expanded='true'] .pp__desc {
+      width: 100%;
+      font-size: clamp(18px, 5vw, 24px);
+    }
+    [data-expanded='true'] .pp__gallery {
+      width: 100%;
+      gap: 12px;
+    }
+    [data-expanded='true'] .pp__stats {
+      width: 100%;
+      font-size: 11px;
+    }
+    [data-expanded='true'] .pp__credits {
+      width: 100%;
+      font-size: 16px;
+    }
+
+    /* Page 2: the write-up as a full-screen panel that slides in from the right.
+       Sits under the nav (top pad clears it), over the rest (z-index 15 base). */
     .pp__aside {
-      position: static;
-      width: 100% !important;
-      max-width: 90%;
-      margin: 64px auto 0;
+      position: fixed;
+      inset: 0;
+      width: 100%;
+      max-width: none;
       max-height: none;
-      overflow: visible;
+      margin: 0;
+      padding: 92px 5% 108px;
+      box-sizing: border-box;
+      background: #000;
+      overflow-x: hidden;
+      overflow-y: auto;
       opacity: 1;
       pointer-events: auto;
-      transition: none;
+      transform: translateX(100%);
+      transition: transform 0.45s linear;
+    }
+    [data-expanded='true'] .pp__aside {
+      transform: translateX(0);
+      /* override the desktop [data-expanded] rule (var(--pp-panel-w) = ~46vw),
+         which otherwise wins on specificity and leaves the panel half-width */
+      width: 100%;
     }
     .pp__notes {
       width: 100% !important;
@@ -720,6 +819,11 @@ const tileClass = (i: number) => `pp__g ${TILE[i % TILE.length]}`;
     }
     .pp__notesLead {
       font-size: 18px;
+    }
+
+    /* The swipe cues replace the bottom toggle button on mobile. */
+    .pp__toggle {
+      display: none;
     }
   }
 </style>

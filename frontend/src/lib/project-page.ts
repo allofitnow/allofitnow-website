@@ -79,10 +79,19 @@ export function initProjectPage(root: HTMLElement) {
   function fit() {
     if (!ratio) return; // pre-webfont: leave the CSS clamp in charge
     const frameW = frame.getBoundingClientRect().width;
-    const base = Math.min(148, Math.max(46, 0.094 * frameW)); // clamp(46, 9.4cqw, 148)
-    // Expanded column is calc(49cqw - 24px); collapsed the name has the row.
-    const avail = expanded ? 0.49 * frameW - 24 : 0.95 * frameW;
-    const target = Math.round(Math.min(base, avail / ratio));
+    const mobile = matchMedia('(max-width: 720px)').matches;
+    // Size ceiling matches the CSS clamp for the breakpoint: 9.4cqw/148 desktop,
+    // 15vw/88 mobile.
+    const base = mobile
+      ? Math.min(88, Math.max(40, 0.15 * frameW))
+      : Math.min(148, Math.max(46, 0.094 * frameW));
+    // Fit to the ACTUAL container: the title row's own width (95% desktop, 90%
+    // mobile), or the compressed column's max-width when the write-up is open.
+    // floor so the fitted name never overshoots its column.
+    // On mobile the write-up is a screen-slide, not a compress, so the title
+    // never narrows — always fit to the row (no scaling as screens slide).
+    const avail = !mobile && expanded ? 0.49 * frameW - 24 : titleRow.clientWidth;
+    const target = Math.floor(Math.min(base, avail / ratio));
     const px = `${target}px`;
     if (h1.style.fontSize !== px) h1.style.fontSize = px;
   }
@@ -171,9 +180,47 @@ export function initProjectPage(root: HTMLElement) {
       splitNotes();
       playNotes(expanded);
     }
+    // Mobile: the write-up is a full-screen overlay, so lock the page behind it.
+    document.body.style.overflow =
+      expanded && matchMedia('(max-width: 720px)').matches ? 'hidden' : '';
     burst();
   }
   toggle.addEventListener('click', () => setExpanded(!expanded));
+
+  // Mobile swipe cues also tap-toggle: the "open" cue → write-up, "close" → back.
+  root.querySelectorAll<HTMLElement>('[data-pp-cue]').forEach((c) =>
+    c.addEventListener('click', () => setExpanded(c.dataset.ppCue === 'open')),
+  );
+
+  /* ----------------------------------------- mobile: swipe to the write-up */
+  // Swipe left opens it, swipe right closes it — a horizontal-dominant drag past
+  // a threshold, so vertical scrolling of the panel is unaffected.
+  let sx = 0,
+    sy = 0,
+    tracking = false;
+  root.addEventListener(
+    'touchstart',
+    (e) => {
+      if (e.touches.length !== 1 || !matchMedia('(max-width: 720px)').matches) return;
+      sx = e.touches[0].clientX;
+      sy = e.touches[0].clientY;
+      tracking = true;
+    },
+    { passive: true },
+  );
+  root.addEventListener(
+    'touchend',
+    (e) => {
+      if (!tracking) return;
+      tracking = false;
+      const dx = e.changedTouches[0].clientX - sx;
+      const dy = e.changedTouches[0].clientY - sy;
+      if (Math.abs(dx) < 55 || Math.abs(dx) < Math.abs(dy) * 1.4) return; // not horizontal
+      if (dx < 0 && !expanded) setExpanded(true);
+      else if (dx > 0 && expanded) setExpanded(false);
+    },
+    { passive: true },
+  );
 
   /* -------------------------------------------- next-project plate (spec §6) */
   let closeTimer = 0;
@@ -232,6 +279,7 @@ export function initProjectPage(root: HTMLElement) {
       cancelAnimationFrame(rafId);
       window.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onResize);
+      document.body.style.overflow = ''; // release the mobile write-up scroll lock
     },
     { once: true },
   );
