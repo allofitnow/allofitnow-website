@@ -1,0 +1,18 @@
+import "dotenv/config";
+import express from "express";
+import payload from "payload";
+
+const app = express();
+
+app.get("/", (_, res) => {
+  res.redirect("/admin");
+});
+
+payload.init({
+  secret: process.env.PAYLOAD_SECRET || "dev-secret",
+  express: app,
+});
+
+app.listen(80, "0.0.0.0", async () => {
+  console.log("Payload running on http://0.0.0.0:80");
+});
