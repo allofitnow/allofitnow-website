@@ -85,3 +85,31 @@ import { tagline, social } from '@/data/home';
     }
   }
 </style>
+
+<script>
+  // On the home page the controller owns the foot bar (scroll-reactive reveal +
+  // frame alignment). Interior pages (work / project) have no such controller, so
+  // it reveals and frames itself there. Mirrors home.controller applyResponsive.
+  (function () {
+    const place = () => {
+      const bar = document.querySelector<HTMLElement>('[data-ref="footBar"]');
+      if (!bar || document.querySelector('[data-home]')) return; // home owns it
+      const m = window.innerWidth <= 720;
+      const pad = m ? 20 : 48;
+      const clientW = document.documentElement.clientWidth;
+      const cmax =
+        parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--content-max')) ||
+        1920;
+      const edge = pad + Math.max(0, (clientW - cmax) / 2); // align to the capped frame
+      bar.style.left = edge + 'px';
+      bar.style.right = edge + 'px';
+      bar.style.fontSize = (m ? 9 : 11) + 'px';
+      bar.style.bottom = (m ? 16 : 24) + 'px';
+      bar.style.opacity = '1';
+      bar.querySelectorAll<HTMLElement>('[data-fbi]').forEach((el) => (el.style.transform = 'none'));
+    };
+    place();
+    window.addEventListener('resize', place);
+    document.addEventListener('astro:page-load', place);
+  })();
+</script>

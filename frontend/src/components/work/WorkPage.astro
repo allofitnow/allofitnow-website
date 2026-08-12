@@ -4,6 +4,7 @@ import SelectedWorkTitle from './SelectedWorkTitle.astro';
 import FilterBar from './FilterBar.astro';
 import ProjectTile from './ProjectTile.astro';
 import ProjectRow from './ProjectRow.astro';
+import FootBar from '@/components/home/FootBar.astro';
 
 interface Props {
   columns?: number; // small-grid column count      (design default 4)
@@ -60,10 +61,7 @@ const {
     <a class="back" href="/#about" data-unit data-astro-reload>[&nbsp;&nbsp;BACK&nbsp;&nbsp;]</a>
   </section>
 
-  <div class="chrome-foot" data-foot>
-    <span>AOIN IS A CREATIVE TECHNOLOGY STUDIO</span>
-    <span>ESTD. 2014</span>
-  </div>
+  <FootBar />
 </div>
 
 <script>
@@ -135,24 +133,14 @@ const {
     cursor: pointer;
   }
 
-  .chrome-foot {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    z-index: 8;
-    max-width: var(--content-max);
-    margin-inline: auto;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 48px 22px;
-    box-sizing: border-box;
-    font-family: var(--font-mono);
-    font-weight: 300;
-    font-size: 11px;
-    letter-spacing: 0.2em;
-    color: var(--aoin-cool-white-45);
-    pointer-events: none;
+  /* Mobile: tighten the page gutters so the thumbnails get the width back, and
+     drop the tall top pad. The column counts are halved in work-page.ts. */
+  @media (max-width: 720px) {
+    .stage {
+      padding: 11vh 20px 128px;
+    }
+    .grid-pane {
+      gap: 10px;
+    }
   }
 </style>

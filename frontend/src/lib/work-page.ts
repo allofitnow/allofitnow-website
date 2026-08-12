@@ -37,8 +37,12 @@ export function initWorkPage(root: HTMLElement) {
   const thumb = root.querySelector<HTMLElement>('[data-hover-thumb]')!;
 
   /* ----------------------------------------------------------- view/filter */
+  const mqMobile = matchMedia('(max-width: 720px)');
   function apply(skipStagger = false) {
-    const [cols, ar] = view === 'large' ? [2, '16/9'] : [cfg.columns, '4/3'];
+    // On phones halve the column count so the thumbnails aren't tiny: the 2-up
+    // "large" view goes 1-up, and the 4-up "grid" view goes 2-up.
+    const m = mqMobile.matches;
+    const [cols, ar] = view === 'large' ? [m ? 1 : 2, '16/9'] : [m ? 2 : cfg.columns, '4/3'];
     root.style.setProperty('--cols', String(cols));
     root.style.setProperty('--tile-ar', ar);
 
@@ -264,9 +268,21 @@ export function initWorkPage(root: HTMLElement) {
     });
   });
 
+  // Re-apply the column count when crossing the mobile breakpoint (e.g. rotate),
+  // without re-running the reveal stagger.
+  const onBreakpoint = () => apply(true);
+  mqMobile.addEventListener('change', onBreakpoint);
+
   // The follow loop is the one thing that outlives the DOM on a soft-nav to a
   // project — stop it so it doesn't tick on a detached thumbnail.
-  document.addEventListener('astro:before-swap', () => cancelAnimationFrame(raf), { once: true });
+  document.addEventListener(
+    'astro:before-swap',
+    () => {
+      cancelAnimationFrame(raf);
+      mqMobile.removeEventListener('change', onBreakpoint);
+    },
+    { once: true },
+  );
 
   /* ------------------------------------------------------------- kick off */
   // Arrived via the return flight? The flight owns the view (2-up), the tile

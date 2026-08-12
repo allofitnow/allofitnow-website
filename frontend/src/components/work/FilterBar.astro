@@ -117,4 +117,28 @@ import { CAPABILITIES } from '@/data/projects';
     border: 0;
     border-top: 1px solid currentColor;
   }
+
+  /* Mobile: single view only (drop the view toggles), and let the five long
+     capability names WRAP onto as many lines as they need — compact 11px, no
+     horizontal scroll. */
+  @media (max-width: 720px) {
+    .filterbar {
+      gap: 0;
+      padding: 18px 0 14px;
+      font-size: 11px;
+      letter-spacing: 0.12em;
+    }
+    .filters {
+      flex-wrap: wrap;
+      justify-content: flex-start;
+      gap: 6px 4px;
+    }
+    .filt {
+      padding: 6px 10px;
+      white-space: nowrap;
+    }
+    .views {
+      display: none;
+    }
+  }
 </style>
