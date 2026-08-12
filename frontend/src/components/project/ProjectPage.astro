@@ -26,14 +26,20 @@ const { project } = Astro.props;
 
 // Meta data-block columns, derived from the authored fields (no new data).
 const metaCols: { label: string; values: string[] }[] = [
-  { label: 'CLIENT', values: [project.client] },
   { label: 'YEAR', values: [project.year] },
-  { label: 'DISCIPLINE', values: project.capabilities },
+  { label: 'COLLABORATOR', values: [project.collaborator] },
+  { label: 'CAPABILITIES', values: project.capabilities },
 ];
 
-// Next project — wraps around the ordered roster.
+// Prev / next projects — wrap around the ordered roster. Rendered as a two-up
+// row: PREV pinned to the far left, NEXT to the right edge (see .pp__next).
 const idx = projects.findIndex((p) => p.slug === project.slug);
+const prev = projects[(idx - 1 + projects.length) % projects.length];
 const next = projects[(idx + 1) % projects.length];
+const nav = [
+  { label: 'PREV', kind: 'prev', p: prev },
+  { label: 'NEXT', kind: 'next', p: next },
+];
 
 // The repeating 6-slot gallery pattern (see spec §7).
 const TILE = ['pp__g--a', 'pp__g--b', 'pp__g--full', 'pp__g--c', 'pp__g--d', 'pp__g--full'];
@@ -106,16 +112,23 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
       </section>
 
       <section class="pp__next" data-pp-next>
-        <a class="pp__nextLink" href={`/work/${next.slug}`} data-pp-next-link data-open="false">
-          <span>NEXT</span>
-          <span class="pp__nextPlate" data-pp-next-plate>
-            <span class="pp__nextPlateInner">
-              <span class="pp__nextMask"><span class="pp__nextLine" data-pp-next-line="0">{next.title}</span></span>
-              <span class="pp__nextMask"><span class="pp__nextLine" data-pp-next-line="1">{next.tour}</span></span>
+        {nav.map((n) => (
+          <a
+            class={`pp__nextLink pp__nextLink--${n.kind}`}
+            href={`/work/${n.p.slug}`}
+            data-pp-next-link
+            data-open="false"
+          >
+            <span>{n.label}</span>
+            <span class="pp__nextPlate" data-pp-next-plate>
+              <span class="pp__nextPlateInner">
+                <span class="pp__nextMask"><span class="pp__nextLine" data-pp-next-line="0">{n.p.title}</span></span>
+                <span class="pp__nextMask"><span class="pp__nextLine" data-pp-next-line="1">{n.p.tour}</span></span>
+              </span>
             </span>
-          </span>
-          <span>PROJECT</span>
-        </a>
+            <span>PROJECT</span>
+          </a>
+        ))}
       </section>
 
       <div class="pp__allwork">
@@ -315,7 +328,9 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     font-size: 12px;
     letter-spacing: 0.14em;
     line-height: 1.5;
-    text-box: trim-end alphabetic;
+    /* Trim the leading above the first line so the label caps sit at the box
+       top — lines the subtitle caps up with the summary's cap height. */
+    text-box: trim-both cap alphabetic;
   }
   .pp__metaLabel {
     color: var(--aoin-cool-white-45);
@@ -458,21 +473,26 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     border-bottom: 1px solid rgba(217, 225, 234, 0.28);
   }
 
-  /* ---- next project ---- */
+  /* ---- prev / next projects ---- */
+  /* Stacked as two centred rows at every breakpoint — PREV over NEXT. Each row
+     owns a full line, so each plate opens freely along its own row on hover. */
   .pp__next {
     margin-top: 96px;
     border-top: 2px solid var(--aoin-cool-white-45);
-    padding-top: 26px;
+    padding: 12vh 0 14vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8vh;
   }
   .pp__nextLink {
     display: flex;
     width: max-content;
-    margin: 14vh auto 16vh;
+    max-width: 100%;
     align-items: center;
-    justify-content: center;
     font-family: var(--font-headline);
     font-weight: var(--weight-headline);
-    font-size: clamp(40px, 9cqw, 150px);
+    font-size: clamp(30px, 6.4cqw, 108px);
     line-height: 1;
     letter-spacing: 0.01em;
     white-space: nowrap;
@@ -499,7 +519,8 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     gap: 0.18em;
     font-family: var(--font-mono);
     font-weight: var(--weight-mono);
-    font-size: clamp(10px, 1.5cqw, 26px);
+    /* A small caption under the big PREV/NEXT type. */
+    font-size: clamp(11px, 1.5cqw, 22px);
     letter-spacing: 0.08em;
     line-height: 1.35;
     white-space: nowrap;
@@ -744,8 +765,14 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     .pp__credit {
       grid-column: span 6;
     }
+    /* Two-row stack carries over from the base rule — just tighten the spacing
+       and type for the narrow frame. */
+    .pp__next {
+      gap: 5vh;
+      padding: 8vh 0 6vh;
+    }
     .pp__nextLink {
-      font-size: clamp(34px, 12vw, 64px);
+      font-size: clamp(28px, 10vw, 56px);
     }
 
     /* Page 1 (the project content) slides off-left when the write-up opens —

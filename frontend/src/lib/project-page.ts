@@ -27,8 +27,7 @@ export function initProjectPage(root: HTMLElement) {
   const hero = q('[data-pp-hero]')!;
   const aside = q('[data-pp-aside]')!;
   const notes = q('[data-pp-notes]')!;
-  const nextLink = q('[data-pp-next-link]')!;
-  const nextLines = Array.from(root.querySelectorAll<HTMLElement>('[data-pp-next-line]'));
+  const navLinks = Array.from(root.querySelectorAll<HTMLElement>('[data-pp-next-link]'));
 
   if (!frame || !toggle || !titleRow || !hero || !aside) return;
 
@@ -222,45 +221,50 @@ export function initProjectPage(root: HTMLElement) {
     { passive: true },
   );
 
-  /* -------------------------------------------- next-project plate (spec §6) */
-  let closeTimer = 0;
-  function plate(open: boolean) {
-    if (open) {
-      clearTimeout(closeTimer);
-      nextLink.dataset.open = 'true';
-      nextLines.forEach((el, i) => {
-        el.getAnimations().forEach((a) => a.cancel());
-        el.animate(
-          [
-            { transform: 'translateY(110%)', letterSpacing: '-0.02em' },
-            { transform: 'translateY(0%)', letterSpacing: '0.08em' },
-          ],
-          { duration: 420, delay: 140 + i * 90, easing: EASE_REVEAL, fill: 'both' },
-        );
-      });
-    } else {
-      // 60ms hold prevents flicker when the pointer crosses the plate seam.
-      closeTimer = window.setTimeout(() => {
-        nextLink.dataset.open = 'false';
-        nextLines.forEach((el, i) => {
+  /* --------------------------------------- prev / next project plates (§6) */
+  // Each link (PREV, NEXT) owns its own lines and close-timer so the reveal
+  // runs independently — only one is ever hovered at a time.
+  navLinks.forEach((link) => {
+    const lines = Array.from(link.querySelectorAll<HTMLElement>('[data-pp-next-line]'));
+    let closeTimer = 0;
+    const plate = (open: boolean) => {
+      if (open) {
+        clearTimeout(closeTimer);
+        link.dataset.open = 'true';
+        lines.forEach((el, i) => {
           el.getAnimations().forEach((a) => a.cancel());
           el.animate(
             [
-              { transform: 'translateY(0%)', letterSpacing: '0.08em' },
               { transform: 'translateY(110%)', letterSpacing: '-0.02em' },
+              { transform: 'translateY(0%)', letterSpacing: '0.08em' },
             ],
-            { duration: 500, delay: (1 - i) * Math.round(500 / 6), easing: EASE_REVEAL, fill: 'both' },
+            { duration: 420, delay: 140 + i * 90, easing: EASE_REVEAL, fill: 'both' },
           );
         });
-      }, 60);
+      } else {
+        // 60ms hold prevents flicker when the pointer crosses the plate seam.
+        closeTimer = window.setTimeout(() => {
+          link.dataset.open = 'false';
+          lines.forEach((el, i) => {
+            el.getAnimations().forEach((a) => a.cancel());
+            el.animate(
+              [
+                { transform: 'translateY(0%)', letterSpacing: '0.08em' },
+                { transform: 'translateY(110%)', letterSpacing: '-0.02em' },
+              ],
+              { duration: 500, delay: (1 - i) * Math.round(500 / 6), easing: EASE_REVEAL, fill: 'both' },
+            );
+          });
+        }, 60);
+      }
+    };
+    if (!reduced()) {
+      link.addEventListener('mouseenter', () => plate(true));
+      link.addEventListener('mouseleave', () => plate(false));
+      link.addEventListener('focus', () => plate(true));
+      link.addEventListener('blur', () => plate(false));
     }
-  }
-  if (nextLink && !reduced()) {
-    nextLink.addEventListener('mouseenter', () => plate(true));
-    nextLink.addEventListener('mouseleave', () => plate(false));
-    nextLink.addEventListener('focus', () => plate(true));
-    nextLink.addEventListener('blur', () => plate(false));
-  }
+  });
 
   /* --------------------------------------------------------- scroll / resize */
   const onScroll = () => track();
