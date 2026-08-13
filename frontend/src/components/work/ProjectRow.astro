@@ -8,7 +8,7 @@ const { project: p } = Astro.props;
 // image to morph). data-thumb feeds the cursor-following reveal in work-page.ts.
 ---
 
-<a class="row" href={`/work/${p.slug}`} data-cap={p.capabilities.join('|')} data-thumb={p.thumb}>
+<a class="row" href={`/work/${p.slug}`} data-cap={p.capabilities.join('|')} data-thumb={p.image}>
   <span class="row-year">{p.year}</span>
   <span class="row-name-cell"><span class="row-name">{p.title}</span></span>
   <span class="row-tour">{p.tour}</span>

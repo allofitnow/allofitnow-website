@@ -17,7 +17,7 @@ const { project: p } = Astro.props;
   data-cap={p.capabilities.join('|')}
   aria-label={p.title}
 >
-  <img class="tile-img" src={p.thumb} alt={p.title} draggable="false" loading="lazy" />
+  <img class="tile-img" src={p.image} alt={p.title} draggable="false" loading="lazy" />
   <span class="ovl">
     <span class="ovl-artist">{p.title}</span>
     <span class="ovl-tour">{p.tour}</span>

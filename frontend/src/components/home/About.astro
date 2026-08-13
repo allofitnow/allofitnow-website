@@ -38,7 +38,7 @@ const projects = await getProjects();
           {
             projects.map((p) => (
               <a class="slide" data-slide="1" href={`/work/${p.slug}`} data-slug={p.slug}>
-                <img src={p.thumb} alt={p.title} draggable="false" loading="lazy" />
+                <img src={p.image} alt={p.title} draggable="false" loading="lazy" />
               </a>
             ))
           }
@@ -49,7 +49,7 @@ const projects = await getProjects();
             {
               projects.map((p) => (
                 <a class="slide" data-slide="1" href={`/work/${p.slug}`} data-slug={p.slug} aria-hidden="true" tabindex="-1">
-                  <img src={p.thumb} alt="" draggable="false" loading="lazy" />
+                  <img src={p.image} alt="" draggable="false" loading="lazy" />
                 </a>
               ))
             }

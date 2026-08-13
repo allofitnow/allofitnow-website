@@ -22,37 +22,38 @@ export const CAPABILITIES: Capability[] = [
   'EQUIPMENT RENTAL',
 ];
 
+/** Payload rich-text (Slate) value — an array of nodes. Rendered via
+ *  `renderRichText` in lib/richtext.ts. Kept loose on purpose. */
+export type RichText = unknown;
+
 export interface Project {
   slug: string;
   title: string;
-  client: string;
   year: string;
-  role: string;
-  scope: string;
-  /** Absolute URL (Payload media). */
-  thumb: string;
-  /** Absolute URL (Payload media). */
-  hero: string;
-  body: string;
+  /** Absolute URL (Payload media). Serves as both the work-list thumbnail and
+   *  the project hero (a single authored image). */
+  image: string;
   order: number;
   // --- Work-page fields ----------------------------------------------------
-  /** Drives the filters + overlay tags + list chips. 2 per project today. */
+  /** Drives the filters + overlay tags + list chips + project meta. */
   capabilities: Capability[];
   /** Overlay + list secondary line, ALL CAPS, e.g. "WORLD TOUR". */
   tour: string;
   /** Overlay bottom line, e.g. "ALL OF IT NOW X PHNTM". */
   collaborator: string;
   // --- Project-page fields -------------------------------------------------
-  /** Short lede beside the meta block — distinct from `body`. */
+  /** Short lede beside the meta block. */
   summary: string;
-  /** Gallery tiles, laid out on the repeating 6-slot grid pattern. */
-  gallery: string[];
+  /** Gallery arrangements — an ordered list of rows; each row has a layout
+   *  preset and the images that fill its slots. */
+  gallery: { layout: string; images: string[] }[];
   /** Figure row under the gallery. */
   stats: { label: string; value: string }[];
-  /** Credit groups; handles are IG usernames (lowercase, uppercased in CSS). */
-  credits: { title: string; entries: { role: string; handle: string }[] }[];
-  /** The expandable write-up panel: one lede + body paragraphs. */
-  writeup: { lead: string; body: string[] };
+  /** Credit groups. Each entry renders TITLE | NAME with the name linking out
+   *  to the social `url`. */
+  credits: { title: string; entries: { title: string; name: string; url: string }[] }[];
+  /** The expandable write-up panel — rich text (Slate nodes). */
+  writeup: RichText;
 }
 
 export { getProjects, getProject } from '@/lib/payload';

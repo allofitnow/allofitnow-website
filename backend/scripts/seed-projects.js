@@ -13,9 +13,6 @@ const EMAIL = "howard.wong@anufutur.com";
 const PASSWORD = process.env.PAYLOAD_ADMIN_PASSWORD;
 
 /* ---------------- Shared values (identical across all 7) ---------------- */
-const BODY =
-  "Real-time content built for LED and driven live at show resolution. Generative systems, camera-aware grading, and a playback architecture that survives contact with a touring schedule.";
-
 const SUMMARY =
   "A touring show built on real-time content — generative systems cut to the music and driven live at full show resolution, engineered to hold up night after night on a moving schedule.";
 
@@ -26,22 +23,23 @@ const STATS = [
   { label: "RUNTIME", value: "2H 15M" },
 ];
 
+// Each entry: title (role) | name (display) — name links to the social `url`.
 const CREDITS = [
   {
     title: "ALL OF IT NOW",
     entries: [
-      { role: "CREATIVE DIRECTION", handle: "allofitnow" },
-      { role: "CONTENT LEAD", handle: "aoin.realtime" },
-      { role: "SYSTEMS ENGINEER", handle: "aoin.systems" },
-      { role: "PRODUCER", handle: "aoin.prod" },
+      { title: "CREATIVE DIRECTION", name: "ALL OF IT NOW", url: "https://instagram.com/allofitnow" },
+      { title: "CONTENT LEAD", name: "AOIN REALTIME", url: "https://instagram.com/aoin.realtime" },
+      { title: "SYSTEMS ENGINEER", name: "AOIN SYSTEMS", url: "https://instagram.com/aoin.systems" },
+      { title: "PRODUCER", name: "AOIN PROD", url: "https://instagram.com/aoin.prod" },
     ],
   },
   {
     title: "COLLABORATORS",
     entries: [
-      { role: "PRODUCTION DESIGN", handle: "sturdy.co" },
-      { role: "CREATIVE STUDIO", handle: "phntm" },
-      { role: "LIGHTING DESIGN", handle: "ld.studio" },
+      { title: "PRODUCTION DESIGN", name: "STURDY.CO", url: "https://instagram.com/sturdy.co" },
+      { title: "CREATIVE STUDIO", name: "PHNTM", url: "https://instagram.com/phntm" },
+      { title: "LIGHTING DESIGN", name: "LD STUDIO", url: "https://instagram.com/ld.studio" },
     ],
   },
 ];
@@ -54,24 +52,26 @@ const WRITEUP_BODY_PARAGRAPHS = [
 
 /* ---------------- Per-project unique values ---------------- */
 const PROJECTS = [
-  { slug: "bad-bunny", title: "BAD BUNNY", client: "LIVE NATION", year: "2024", role: "REAL-TIME CONTENT", scope: "LED / PLAYBACK", order: 1, capabilities: ["REAL-TIME CONTENT", "SCREENS PRODUCTION"], tour: "WORLD TOUR", collaborator: "ALL OF IT NOW X PHNTM", lead: "BAD BUNNY needed content that could carry a full arena show and still feel live — not a video playing behind the artist, but a stage that responds in the moment.", thumb: "bad-bunny.webp" },
-  { slug: "rauw-alejandro", title: "RAUW ALEJANDRO", client: "SONY MUSIC", year: "2024", role: "SCREENS PRODUCTION", scope: "LED / XR", order: 2, capabilities: ["SCREENS PRODUCTION", "MIXED REALITY"], tour: "SATURNO TOUR", collaborator: "ALL OF IT NOW X STURDY.CO", lead: "RAUW ALEJANDRO needed content that could carry a full arena show and still feel live — not a video playing behind the artist, but a stage that responds in the moment.", thumb: "rauw-alejandro.webp" },
-  { slug: "martin-garrix", title: "MARTIN GARRIX", client: "STMPD RCRDS", year: "2023", role: "REAL-TIME CONTENT", scope: "LED / PLAYBACK", order: 3, capabilities: ["REAL-TIME CONTENT", "MIXED REALITY"], tour: "FESTIVAL RUN", collaborator: "ALL OF IT NOW X STURDY.CO", lead: "MARTIN GARRIX needed content that could carry a full arena show and still feel live — not a video playing behind the artist, but a stage that responds in the moment.", thumb: "martin-garrix.webp" },
-  { slug: "peso-pluma", title: "PESO PLUMA", client: "DOBLE P RECORDS", year: "2024", role: "SCREENS PRODUCTION", scope: "LED / PLAYBACK", order: 4, capabilities: ["SCREENS PRODUCTION", "EQUIPMENT RENTAL"], tour: "ARENA TOUR", collaborator: "ALL OF IT NOW X STURDY.CO", lead: "PESO PLUMA needed content that could carry a full arena show and still feel live — not a video playing behind the artist, but a stage that responds in the moment.", thumb: "peso-pluma.webp" },
-  { slug: "melanie-martinez", title: "MELANIE MARTINEZ", client: "ATLANTIC RECORDS", year: "2023", role: "MIXED REALITY", scope: "XR / COMPOSITING", order: 5, capabilities: ["MIXED REALITY", "REAL-TIME CONTENT"], tour: "TRILOGY TOUR", collaborator: "ALL OF IT NOW X PHNTM", lead: "MELANIE MARTINEZ needed content that could carry a full arena show and still feel live — not a video playing behind the artist, but a stage that responds in the moment.", thumb: "melanie-martinez.webp" },
-  { slug: "good-charlotte", title: "GOOD CHARLOTTE", client: "BMG", year: "2022", role: "REAL-TIME CONTENT", scope: "LED / PLAYBACK", order: 6, capabilities: ["REAL-TIME CONTENT", "EQUIPMENT RENTAL"], tour: "GENERATION RX", collaborator: "ALL OF IT NOW X PHNTM", lead: "GOOD CHARLOTTE needed content that could carry a full arena show and still feel live — not a video playing behind the artist, but a stage that responds in the moment.", thumb: "good-charlote.webp" },
-  { slug: "renee-rapp", title: "RENÉE RAPP", client: "INTERSCOPE", year: "2024", role: "REAL-TIME CONTENT", scope: "LED / XR", order: 7, capabilities: ["REAL-TIME CONTENT", "SCREENS PRODUCTION"], tour: "THEATRE TOUR", collaborator: "ALL OF IT NOW X PHNTM", lead: "RENÉE RAPP needed content that could carry a full arena show and still feel live — not a video playing behind the artist, but a stage that responds in the moment.", thumb: "renee-rapp.webp" },
+  { slug: "bad-bunny", title: "BAD BUNNY", year: "2024", order: 1, capabilities: ["REAL-TIME CONTENT", "SCREENS PRODUCTION"], tour: "WORLD TOUR", collaborator: "ALL OF IT NOW X PHNTM", lead: "BAD BUNNY needed content that could carry a full arena show and still feel live — not a video playing behind the artist, but a stage that responds in the moment.", thumb: "bad-bunny.webp" },
+  { slug: "rauw-alejandro", title: "RAUW ALEJANDRO", year: "2024", order: 2, capabilities: ["SCREENS PRODUCTION", "MIXED REALITY"], tour: "SATURNO TOUR", collaborator: "ALL OF IT NOW X STURDY.CO", lead: "RAUW ALEJANDRO needed content that could carry a full arena show and still feel live — not a video playing behind the artist, but a stage that responds in the moment.", thumb: "rauw-alejandro.webp" },
+  { slug: "martin-garrix", title: "MARTIN GARRIX", year: "2023", order: 3, capabilities: ["REAL-TIME CONTENT", "MIXED REALITY"], tour: "FESTIVAL RUN", collaborator: "ALL OF IT NOW X STURDY.CO", lead: "MARTIN GARRIX needed content that could carry a full arena show and still feel live — not a video playing behind the artist, but a stage that responds in the moment.", thumb: "martin-garrix.webp" },
+  { slug: "peso-pluma", title: "PESO PLUMA", year: "2024", order: 4, capabilities: ["SCREENS PRODUCTION", "EQUIPMENT RENTAL"], tour: "ARENA TOUR", collaborator: "ALL OF IT NOW X STURDY.CO", lead: "PESO PLUMA needed content that could carry a full arena show and still feel live — not a video playing behind the artist, but a stage that responds in the moment.", thumb: "peso-pluma.webp" },
+  { slug: "melanie-martinez", title: "MELANIE MARTINEZ", year: "2023", order: 5, capabilities: ["MIXED REALITY", "REAL-TIME CONTENT"], tour: "TRILOGY TOUR", collaborator: "ALL OF IT NOW X PHNTM", lead: "MELANIE MARTINEZ needed content that could carry a full arena show and still feel live — not a video playing behind the artist, but a stage that responds in the moment.", thumb: "melanie-martinez.webp" },
+  { slug: "good-charlotte", title: "GOOD CHARLOTTE", year: "2022", order: 6, capabilities: ["REAL-TIME CONTENT", "EQUIPMENT RENTAL"], tour: "GENERATION RX", collaborator: "ALL OF IT NOW X PHNTM", lead: "GOOD CHARLOTTE needed content that could carry a full arena show and still feel live — not a video playing behind the artist, but a stage that responds in the moment.", thumb: "good-charlote.webp" },
+  { slug: "renee-rapp", title: "RENÉE RAPP", year: "2024", order: 7, capabilities: ["REAL-TIME CONTENT", "SCREENS PRODUCTION"], tour: "THEATRE TOUR", collaborator: "ALL OF IT NOW X PHNTM", lead: "RENÉE RAPP needed content that could carry a full arena show and still feel live — not a video playing behind the artist, but a stage that responds in the moment.", thumb: "renee-rapp.webp" },
 ];
 
 const ALL_STILLS = PROJECTS.map((p) => p.thumb); // 7 filenames, indexed by project order
 
 function buildGallery(projectIndex) {
-  const gallery = [];
-  for (let k = 0; k < 6; k++) {
-    const filename = ALL_STILLS[(projectIndex + k) % 7];
-    gallery.push({ image: MEDIA_MAP[filename] });
-  }
-  return gallery;
+  const img = (k) => ({ image: MEDIA_MAP[ALL_STILLS[(projectIndex + k) % 7]] });
+  // Arrangement rows that reproduce the original 6-slot rhythm.
+  return [
+    { layout: "split-8-4", images: [img(0), img(1)] },
+    { layout: "full", images: [img(2)] },
+    { layout: "split-5-7", images: [img(3), img(4)] },
+    { layout: "full", images: [img(5)] },
+  ];
 }
 
 function buildProject(p, index) {
@@ -79,14 +79,10 @@ function buildProject(p, index) {
     title: p.title,
     slug: p.slug,
     code: "TEMP", // beforeChange hook overwrites
-    client: p.client,
     year: p.year,
-    role: p.role,
-    scope: p.scope,
     order: p.order,
-    thumb: MEDIA_MAP[p.thumb],
-    hero: MEDIA_MAP[p.thumb],
-    body: BODY,
+    // Single key image, used as both the work-list thumbnail and the hero.
+    image: MEDIA_MAP[p.thumb],
     capabilities: p.capabilities,
     tour: p.tour,
     collaborator: p.collaborator,
@@ -94,10 +90,11 @@ function buildProject(p, index) {
     gallery: buildGallery(index),
     stats: STATS,
     credits: CREDITS,
-    writeup: {
-      lead: p.lead,
-      body: WRITEUP_BODY_PARAGRAPHS.map((paragraph) => ({ paragraph })),
-    },
+    // Rich text (Slate): lede paragraph followed by the body paragraphs.
+    writeup: [
+      { children: [{ text: p.lead }] },
+      ...WRITEUP_BODY_PARAGRAPHS.map((text) => ({ children: [{ text }] })),
+    ],
   };
 }
 
