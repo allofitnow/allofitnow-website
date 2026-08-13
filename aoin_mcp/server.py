@@ -422,5 +422,5 @@ routes = [
 mcp_app = mcp.http_app()
 mcp_app.routes.insert(0, Route("/hook", hook_endpoint, methods=["POST"]))
 
-app = Starlette(routes=mcp_app.routes)
+app = Starlette(routes=mcp_app.routes, lifespan=mcp_app.lifespan)
 app.add_middleware(AuthMiddleware)
