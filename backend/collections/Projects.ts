@@ -82,44 +82,28 @@ const Projects: CollectionConfig = {
       },
     ],
   },
+  // Fields are ordered to mirror the project page top-to-bottom, so the editor
+  // reads in the same order the content lands on the site. Publishing/meta and
+  // the two not-currently-rendered fields (client, body) sit in the sidebar.
   fields: [
+    // ---- Main column: on-site order ----
     { name: "title", type: "text", required: true },
-    { name: "slug", type: "text", required: true, unique: true, admin: { position: "sidebar" } },
-    { name: "code", type: "text", admin: { readOnly: true, position: "sidebar", description: "Auto-generated on save" } },
+    { name: "tour", type: "text", admin: { description: "Secondary line under the title, e.g. WORLD TOUR" } },
     {
-      name: "status",
-      type: "select",
-      options: ["published", "archive"],
-      defaultValue: "published",
-      admin: {
-        position: "sidebar",
-        description: "published = shown on the site; archive = hidden, browsable in CMS only",
-      },
-      index: true,
-    },
-    { name: "client", type: "text", required: true },
-    { name: "year", type: "text", required: true },
-    {
-      name: "role",
-      type: "select",
+      name: "image",
+      type: "upload",
       required: true,
-      options: [
-        { label: "Real-Time Content", value: "REAL-TIME CONTENT" },
-        { label: "Screens Production", value: "SCREENS PRODUCTION" },
-        { label: "Mixed Reality", value: "MIXED REALITY" },
-        { label: "Equipment Rental", value: "EQUIPMENT RENTAL" },
-      ],
+      relationTo: "media",
+      admin: { description: "Key image — used as both the work-list thumbnail and the project hero." },
     },
-    { name: "scope", type: "text", required: true },
-    { name: "order", type: "number", required: true, admin: { position: "sidebar" } },
-    { name: "thumb", type: "upload", required: true, relationTo: "media" },
-    { name: "hero", type: "upload", required: true, relationTo: "media" },
-    { name: "body", type: "textarea", required: false },
+    { name: "year", type: "text", required: true },
+    { name: "collaborator", type: "text", admin: { description: 'e.g. ALL OF IT NOW X PHNTM' } },
     {
       name: "capabilities",
       type: "select",
       required: true,
       hasMany: true,
+      admin: { description: "Services — drives the work-grid filters, tile tags, and the project meta block." },
       options: [
         { label: "Real-Time Content", value: "REAL-TIME CONTENT" },
         { label: "Screens Production", value: "SCREENS PRODUCTION" },
@@ -127,9 +111,7 @@ const Projects: CollectionConfig = {
         { label: "Equipment Rental", value: "EQUIPMENT RENTAL" },
       ],
     },
-    { name: "tour", type: "text" },
-    { name: "collaborator", type: "text" },
-    { name: "summary", type: "textarea" },
+    { name: "summary", type: "textarea", admin: { description: "Short lede beside the meta block." } },
     {
       name: "gallery",
       type: "array",
@@ -148,32 +130,42 @@ const Projects: CollectionConfig = {
     {
       name: "credits",
       type: "array",
+      admin: { description: "Credit groups, e.g. ALL OF IT NOW / COLLABORATORS." },
       fields: [
-        { name: "title", type: "text" },
+        { name: "title", type: "text", admin: { description: "Group heading." } },
         {
           name: "entries",
           type: "array",
+          admin: { description: "Each row displays TITLE | NAME; the name links to the social URL." },
           fields: [
-            { name: "role", type: "text" },
-            { name: "handle", type: "text" },
+            { name: "title", type: "text", admin: { description: 'Role, e.g. CREATIVE DIRECTION' } },
+            { name: "name", type: "text", admin: { description: 'Display name, e.g. ALL OF IT NOW' } },
+            { name: "url", type: "text", admin: { description: 'Social link the name points to (full URL).' } },
           ],
         },
       ],
     },
     {
       name: "writeup",
-      type: "group",
-      fields: [
-        { name: "lead", type: "textarea" },
-        {
-          name: "body",
-          type: "array",
-          fields: [
-            { name: "paragraph", type: "textarea" },
-          ],
-        },
-      ],
+      type: "richText",
+      admin: { description: "The expandable full write-up (FULL WRITE-UP panel)." },
     },
+
+    // ---- Sidebar: publishing + meta ----
+    { name: "slug", type: "text", required: true, unique: true, admin: { position: "sidebar" } },
+    { name: "code", type: "text", admin: { readOnly: true, position: "sidebar", description: "Auto-generated on save" } },
+    {
+      name: "status",
+      type: "select",
+      options: ["published", "archive"],
+      defaultValue: "published",
+      admin: {
+        position: "sidebar",
+        description: "published = shown on the site; archive = hidden, browsable in CMS only",
+      },
+      index: true,
+    },
+    { name: "order", type: "number", required: true, admin: { position: "sidebar" } },
   ],
 };
 

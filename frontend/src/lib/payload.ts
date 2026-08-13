@@ -19,22 +19,21 @@ export function mapPayloadProject(doc: any): Project {
     .map((g: any) => mediaUrl(g?.image))
     .filter((url: string) => url !== '');
 
-  const writeup = {
-    lead: doc.writeup?.lead ?? '',
-    body: (doc.writeup?.body ?? []).map((p: any) => p?.paragraph ?? ''),
-  };
+  const credits = (doc.credits ?? []).map((g: any) => ({
+    title: g?.title ?? '',
+    entries: (g?.entries ?? []).map((e: any) => ({
+      title: e?.title ?? '',
+      name: e?.name ?? '',
+      url: e?.url ?? '',
+    })),
+  }));
 
   return {
     slug: doc.slug,
     title: doc.title,
     code: doc.code,
-    client: doc.client,
     year: doc.year,
-    role: doc.role,
-    scope: doc.scope,
-    thumb: mediaUrl(doc.thumb),
-    hero: mediaUrl(doc.hero),
-    body: doc.body,
+    image: mediaUrl(doc.image),
     order: doc.order,
     capabilities: doc.capabilities ?? [],
     tour: doc.tour ?? '',
@@ -42,8 +41,10 @@ export function mapPayloadProject(doc: any): Project {
     summary: doc.summary ?? '',
     gallery,
     stats: doc.stats ?? [],
-    credits: doc.credits ?? [],
-    writeup,
+    credits,
+    // Rich text (Slate node array) passed straight through; rendered by
+    // renderRichText in the project page.
+    writeup: doc.writeup ?? [],
   };
 }
 

@@ -18,6 +18,7 @@
  */
 import type { Project } from '@/data/projects';
 import FootBar from '@/components/home/FootBar.astro';
+import { renderRichText } from '@/lib/richtext';
 
 interface Props {
   project: Project;
@@ -64,7 +65,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
 
     {/* ---- Hero: the flight landing/launch element ---- */}
     <div class="pp__hero" data-pp-hero data-slug={project.slug} data-flight>
-      <img src={project.hero} alt={project.title} />
+      <img src={project.image} alt={project.title} />
       <div class="pp__heroScrim"></div>
       <div class="pp__heroGrad"></div>
     </div>
@@ -104,8 +105,10 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
           <>
             <div class="pp__creditsTitle">{group.title}</div>
             {group.entries.map((c) => (
-              <div class="pp__credit">{c.role}
-                <b><a href={`https://instagram.com/${c.handle}`} target="_blank" rel="noopener">@{c.handle}</a></b>
+              <div class="pp__credit">{c.title}
+                <b>{c.url
+                  ? <a href={c.url} target="_blank" rel="noopener noreferrer">{c.name}</a>
+                  : c.name}</b>
               </div>
             ))}
           </>
@@ -152,8 +155,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
       {/* Mobile-only swipe cue (top of the write-up) — tap or swipe back. */}
       <button class="pp__cue pp__cue--back" data-pp-cue="close" type="button">«««&nbsp;&nbsp;SWIPE FOR {CUE_WORK}&nbsp;&nbsp;«««</button>
       <div class="pp__notesLabel">[ PRODUCTION NOTES ]</div>
-      <p class="pp__notesLead">{project.writeup.lead}</p>
-      {project.writeup.body.map((par) => <p class="pp__notesBody">{par}</p>)}
+      <div class="pp__notesRich" set:html={renderRichText(project.writeup)}></div>
     </div>
   </aside>
 
@@ -614,21 +616,60 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     letter-spacing: 0.3em;
     color: var(--aoin-cool-white-45);
   }
-  .pp__notesLead {
-    margin: 0;
-    font-family: var(--font-headline);
-    font-weight: var(--weight-body);
-    font-size: 20px;
-    line-height: 1.45;
-    text-wrap: pretty;
+  /* Rendered write-up (rich text). Paragraphs default to the mono body look;
+     the first paragraph reads as the lede in the headline face. */
+  .pp__notesRich {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
   }
-  .pp__notesBody {
+  .pp__notesRich p {
     margin: 0;
     font-family: var(--font-mono);
     font-weight: var(--weight-mono);
     font-size: 14px;
     line-height: 1.85;
     color: var(--aoin-cool-white-45);
+  }
+  .pp__notesRich ul,
+  .pp__notesRich ol {
+    margin: 0;
+    padding-left: 1.2em;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 14px;
+    line-height: 1.85;
+    color: var(--aoin-cool-white-45);
+  }
+  .pp__notesRich h1,
+  .pp__notesRich h2,
+  .pp__notesRich h3,
+  .pp__notesRich h4,
+  .pp__notesRich h5,
+  .pp__notesRich h6 {
+    margin: 4px 0 0;
+    font-family: var(--font-headline);
+    font-weight: var(--weight-headline);
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    color: var(--aoin-cool-white);
+  }
+  .pp__notesRich strong {
+    color: var(--aoin-cool-white);
+    font-weight: var(--weight-body);
+  }
+  .pp__notesRich a {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(217, 225, 234, 0.28);
+  }
+  .pp__notesRich > p:first-of-type {
+    font-family: var(--font-headline);
+    font-weight: var(--weight-body);
+    font-size: 20px;
+    line-height: 1.45;
+    color: var(--aoin-cool-white);
+    text-wrap: pretty;
   }
 
   /* ---- mobile swipe cue (desktop: hidden; shown in the mobile block) ---- */
@@ -848,7 +889,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
       width: 100% !important;
       padding-right: 0;
     }
-    .pp__notesLead {
+    .pp__notesRich > p:first-of-type {
       font-size: 18px;
     }
 
