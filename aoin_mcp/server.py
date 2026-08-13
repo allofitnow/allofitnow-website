@@ -385,18 +385,29 @@ WEBHOOK_SECRET = os.environ.get("MCP_WEBHOOK_SECRET")
 async def hook_endpoint(request: Request):
     if request.headers.get("X-Webhook-Secret") != WEBHOOK_SECRET:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
-    
-    # Debounce (30s) then trigger rebuild... For simplicity, we just trigger async.
-    # A real debounce requires state. We'll just run it.
-    asyncio.create_task(run_publish_async())
-    return JSONResponse({"success": True})
 
-async def run_publish_async():
-    await asyncio.sleep(5) # Give Payload time to finish saving
+    # Run publish.sh SYNCHRONOUSLY — block the HTTP response until the build
+    # completes or fails. The Payload afterChange hook is awaiting this
+    # response, so the admin UI's Save button stays in its loading state
+    # for the entire duration. On failure we return 500 so the hook throws
+    # and Payload surfaces the error in the same toast it uses for 403s.
     try:
-        subprocess.run(["/root/projects/aoin-deploy/deploy/publish.sh"], check=True)
+        proc = await asyncio.create_subprocess_exec(
+            "/root/projects/aoin-deploy/deploy/publish.sh",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+        stdout, stderr = await proc.communicate()
+        if proc.returncode != 0:
+            tail = "\n".join((stdout.decode() + stderr.decode()).split("\n")[-15:])
+            return JSONResponse(
+                {"error": f"Build failed (exit {proc.returncode})", "log": tail},
+                status_code=500,
+            )
+        tail = "\n".join(stdout.decode().split("\n")[-10:])
+        return JSONResponse({"success": True, "log_tail": tail})
     except Exception as e:
-        print(f"Hook publish failed: {e}")
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):

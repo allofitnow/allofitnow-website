@@ -45,39 +45,39 @@ const Projects: CollectionConfig = {
     beforeChange: [assignCode],
     afterChange: [
       async ({ doc, operation }) => {
-        try {
-          await fetch('http://127.0.0.1:8788/hook', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Webhook-Secret': process.env.MCP_WEBHOOK_SECRET || '',
-            },
-            body: JSON.stringify({
-              operation,
-              doc: { id: doc.id, slug: doc.slug, status: doc.status },
-            }),
-          });
-        } catch (e) {
-          console.error('[Projects hook] /hook POST failed:', e);
+        const res = await fetch('http://127.0.0.1:8788/hook', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Webhook-Secret': process.env.MCP_WEBHOOK_SECRET || '',
+          },
+          body: JSON.stringify({
+            operation,
+            doc: { id: doc.id, slug: doc.slug, status: doc.status },
+          }),
+        });
+        if (!res.ok) {
+          const errBody = await res.text().catch(() => 'unknown error');
+          throw new Error(`Publish failed: ${res.status} ${errBody}`);
         }
       },
     ],
     afterDelete: [
       async ({ doc }) => {
-        try {
-          await fetch('http://127.0.0.1:8788/hook', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Webhook-Secret': process.env.MCP_WEBHOOK_SECRET || '',
-            },
-            body: JSON.stringify({
-              operation: 'afterDelete',
-              doc: { id: doc.id, slug: doc.slug },
-            }),
-          });
-        } catch (e) {
-          console.error('[Projects hook] /hook POST failed:', e);
+        const res = await fetch('http://127.0.0.1:8788/hook', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'X-Webhook-Secret': process.env.MCP_WEBHOOK_SECRET || '',
+          },
+          body: JSON.stringify({
+            operation: 'afterDelete',
+            doc: { id: doc.id, slug: doc.slug },
+          }),
+        });
+        if (!res.ok) {
+          const errBody = await res.text().catch(() => 'unknown error');
+          throw new Error(`Publish failed: ${res.status} ${errBody}`);
         }
       },
     ],
