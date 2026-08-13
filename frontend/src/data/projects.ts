@@ -29,8 +29,6 @@ export type RichText = unknown;
 export interface Project {
   slug: string;
   title: string;
-  /** Derived — see assignCodes below. Do not author. */
-  code: string;
   year: string;
   /** Absolute URL (Payload media). Serves as both the work-list thumbnail and
    *  the project hero (a single authored image). */

@@ -34,7 +34,6 @@ export function mapPayloadProject(doc: any): Project {
   return {
     slug: doc.slug,
     title: doc.title,
-    code: doc.code,
     year: doc.year,
     image: mediaUrl(doc.image),
     order: doc.order,

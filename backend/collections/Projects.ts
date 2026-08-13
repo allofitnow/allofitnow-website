@@ -33,7 +33,7 @@ const Projects: CollectionConfig = {
   slug: "projects",
   admin: {
     useAsTitle: "title",
-    defaultColumns: ["title", "code", "year", "order"],
+    defaultColumns: ["title", "year", "order"],
   },
   access: {
     read: () => true,
@@ -176,7 +176,7 @@ const Projects: CollectionConfig = {
 
     // ---- Sidebar: publishing + meta ----
     { name: "slug", type: "text", required: true, unique: true, admin: { position: "sidebar" } },
-    { name: "code", type: "text", admin: { readOnly: true, position: "sidebar", description: "Auto-generated on save" } },
+    { name: "code", type: "text", admin: { hidden: true } },
     {
       name: "status",
       type: "select",
