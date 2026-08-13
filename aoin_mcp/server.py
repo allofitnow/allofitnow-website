@@ -418,8 +418,8 @@ routes = [
     Route("/hook", hook_endpoint, methods=["POST"])
 ]
 
-# We must merge mcp.get_starlette_app() routes with our custom routes
-mcp_app = mcp.http_app
+# We must merge mcp.http_app() routes with our custom routes
+mcp_app = mcp.http_app()
 mcp_app.routes.insert(0, Route("/hook", hook_endpoint, methods=["POST"]))
 
 app = Starlette(routes=mcp_app.routes)
