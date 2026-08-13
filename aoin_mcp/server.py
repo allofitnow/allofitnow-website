@@ -418,9 +418,13 @@ routes = [
     Route("/hook", hook_endpoint, methods=["POST"])
 ]
 
-# We must merge mcp.http_app() routes with our custom routes
-mcp_app = mcp.http_app()
-mcp_app.routes.insert(0, Route("/hook", hook_endpoint, methods=["POST"]))
+from fastmcp.server.http import create_sse_app
+from starlette.middleware import Middleware
 
-app = Starlette(routes=mcp_app.routes, lifespan=mcp_app.lifespan)
-app.add_middleware(AuthMiddleware)
+app = create_sse_app(
+    server=mcp,
+    message_path="/messages",
+    sse_path="/mcp",
+    routes=[Route("/hook", hook_endpoint, methods=["POST"])],
+    middleware=[Middleware(AuthMiddleware)]
+)
