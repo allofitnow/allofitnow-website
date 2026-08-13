@@ -28,6 +28,16 @@ const numVar = (n: string, f: number) => {
   const v = parseFloat(cssVar(n));
   return Number.isNaN(v) ? f : v;
 };
+// CSS time vars are authored in ms (e.g. `940ms`), but the production CSS
+// minifier rewrites longer values in seconds to save bytes (`940ms` → `.94s`).
+// A plain parseFloat would then read 0.94 and the animation would run in ~1ms
+// (the flyer snaps, the sweeps flash). Normalise any second-unit value to ms.
+const msVar = (n: string, f: number) => {
+  const raw = cssVar(n);
+  const v = parseFloat(raw);
+  if (Number.isNaN(v)) return f;
+  return /s$/.test(raw) && !/ms$/.test(raw) ? v * 1000 : v;
+};
 const isWorkPath = (p: string) => /^\/work\/?$/.test(p);
 const isProjectPath = (p: string) => /^\/work\/[^/]+\/?$/.test(p);
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -171,7 +181,7 @@ document.addEventListener('astro:before-preparation', (e: any) => {
   (window as any).__aoinReturnSlug = null;
   if (reduced() || (!isProjectPath(toPath) && !isWorkPath(toPath))) return;
 
-  const dur = numVar('--fly-dur', 940);
+  const dur = msVar('--fly-dur', 940);
   const ease = cssVar('--fly-ease');
   const swapAt = Math.min(1, Math.max(0, numVar('--swap-at', 0.55)));
 
@@ -200,9 +210,9 @@ document.addEventListener('astro:before-preparation', (e: any) => {
   // scattered (randomised) so they don't leave in strict order. The visibility
   // "pop" stays — the translation is layered on top of it.
   const shift = numVar('--sweep-shift', 44);
-  const exitMove = Math.round(numVar('--enter-dur', 650) * 0.36);
+  const exitMove = Math.round(msVar('--enter-dur', 650) * 0.36);
   const outItems = sweepItems(src?.slug ?? '').filter((el) => el !== src?.el);
-  const outDelays = scatter(outItems.length, numVar('--exit-stagger', 40));
+  const outDelays = scatter(outItems.length, msVar('--exit-stagger', 40));
   outItems.forEach((el, i) => {
     const d = outDelays[i];
     el.animate(
@@ -232,11 +242,11 @@ document.addEventListener('astro:after-swap', () => {
     return;
   }
 
-  const dur = numVar('--fly-dur', 940);
+  const dur = msVar('--fly-dur', 940);
   const ease = cssVar('--fly-ease');
-  const enterDelay = numVar('--enter-delay', 80);
-  const enterStagger = numVar('--enter-stagger', 60);
-  const enterDur = numVar('--enter-dur', 650);
+  const enterDelay = msVar('--enter-delay', 80);
+  const enterStagger = msVar('--enter-stagger', 60);
+  const enterDur = msVar('--enter-dur', 650);
   const shift = numVar('--sweep-shift', 44);
 
   // The destination's own copy of the flying element stays hidden until the flyer
