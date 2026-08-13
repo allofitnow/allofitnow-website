@@ -5,7 +5,7 @@ const Users: CollectionConfig = {
   auth: {
     tokenExpiration: 7200, // 2 hours (default) — JWTs are stateless; logout only clears the cookie client-side
     cookies: {
-      secure: false, // staging over plain HTTP
+      secure: false,
       sameSite: "lax",
     },
   },
