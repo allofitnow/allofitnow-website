@@ -2,7 +2,10 @@ import { GlobalConfig } from "payload/types";
 
 const Settings: GlobalConfig = {
   slug: "settings",
-  access: { read: () => true },
+  access: {
+    read: () => true,
+    update: ({ req: { user } }) => Boolean(user),
+  },
   fields: [
     {
       name: "nav",
