@@ -1,71 +1,172 @@
-# All Of It Now — website
+# All Of It Now — Website
 
 Redesign and rebuild of the AOIN (All Of It Now) site — an LA real-time content
-and show production studio. **Astro frontend, Payload CMS backend, two
-deployments.**
+and show production studio. **Astro frontend + Payload CMS backend** in a
+single monorepo, deployed as two cooperating services behind nginx.
+
+**Staging (current):**
+- Site → http://192.168.30.245
+- CMS Admin → http://192.168.30.245/admin
+- API → http://192.168.30.245/api
+- Static media → http://192.168.30.245/media/
+
+> Staging runs on the `.245` container at its static IP. Production will be a
+> separate branch/deployment later — nothing here assumes a public domain.
+
+---
+
+## Architecture
+
+```
+:80   nginx ──► /            → Astro static build (/opt/aoin-astro)
+      │        /api/*        → Payload :3000 (reverse proxy)
+      │        /admin        → Payload :3000 (reverse proxy)
+      │        /media/*      → Payload :3000 (reverse proxy)
+:3000 Payload CMS (internal only, not directly reachable)
+```
+
+- **Frontend:** Astro 5, static output (SSG) — content is fetched from the
+  Payload REST API **at build time** and baked into static HTML.
+- **Backend:** Payload CMS 2.32 (Express + MongoDB 7, db `payload`) — the
+  single source of truth for all site content.
+- **Traffic flow:** nginx owns port 80 and routes by path. The frontend build
+  fetches `http://192.168.30.245/api/projects` during `astro build`; the
+  rendered pages then point at `/media/...` URLs that nginx proxies back to
+  Payload.
+
+---
 
 ## Repo shape
 
 ```
-allofitnow-website-ss26/          # repo root
-├─ frontend/                      # Astro app (this is where the build lives now)
+allofitnow-website/            # repo root (npm workspaces)
+├─ frontend/                   # Astro app (SSG build)
 │  ├─ public/
-│  │  ├─ fonts/                   # brand OTFs: Denim INK WD, SN Ja Mono, OO Theran
-│  │  └─ assets/                  # artist stills, AOIN icon / logo / wordmark
-│  └─ src/
-│     ├─ styles/tokens.css        # dialed :root token blocks + @font-face
-│     ├─ lib/                     # framework-agnostic engines (flight.ts, hovercard.ts, home.controller.ts)
-│     ├─ data/                    # hardcoded, Payload-shaped content (phase 1)
-│     ├─ layouts/Base.astro
-│     ├─ components/home/         # home page, split at its seams
-│     └─ pages/                   # index.astro (+ work, services … later)
-└─ backend/                       # Payload (Next) — empty until phase 2
+│  │  ├─ fonts/                # brand OTFs: Denim INK WD, SN Ja Mono, OO Theran
+│  │  └─ assets/               # artist stills, AOIN icon / logo / wordmark
+│  ├─ src/
+│  │  ├─ styles/tokens.css     # dialed :root token blocks + @font-face
+│  │  ├─ lib/                  # engines: flight.ts, hovercard.ts, payload.ts
+│  │  ├─ data/projects.ts      # TYPE definitions + re-export of API accessors
+│  │  ├─ layouts/Base.astro    # shell: nav, cursor, flight layer
+│  │  ├─ components/           # Presenter components (designer-owned)
+│  │  └─ pages/                # Container pages (engineering-owned)
+│  └─ .env                     # PAYLOAD_URL=http://192.168.30.245 (gitignored)
+├─ backend/                    # Payload CMS 2 (Express + MongoDB)
+│  ├─ collections/             # Projects, Media, Users
+│  ├─ globals/                 # Homepage, Settings
+│  ├─ scripts/                 # upload-thumbs.js, seed-projects.js (ops tools)
+│  └─ payload.config.ts        # cors *, serverURL :80
+├─ .gitlab/issue_templates/    # portfolio_addition.md (structured intake)
+└─ package.json                # npm workspaces root
 ```
 
-The two apps deploy independently and share only a REST/GraphQL contract, so
-they're plain sibling folders — no workspace tooling until there's shared code
-to justify it.
+**Container/Presenter split (Y-Combinator strategy):** `src/components/` holds
+dumb Presenter components owned by the designer; `src/pages/` holds Container
+pages owned by engineering. Content flows from Payload → `src/lib/payload.ts`
+→ page props → presenters. The designer works in isolation on GitHub; the
+engineering repo mirrors via `git subtree` (see wiki).
 
-## Sequencing
+---
 
-1. **Home → Astro**, content hardcoded but shaped as data. Proves the component
-   seams with no CMS in the loop.
-2. **Swap the data source to Payload.** Collections mirror shapes already working.
+## Links & Documentation (GitLab wiki)
 
-Do not model Payload first.
+- [Adding a New Portfolio Project to the Staging Site](http://gitlab.someofitlater.com/website/allofitnow-website/-/wikis/Adding-a-New-Portfolio-Project-to-the-Staging-Site) — operational runbook
+- [Payload Schema Contract](http://gitlab.someofitlater.com/website/allofitnow-website/-/wikis/Payload-Schema-Contract)
+- [Database Schema Consolidation Spec](http://gitlab.someofitlater.com/website/allofitnow-website/-/wikis/Database-Schema-Consolidation-Spec)
+- [Monorepo Integration Plan](http://gitlab.someofitlater.com/website/allofitnow-website/-/wikis/Monorepo-Integration-Plan)
+- [Production Data Extraction](http://gitlab.someofitlater.com/website/allofitnow-website/-/wikis/Production-Data-Extraction)
 
-## The flight transition
+---
 
-The clone-and-fly page transition is the product on this site — it does not
-survive a static comp. The engine is extracted as a framework-agnostic module
-(`frontend/src/lib/flight.ts`) and gets wired into Astro's `<ClientRouter />`
-lifecycle in phase 2, gated on `Promise.all([flightTimer, loader()])`. Hover
-prefetch is a requirement, not an optimisation — it's on in `astro.config.mjs`.
+## Adding a Portfolio Project
 
-Load-bearing, do not rename or restructure: `data-slug`, `data-unit`, the
-`.mask` wrapper, and radius placement (same element in tile and hero).
+**Short version** (full runbook on the wiki):
+
+1. Open a **Portfolio Addition** issue — GitLab → New Issue → template
+   `portfolio_addition` (pre-structured: media + field values).
+2. Upload the project's media + create the project record:
+   - **Admin UI:** http://192.168.30.245/admin → Media → Create New, then
+     Projects → Create New. `code` is auto-derived — leave placeholder.
+   - **Scripted:** `backend/scripts/upload-thumbs.js` + `seed-projects.js`
+     (edit the `FILES` / `PROJECTS` arrays).
+3. Rebuild & deploy:
+   ```bash
+   export PATH="$HOME/node22/bin:$PATH"        # Node ≥ 22.12 required
+   cd /home/aoin/projects/allofitnow-website
+   npm run build --workspace frontend
+   scp -r frontend/dist/client/* root@192.168.30.245:/opt/aoin-astro/
+   ```
+   nginx serves the new files immediately — no restart needed.
+4. Verify: `curl http://192.168.30.245/work/<slug>` → 301→200, content matches
+   the issue's field values.
+
+**Payload shape gotchas** (fail the build/seed otherwise):
+- `writeup.body` must be `[{paragraph: "..."}, ...]` — never plain strings
+- `gallery` must be `[{image: "<mediaId>"}, ...]`
+- `thumb`/`hero` send the raw media ID string
+- `capabilities` is a closed taxonomy: `REAL-TIME CONTENT`, `SCREENS
+  PRODUCTION`, `MIXED REALITY`, `EQUIPMENT RENTAL`
+
+---
 
 ## Local dev
 
-Requires **Node ≥ 22.12**.
+Requires **Node ≥ 22.12** (Astro 5 hard requirement).
 
 ```bash
 cd frontend
 npm install
 npm run dev          # LAN-exposed dev server → http://localhost:4321
-# npm run dev:local  # localhost only (no phone / LAN preview)
 ```
 
-`npm run dev` prints a `Network:` URL (e.g. `http://192.168.x.x:4321`) you can
-open on a phone on the same Wi-Fi. Other scripts: `npm run build` (→ `dist/`),
-`npm run preview`, `npm run check` (Astro/TS), `npm run format` (Prettier).
+`npm run dev` prints a `Network:` URL you can open on a phone on the same
+Wi-Fi. Other scripts: `npm run build` (→ `dist/`), `npm run preview`,
+`npm run check` (Astro/TS), `npm run format` (Prettier).
 
-> Node is at `C:\Program Files\nodejs` on the build machine but not always on
-> PATH — prepend it if `node`/`npm` aren't found.
+> The frontend's `.env` sets `PAYLOAD_URL=http://192.168.30.245` — dev and
+> build both read from the live staging CMS. To build against a different
+> backend, change that one line.
+
+## Backend ops
+
+```bash
+# Start Payload (staging .245) — port 3000 internal, nginx on :80
+cd /root/projects/allofitnow-website/backend
+nohup npx ts-node --transpile-only server.ts > /tmp/payload2.log 2>&1 &
+
+# Restart (after deploying collection changes)
+lsof -ti:3000 | xargs kill -9 && # then start again as above
+
+# nginx config lives at /etc/nginx/sites-available/aoin-staging
+```
+
+Deploying a backend change: edit on the dev host, `scp` the changed files to
+`.245`, restart Payload. **Never `git pull` on `.245`** — its checkout stays on
+a stale branch; scp only.
+
+---
+
+## The flight transition
+
+The clone-and-fly page transition is the product on this site. The engine is
+`frontend/src/lib/flight.ts`, wired into Astro's `<ClientRouter />`. The
+ordered project roster is baked into `data-flight-order` on the persistent
+flight layer by `Base.astro` at build time (client JS cannot fetch).
+
+Load-bearing, do not rename or restructure: `data-slug`, `data-unit`, the
+`.mask` wrapper, and radius placement (same element in tile and hero).
+
+---
+
+## Branches
+
+- `main` — designer's baseline (GitHub), pulled into the monorepo via subtree
+- `integration` — engineering's active branch: CMS wiring, deployment, ops
+- Production deployment will get its own branch when the time comes
 
 ## Coworking
 
 New here? Start with **[CONTRIBUTING.md](CONTRIBUTING.md)** — setup, the
 branch → pull-request flow, and the few conventions (dialed tokens, load-bearing
-hooks). [GitHub Desktop](https://desktop.github.com/) is the easiest way in if
-you'd rather skip the terminal.
+hooks).
