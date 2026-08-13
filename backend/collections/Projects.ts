@@ -85,7 +85,7 @@ const Projects: CollectionConfig = {
   fields: [
     { name: "title", type: "text", required: true },
     { name: "slug", type: "text", required: true, unique: true, admin: { position: "sidebar" } },
-    { name: "code", type: "text", required: true, admin: { readOnly: true, position: "sidebar" } },
+    { name: "code", type: "text", admin: { readOnly: true, position: "sidebar", description: "Auto-generated on save" } },
     {
       name: "status",
       type: "select",
