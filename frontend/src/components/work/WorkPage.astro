@@ -1,10 +1,12 @@
 ---
-import { projects } from '@/data/projects';
+import { getProjects } from '@/data/projects';
 import SelectedWorkTitle from './SelectedWorkTitle.astro';
 import FilterBar from './FilterBar.astro';
 import ProjectTile from './ProjectTile.astro';
 import ProjectRow from './ProjectRow.astro';
 import FootBar from '@/components/home/FootBar.astro';
+
+const projects = await getProjects();
 
 interface Props {
   columns?: number; // small-grid column count      (design default 4)

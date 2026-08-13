@@ -16,13 +16,16 @@
  *  - The hero keeps data-slug + data-flight so the Work↔Project flight morph
  *    still lands on / launches from it.
  */
-import { projects, type Project } from '@/data/projects';
+import type { Project } from '@/data/projects';
 import FootBar from '@/components/home/FootBar.astro';
 
 interface Props {
   project: Project;
+  /** Prev/next roster neighbours, computed by the page (keeps this dumb). */
+  prev: Project;
+  next: Project;
 }
-const { project } = Astro.props;
+const { project, prev, next } = Astro.props;
 
 // Meta data-block columns, derived from the authored fields (no new data).
 const metaCols: { label: string; values: string[] }[] = [
@@ -31,11 +34,9 @@ const metaCols: { label: string; values: string[] }[] = [
   { label: 'CAPABILITIES', values: project.capabilities },
 ];
 
-// Prev / next projects — wrap around the ordered roster. Rendered as a two-up
-// row: PREV pinned to the far left, NEXT to the right edge (see .pp__next).
-const idx = projects.findIndex((p) => p.slug === project.slug);
-const prev = projects[(idx - 1 + projects.length) % projects.length];
-const next = projects[(idx + 1) % projects.length];
+// Prev / next projects — passed as props from the page (wrap-around computed
+// there). Rendered as a two-up row: PREV pinned to the far left, NEXT to the
+// right edge (see .pp__next).
 const nav = [
   { label: 'PREV', kind: 'prev', p: prev },
   { label: 'NEXT', kind: 'next', p: next },

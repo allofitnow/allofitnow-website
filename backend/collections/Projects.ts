@@ -35,6 +35,12 @@ const Projects: CollectionConfig = {
     useAsTitle: "title",
     defaultColumns: ["title", "code", "year", "order"],
   },
+  access: {
+    read: () => true,
+    create: ({ req: { user } }) => Boolean(user),
+    update: ({ req: { user } }) => Boolean(user),
+    delete: ({ req: { user } }) => Boolean(user),
+  },
   hooks: {
     beforeChange: [assignCode],
   },

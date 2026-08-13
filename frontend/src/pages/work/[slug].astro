@@ -1,21 +1,28 @@
 ---
 import Base from '@/layouts/Base.astro';
 import ProjectPage from '@/components/project/ProjectPage.astro';
-import { projects, type Project } from '@/data/projects';
+import { getProjects, type Project } from '@/data/projects';
 
-export function getStaticPaths() {
-  return projects.map((project) => ({
-    params: { slug: project.slug },
-    props: { project },
-  }));
+export async function getStaticPaths() {
+  const projects = await getProjects();
+  return projects.map((project, i) => {
+    const prev = projects[(i - 1 + projects.length) % projects.length];
+    const next = projects[(i + 1) % projects.length];
+    return {
+      params: { slug: project.slug },
+      props: { project, prev, next },
+    };
+  });
 }
 
 interface Props {
   project: Project;
+  prev: Project;
+  next: Project;
 }
-const { project } = Astro.props;
+const { project, prev, next } = Astro.props;
 ---
 
 <Base title={`${project.title} — All Of It Now`} description={project.summary}>
-  <ProjectPage project={project} />
+  <ProjectPage project={project} prev={prev} next={next} />
 </Base>

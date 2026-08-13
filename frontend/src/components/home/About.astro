@@ -1,6 +1,8 @@
 ---
 import { about } from '@/data/home';
-import { projects } from '@/data/projects';
+import { getProjects } from '@/data/projects';
+
+const projects = await getProjects();
 ---
 
 <section class="about" data-ref="about" data-screen-label="About" id="about">

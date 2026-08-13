@@ -5,6 +5,7 @@ import { ClientRouter } from 'astro:transitions';
 import Nav from '@/components/chrome/Nav.astro';
 import Cursor from '@/components/chrome/Cursor.astro';
 import HoverCard from '@/components/chrome/HoverCard.astro';
+import { getProjects } from '@/data/projects';
 
 interface Props {
   title?: string;
@@ -15,6 +16,12 @@ const {
   title = 'All Of It Now',
   description = 'All Of It Now — a real-time content and show production studio in Los Angeles.',
 } = Astro.props;
+
+// The flight engine needs the ordered project roster (for the morph sequence),
+// but it runs client-side and can't await — so we bake the order into a data
+// attribute on the persistent flight layer at build time.
+const projects = await getProjects();
+const flightOrder = JSON.stringify(projects.map((p) => p.slug));
 ---
 
 <!doctype html>
@@ -51,7 +58,12 @@ const {
 
     {/* The flyer travels in here; transition:persist keeps the layer (and the
         in-flight artwork) alive across the ClientRouter DOM swap. */}
-    <div id="aoin-flight-layer" transition:persist="aoin-flight-layer" aria-hidden="true"></div>
+    <div
+      id="aoin-flight-layer"
+      transition:persist="aoin-flight-layer"
+      aria-hidden="true"
+      data-flight-order={flightOrder}
+    ></div>
 
     <script>
       import '@/lib/flight';

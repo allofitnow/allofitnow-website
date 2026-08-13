@@ -14,9 +14,13 @@
 // flyer is RE-TARGETED to the element's real measured rect, so it always lands
 // pixel-exact regardless of section labels, scrollbars, breakpoints, etc.
 
-import { projects } from '@/data/projects';
-
-const ORDER = projects.map((p) => p.slug);
+// The ordered roster comes from the CMS at build time — Base.astro renders it
+// as a data attribute on the persistent flight layer (the module cannot await,
+// and client-side JS must never hardcode slugs).
+const orderEl = document.querySelector('[data-flight-order]');
+const ORDER: string[] = orderEl
+  ? JSON.parse(orderEl.getAttribute('data-flight-order') || '[]')
+  : [];
 
 const root = document.documentElement;
 const cssVar = (n: string) => getComputedStyle(root).getPropertyValue(n).trim();
