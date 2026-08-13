@@ -49,7 +49,7 @@ export function mapPayloadProject(doc: any): Project {
 
 /** Fetch all projects, ordered by `order`. */
 export async function getProjects(): Promise<Project[]> {
-  const res = await fetch(`${API_URL}/api/projects?limit=100&depth=2&sort=order`);
+  const res = await fetch(`${API_URL}/api/projects?limit=100&depth=2&sort=order&where[status][equals]=published`);
   if (!res.ok) throw new Error(`Payload API ${res.status}: ${await res.text()}`);
   const data = await res.json();
   return data.docs.map(mapPayloadProject);

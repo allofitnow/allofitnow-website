@@ -48,6 +48,17 @@ const Projects: CollectionConfig = {
     { name: "title", type: "text", required: true },
     { name: "slug", type: "text", required: true, unique: true, admin: { position: "sidebar" } },
     { name: "code", type: "text", required: true, admin: { readOnly: true, position: "sidebar" } },
+    {
+      name: "status",
+      type: "select",
+      options: ["published", "archive"],
+      defaultValue: "published",
+      admin: {
+        position: "sidebar",
+        description: "published = shown on the site; archive = hidden, browsable in CMS only",
+      },
+      index: true,
+    },
     { name: "client", type: "text", required: true },
     { name: "year", type: "text", required: true },
     {
