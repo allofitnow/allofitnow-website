@@ -83,30 +83,9 @@ engineering repo mirrors via `git subtree` (see wiki).
 
 **Short version** (full runbook on the wiki):
 
-1. Open a **Portfolio Addition** issue — GitLab → New Issue → template
-   `portfolio_addition` (pre-structured: media + field values).
-2. Upload the project's media + create the project record:
-   - **Admin UI:** http://192.168.30.245/admin → Media → Create New, then
-     Projects → Create New. `code` is auto-derived — leave placeholder.
-   - **Scripted:** `backend/scripts/upload-thumbs.js` + `seed-projects.js`
-     (edit the `FILES` / `PROJECTS` arrays).
-3. Rebuild & deploy:
-   ```bash
-   export PATH="$HOME/node22/bin:$PATH"        # Node ≥ 22.12 required
-   cd /home/aoin/projects/allofitnow-website
-   npm run build --workspace frontend
-   scp -r frontend/dist/client/* root@192.168.30.245:/opt/aoin-astro/
-   ```
-   nginx serves the new files immediately — no restart needed.
-4. Verify: `curl http://192.168.30.245/work/<slug>` → 301→200, content matches
-   the issue's field values.
-
-**Payload shape gotchas** (fail the build/seed otherwise):
-- `writeup.body` must be `[{paragraph: "..."}, ...]` — never plain strings
-- `gallery` must be `[{image: "<mediaId>"}, ...]`
-- `thumb`/`hero` send the raw media ID string
-- `capabilities` is a closed taxonomy: `REAL-TIME CONTENT`, `SCREENS
-  PRODUCTION`, `MIXED REALITY`, `EQUIPMENT RENTAL`
+1. **Via MCP (Recommended)**: Use the `create_portfolio` macro via Claude Code to ingest content and trigger the automatic Astro build loop (no terminal access needed).
+2. **Via Admin UI**: `http://192.168.30.245/admin`. Flipping the status to `published` automatically triggers an SSG rebuild hook.
+3. **Manual CLI**: Scp media and run `publish.sh` locally on the `.245` box. (See full runbook logic inside GitLab).
 
 ---
 
@@ -144,6 +123,28 @@ lsof -ti:3000 | xargs kill -9 && # then start again as above
 Deploying a backend change: edit on the dev host, `scp` the changed files to
 `.245`, restart Payload. **Never `git pull` on `.245`** — its checkout stays on
 a stale branch; scp only.
+
+---
+
+## Optional: Portfolio MCP Server
+
+For agentic usage (such as the frontend designer using Claude Code), the `aoin-portfolio-mcp` provides a FastMCP server offering 12 tools to manage projects, assets, and trigger SSG rebuilds automatically.
+
+**Installation & Execution (.245 host):**
+1. Requires Python 3.10+
+2. Build the virtual environment:
+   ```bash
+   python3 -m venv /opt/aoin-mcp-venv
+   /opt/aoin-mcp-venv/bin/pip install fastmcp httpx uvicorn starlette pydantic
+   ```
+3. Set the required secrets in `/etc/aoin-mcp.env` (`PAYLOAD_URL`, `PAYLOAD_ADMIN_EMAIL`, `PAYLOAD_ADMIN_PASSWORD`, `MCP_BEARER_TOKEN`, `MCP_WEBHOOK_SECRET`).
+4. Run the server (or map to a systemd service pointing to Nginx):
+   ```bash
+   /opt/aoin-mcp-venv/bin/uvicorn aoin_mcp.server:app --host 127.0.0.1 --port 8788 --app-dir /path/to/repo
+   ```
+
+**Connecting Clients:**
+Clients must use the streamable HTTP/SSE transport, accept the `Bearer` token configured above, and point to the host domain proxy (`http://192.168.30.245/mcp`). 
 
 ---
 
