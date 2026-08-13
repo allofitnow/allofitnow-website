@@ -150,9 +150,15 @@ a stale branch; scp only.
 
 ## Optional: Portfolio MCP Server
 
-For agentic usage (such as the frontend designer using Claude Code), the `aoin-portfolio-mcp` provides a FastMCP server offering 12 tools to manage projects, assets, and trigger SSG rebuilds automatically.
+For agentic usage (such as the frontend designer using Claude Code), the `aoin-portfolio-mcp` provides a FastMCP server offering 12 specialized tools to manage projects, assets, and trigger SSG rebuilds automatically without leaving the terminal.
 
-**Installation & Execution (.245 host):**
+### Available Workflows
+- **Publishing & Lifecycle:** `publish` (rebuild Astro frontend), `build_status`, `set_status` (toggle between `published` and `archive`).
+- **Content Macros:** `create_portfolio` (ingests a full project and maps relational IDs), `update_portfolio`, `delete_portfolio`, `validate_portfolio`.
+- **Media Management:** `upload_media` (accepts base64 files directly into the Payload Media collection), `link_video`, `list_media`.
+- **Browsing & Querying:** `list_projects`, `get_project`.
+
+### Installation & Execution (.245 host)
 1. Requires Python 3.10+
 2. Build the virtual environment:
    ```bash
@@ -165,8 +171,14 @@ For agentic usage (such as the frontend designer using Claude Code), the `aoin-p
    /opt/aoin-mcp-venv/bin/uvicorn aoin_mcp.server:app --host 127.0.0.1 --port 8788 --app-dir /path/to/repo
    ```
 
-**Connecting Clients:**
-Clients must use the streamable HTTP/SSE transport, accept the `Bearer` token configured above, and point to the host domain proxy (`http://192.168.30.245/mcp`). 
+### Connecting Clients (Windows / macOS)
+Clients must use the streamable HTTP/SSE transport and supply the required `Bearer` token to authenticate through the Nginx proxy.
+
+**For Claude Code on a local desktop:**
+Run the following CLI command to install the MCP server permanently:
+```cmd
+claude mcp add aoin-portfolio --transport http --header "Authorization: Bearer 0b80ac46f340f06a40efe37920bb17d95dd18ff9da967060bc4d07063417de14" http://192.168.30.245/mcp
+```
 
 ---
 
