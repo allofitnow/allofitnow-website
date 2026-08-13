@@ -20,6 +20,6 @@ export default buildConfig({
     url: process.env.DATABASE_URI || "mongodb://localhost:27017/payload",
   }),
   editor: slateEditor({}),
-  serverURL: process.env.PAYLOAD_PUBLIC_SERVER_URL || "http://localhost:80",
+  serverURL: process.env.PAYLOAD_PUBLIC_SERVER_URL || "http://localhost",
   cors: "*",
 });
