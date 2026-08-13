@@ -81,38 +81,35 @@ engineering repo mirrors via `git subtree` (see wiki).
 
 ## Adding a Portfolio Project
  
- **Short version** (full runbook on the wiki):
+**Short version** (full runbook on the wiki):
  
--1. **Via MCP (Recommended)**: Use the `create_portfolio` macro via Claude Code to ingest content and trigger the automatic Astro build loop (no terminal access needed).
--2. **Via Admin UI**: `http://192.168.30.245/admin`. Flipping the status to `published` automatically triggers an SSG rebuild hook.
--3. **Manual CLI**: Scp media and run `publish.sh` locally on the `.245` box. (See full runbook logic inside GitLab).
-+You can add projects using any of these three methods (MCP is optional):
-+
-+**Option A: Via MCP (Agentic)**
-+Use the `create_portfolio` macro via Claude Code to ingest content and trigger the automatic Astro build loop (no terminal access needed).
-+
-+**Option B: Via Admin UI (Zero-Touch Build)**
-+1. Go to `http://192.168.30.245/admin` → Media → Create New, then Projects → Create New. 
-+2. `code` is auto-derived — leave placeholder as `TEMP`.
-+3. Flipping the status to `published` automatically triggers the SSG rebuild hook in the background.
-+
-+**Option C: Manual / Scripted**
-+1. Open a **Portfolio Addition** issue on GitLab using the `portfolio_addition` template.
-+2. Run `backend/scripts/upload-thumbs.js` + `seed-projects.js` to seed the database.
-+3. Rebuild & deploy directly on the staging host:
-+   ```bash
-+   ssh root@192.168.30.245
-+   cd /root/projects/aoin-deploy
-+   deploy/publish.sh
-+   ```
-+
-+**Payload shape gotchas** (fail the build/seed otherwise):
-+- `writeup.body` must be `[{paragraph: "..."}, ...]` — never plain strings
-+- `gallery` must be `[{image: "<mediaId>"}, ...]`
-+- `thumb`/`hero` send the raw media ID string
-+- `capabilities` is a closed taxonomy: `REAL-TIME CONTENT`, `SCREENS PRODUCTION`, `MIXED REALITY`, `EQUIPMENT RENTAL`
+You can add projects using any of these three methods (MCP is optional):
+
+**Option A: Via MCP (Agentic)**
+Use the `create_portfolio` macro via Claude Code to ingest content and trigger the automatic Astro build loop (no terminal access needed).
+
+**Option B: Via Admin UI (Zero-Touch Build)**
+1. Go to `http://192.168.30.245/admin` → Media → Create New, then Projects → Create New. 
+2. `code` is auto-derived — leave placeholder as `TEMP`.
+3. Flipping the status to `published` automatically triggers the SSG rebuild hook in the background.
+
+**Option C: Manual / Scripted**
+1. Open a **Portfolio Addition** issue on GitLab using the `portfolio_addition` template.
+2. Run `backend/scripts/upload-thumbs.js` + `seed-projects.js` to seed the database.
+3. Rebuild & deploy directly on the staging host:
+   ```bash
+   ssh root@192.168.30.245
+   cd /root/projects/aoin-deploy
+   deploy/publish.sh
+   ```
+
+**Payload shape gotchas** (fail the build/seed otherwise):
+- `writeup.body` must be `[{paragraph: "..."}, ...]` — never plain strings
+- `gallery` must be `[{image: "<mediaId>"}, ...]`
+- `thumb`/`hero` send the raw media ID string
+- `capabilities` is a closed taxonomy: `REAL-TIME CONTENT`, `SCREENS PRODUCTION`, `MIXED REALITY`, `EQUIPMENT RENTAL`
  
- ---
+---
 
 ## Local dev
 
