@@ -38,8 +38,8 @@ const metaCols: { label: string; values: string[] }[] = [
 // Prev / next projects — passed as props from the page (wrap-around computed
 // there). Rendered as a two-up row: PREV pinned to the far left, NEXT to the
 // right edge (see .pp__next).
+// Only NEXT now (PREV retired). `prev` stays in Props but is unused.
 const nav = [
-  { label: 'PREV', kind: 'prev', p: prev },
   { label: 'NEXT', kind: 'next', p: next },
 ];
 
@@ -575,6 +575,13 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     font-size: 12px;
     letter-spacing: 0.28em;
   }
+  /* With the write-up open, the fixed notes panel overlays the right column and
+     the compressed left column shortens — which pulls the full-width prev/next
+     type up under the panel. Hide the nav while reading; it returns on close. */
+  [data-expanded='true'] .pp__next,
+  [data-expanded='true'] .pp__allwork {
+    display: none;
+  }
 
   /* ============================ fixed chrome ============================ */
   .pp__toggle {
@@ -640,37 +647,37 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     letter-spacing: 0.3em;
     color: var(--aoin-cool-white-45);
   }
-  /* Rendered write-up (rich text). Paragraphs default to the mono body look;
-     the first paragraph reads as the lede in the headline face. */
+  /* Rendered write-up (rich text), set in Denim; the first paragraph reads as
+     the lede. NB: the content is injected via set:html, so Astro's scoped
+     selectors can't tag it — set the base type on the (scoped) container so the
+     injected children inherit it, and use :global() for the per-element rules. */
   .pp__notesRich {
     display: flex;
     flex-direction: column;
     gap: 20px;
-  }
-  .pp__notesRich p {
-    margin: 0;
-    font-family: var(--font-mono);
-    font-weight: var(--weight-mono);
-    font-size: 14px;
-    line-height: 1.85;
+    /* Opt out of the global uppercase — the write-up reads as authored. */
+    text-transform: none;
+    /* Base prose type — inherited by the injected content (Denim, not serif). */
+    font-family: var(--font-body);
+    font-weight: var(--weight-body);
+    font-size: 15px;
+    line-height: 1.7;
     color: var(--aoin-cool-white-45);
   }
-  .pp__notesRich ul,
-  .pp__notesRich ol {
+  .pp__notesRich :global(p) {
+    margin: 0;
+  }
+  .pp__notesRich :global(ul),
+  .pp__notesRich :global(ol) {
     margin: 0;
     padding-left: 1.2em;
-    font-family: var(--font-mono);
-    font-weight: var(--weight-mono);
-    font-size: 14px;
-    line-height: 1.85;
-    color: var(--aoin-cool-white-45);
   }
-  .pp__notesRich h1,
-  .pp__notesRich h2,
-  .pp__notesRich h3,
-  .pp__notesRich h4,
-  .pp__notesRich h5,
-  .pp__notesRich h6 {
+  .pp__notesRich :global(h1),
+  .pp__notesRich :global(h2),
+  .pp__notesRich :global(h3),
+  .pp__notesRich :global(h4),
+  .pp__notesRich :global(h5),
+  .pp__notesRich :global(h6) {
     margin: 4px 0 0;
     font-family: var(--font-headline);
     font-weight: var(--weight-headline);
@@ -678,17 +685,16 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     letter-spacing: 0.02em;
     color: var(--aoin-cool-white);
   }
-  .pp__notesRich strong {
+  .pp__notesRich :global(strong) {
     color: var(--aoin-cool-white);
-    font-weight: var(--weight-body);
+    font-weight: var(--weight-headline);
   }
-  .pp__notesRich a {
+  .pp__notesRich :global(a) {
     color: inherit;
     text-decoration: none;
     border-bottom: 1px solid rgba(217, 225, 234, 0.28);
   }
-  .pp__notesRich > p:first-of-type {
-    font-family: var(--font-headline);
+  .pp__notesRich :global(p:first-of-type) {
     font-weight: var(--weight-body);
     font-size: 20px;
     line-height: 1.45;
