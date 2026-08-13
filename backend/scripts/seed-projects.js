@@ -1,3 +1,4 @@
+require("dotenv").config();
 /* Issue #19 — Seed 7 projects into Payload from designer data.
  * Run from backend/: node scripts/seed-projects.js
  * Prereqs: #17 (public read), #18 (media-map.json exists)

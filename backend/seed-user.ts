@@ -1,3 +1,4 @@
+import "dotenv/config";
 import payload from "payload";
 import config from "./payload.config";
 

@@ -1,3 +1,4 @@
+require("dotenv").config();
 /* Issue #18 — Upload 7 designer thumbnails to Payload media collection.
  * Run from repo root: node backend/scripts/upload-thumbs.js
  * Outputs: backend/scripts/media-map.json
