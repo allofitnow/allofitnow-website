@@ -50,12 +50,28 @@ export function mapPayloadProject(doc: any): Project {
   };
 }
 
-/** Fetch all projects, ordered by `order`. */
-export async function getProjects(): Promise<Project[]> {
-  const res = await fetch(`${API_URL}/api/projects?limit=100&depth=2&sort=order&where[status][equals]=published`);
-  if (!res.ok) throw new Error(`Payload API ${res.status}: ${await res.text()}`);
-  const data = await res.json();
-  return data.docs.map(mapPayloadProject);
+// Build-time memoisation. SSG prerenders ~20 pages, and Base.astro + each page
+// + FootBar every call getProjects — so without a cache the same roster request
+// fires 40+ times in a burst and trips the API rate limit (429), failing the
+// build (and the on-save auto-publish). Cache the promise so it's fetched once
+// per build. In dev (per-request SSR) skip the cache so edits show on reload; on
+// failure clear it so a retry can re-fetch instead of replaying the rejection.
+let projectsCache: Promise<Project[]> | null = null;
+
+/** Fetch all projects, ordered by `order`. Memoised for the production build. */
+export function getProjects(): Promise<Project[]> {
+  if (import.meta.env.PROD && projectsCache) return projectsCache;
+  const req = (async () => {
+    const res = await fetch(`${API_URL}/api/projects?limit=100&depth=2&sort=order&where[status][equals]=published`);
+    if (!res.ok) throw new Error(`Payload API ${res.status}: ${await res.text()}`);
+    const data = await res.json();
+    return data.docs.map(mapPayloadProject);
+  })();
+  if (import.meta.env.PROD) {
+    projectsCache = req;
+    req.catch(() => { projectsCache = null; });
+  }
+  return req;
 }
 
 /** Fetch a single project by slug. */
