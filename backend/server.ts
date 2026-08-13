@@ -13,6 +13,7 @@ payload.init({
   express: app,
 });
 
-app.listen(80, "0.0.0.0", async () => {
-  console.log("Payload running on http://0.0.0.0:80");
+const PORT = Number(process.env.PORT || 3000);
+app.listen(PORT, "0.0.0.0", async () => {
+  console.log(`Payload running on http://0.0.0.0:${PORT}`);
 });
