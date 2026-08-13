@@ -19,7 +19,7 @@ import config from "./payload.config";
     data: {
       name: "Howard",
       email: "howard.wong@anufutur.com",
-      password: "Aoin2026!",
+      password: process.env.PAYLOAD_ADMIN_PASSWORD,
     },
   });
   console.log("Created user:", user.email, "id:", user.id);

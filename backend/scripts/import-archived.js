@@ -4,7 +4,7 @@ import path from 'path';
 // Using fetch since we assume Node 18+ (Node 22 is available on .245)
 const PAYLOAD_URL = process.env.PAYLOAD_URL || 'http://127.0.0.1:3000';
 const ADMIN_EMAIL = process.env.PAYLOAD_ADMIN_EMAIL || 'howard.wong@anufutur.com';
-const ADMIN_PASSWORD = process.env.PAYLOAD_ADMIN_PASSWORD || 'Aoin2026!'; // Matches seed-projects.js
+const ADMIN_PASSWORD = process.env.PAYLOAD_ADMIN_PASSWORD ;
 
 async function run() {
   console.log(`Using API URL: ${PAYLOAD_URL}`);

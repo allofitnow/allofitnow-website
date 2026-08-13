@@ -12,7 +12,7 @@ const ASSETS = path.join(__dirname, "..", "..", "frontend", "public", "assets");
 const OUT = path.join(__dirname, "media-map.json");
 
 const EMAIL = "howard.wong@anufutur.com";
-const PASSWORD = "Aoin2026!";
+const PASSWORD = process.env.PAYLOAD_ADMIN_PASSWORD;
 
 const FILES = [
   "bad-bunny.webp",

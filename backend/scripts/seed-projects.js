@@ -9,7 +9,7 @@ const fetch = require("node-fetch");
 const API = "http://192.168.30.245/api";
 const MEDIA_MAP = JSON.parse(fs.readFileSync(path.join(__dirname, "media-map.json"), "utf8"));
 const EMAIL = "howard.wong@anufutur.com";
-const PASSWORD = "Aoin2026!";
+const PASSWORD = process.env.PAYLOAD_ADMIN_PASSWORD;
 
 /* ---------------- Shared values (identical across all 7) ---------------- */
 const BODY =

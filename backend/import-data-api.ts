@@ -5,7 +5,7 @@ import fetch from "node-fetch";
 
 const API_URL = "http://localhost:3000/api";
 const EMAIL = "howard.wong@anufutur.com";
-const PASSWORD = "Aoin2026!";
+const PASSWORD = process.env.PAYLOAD_ADMIN_PASSWORD;
 
 async function login() {
   const res = await fetch(`${API_URL}/users/login`, {
