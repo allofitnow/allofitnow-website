@@ -27,7 +27,6 @@ export function mapPayloadProject(doc: any): Project {
   return {
     slug: doc.slug,
     title: doc.title,
-    code: doc.code,
     client: doc.client,
     year: doc.year,
     role: doc.role,

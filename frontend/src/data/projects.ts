@@ -25,8 +25,6 @@ export const CAPABILITIES: Capability[] = [
 export interface Project {
   slug: string;
   title: string;
-  /** Derived — see assignCodes below. Do not author. */
-  code: string;
   client: string;
   year: string;
   role: string;
