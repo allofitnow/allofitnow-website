@@ -179,6 +179,9 @@ body {
   /* Hardcode the base text colour so no element can fall back to the UA black.
      The only intentional exception is the inverted About dropcap (.dropcap). */
   color: var(--aoin-cool-white);
+  /* The whole site is set uppercase (inherited). The only opt-out is the
+     project write-up prose (.pp__notesRich), which stays as authored. */
+  text-transform: uppercase;
 }
 a {
   color: var(--aoin-cool-white);
