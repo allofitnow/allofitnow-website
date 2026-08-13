@@ -76,7 +76,7 @@ const Projects: CollectionConfig = {
     { name: "order", type: "number", required: true, admin: { position: "sidebar" } },
     { name: "thumb", type: "upload", required: true, relationTo: "media" },
     { name: "hero", type: "upload", required: true, relationTo: "media" },
-    { name: "body", type: "textarea", required: true },
+    { name: "body", type: "textarea", required: false },
     {
       name: "capabilities",
       type: "select",
