@@ -14,7 +14,7 @@
  *   node scripts/migrate-v2-schema.js --apply  # apply the changes
  */
 require("dotenv").config();
-const { MongoClient } = require("mongodb");
+const { MongoClient, ObjectId } = require("mongodb");
 
 const URI = process.env.DATABASE_URI || "mongodb://localhost:27017/payload";
 const APPLY = process.argv.includes("--apply");
@@ -51,6 +51,32 @@ function migrateCredits(credits) {
   return { credits, changed };
 }
 
+/** Old flat gallery [{image}] -> arrangement rows that reproduce the current
+ *  page rhythm: [split-8-4, full, split-5-7, full] repeating. Returns null when
+ *  there is nothing to convert (empty, or already row-shaped). */
+function toGalleryRows(gallery) {
+  if (!Array.isArray(gallery) || gallery.length === 0) return null;
+  const first = gallery[0];
+  if (first && (first.layout != null || Array.isArray(first.images))) return null; // already rows
+  const seq = [["split-8-4", 2], ["full", 1], ["split-5-7", 2], ["full", 1]];
+  const rows = [];
+  let i = 0;
+  let s = 0;
+  while (i < gallery.length) {
+    let [layout, n] = seq[s % seq.length];
+    s++;
+    const take = gallery.slice(i, i + n);
+    i += take.length;
+    if (take.length < n && (layout === "split-8-4" || layout === "split-5-7")) layout = "full";
+    rows.push({
+      _id: new ObjectId(),
+      layout,
+      images: take.map((g) => ({ _id: new ObjectId(), image: g.image })),
+    });
+  }
+  return rows;
+}
+
 (async () => {
   const client = new MongoClient(URI);
   await client.connect();
@@ -78,6 +104,9 @@ function migrateCredits(credits) {
     }
     const cr = migrateCredits(d.credits);
     if (cr.changed) set.credits = cr.credits;
+
+    const rows = toGalleryRows(d.gallery);
+    if (rows) set.gallery = rows;
 
     for (const f of ["role", "scope", "thumb", "hero", "client", "body"]) {
       if (f in d) unset[f] = "";

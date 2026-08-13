@@ -115,8 +115,31 @@ const Projects: CollectionConfig = {
     {
       name: "gallery",
       type: "array",
+      labels: { singular: "Gallery row", plural: "Gallery rows" },
+      admin: { description: "Each row is an arrangement: pick a layout, then add the images that fill its slots." },
       fields: [
-        { name: "image", type: "upload", relationTo: "media" },
+        {
+          name: "layout",
+          type: "select",
+          required: true,
+          defaultValue: "full",
+          options: [
+            { label: "Full width — 1 image", value: "full" },
+            { label: "Two-up, equal — 2 images", value: "two-up" },
+            { label: "Split, big left (8·4) — 2 images", value: "split-8-4" },
+            { label: "Split, big right (5·7) — 2 images", value: "split-5-7" },
+            { label: "Three-up — 3 images", value: "three-up" },
+          ],
+        },
+        {
+          name: "images",
+          type: "array",
+          minRows: 1,
+          admin: { description: "Add the images for this row's layout (extras beyond the layout's slots are ignored)." },
+          fields: [
+            { name: "image", type: "upload", relationTo: "media" },
+          ],
+        },
       ],
     },
     {

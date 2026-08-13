@@ -46,8 +46,9 @@ export interface Project {
   // --- Project-page fields -------------------------------------------------
   /** Short lede beside the meta block. */
   summary: string;
-  /** Gallery tiles, laid out on the repeating 6-slot grid pattern. */
-  gallery: string[];
+  /** Gallery arrangements — an ordered list of rows; each row has a layout
+   *  preset and the images that fill its slots. */
+  gallery: { layout: string; images: string[] }[];
   /** Figure row under the gallery. */
   stats: { label: string; value: string }[];
   /** Credit groups. Each entry renders TITLE | NAME with the name linking out

@@ -64,12 +64,14 @@ const PROJECTS = [
 const ALL_STILLS = PROJECTS.map((p) => p.thumb); // 7 filenames, indexed by project order
 
 function buildGallery(projectIndex) {
-  const gallery = [];
-  for (let k = 0; k < 6; k++) {
-    const filename = ALL_STILLS[(projectIndex + k) % 7];
-    gallery.push({ image: MEDIA_MAP[filename] });
-  }
-  return gallery;
+  const img = (k) => ({ image: MEDIA_MAP[ALL_STILLS[(projectIndex + k) % 7]] });
+  // Arrangement rows that reproduce the original 6-slot rhythm.
+  return [
+    { layout: "split-8-4", images: [img(0), img(1)] },
+    { layout: "full", images: [img(2)] },
+    { layout: "split-5-7", images: [img(3), img(4)] },
+    { layout: "full", images: [img(5)] },
+  ];
 }
 
 function buildProject(p, index) {

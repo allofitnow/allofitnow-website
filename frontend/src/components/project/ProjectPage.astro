@@ -43,9 +43,15 @@ const nav = [
   { label: 'NEXT', kind: 'next', p: next },
 ];
 
-// The repeating 6-slot gallery pattern (see spec §7).
-const TILE = ['pp__g--a', 'pp__g--b', 'pp__g--full', 'pp__g--c', 'pp__g--d', 'pp__g--full'];
-const tileClass = (i: number) => `pp__g ${TILE[i % TILE.length]}`;
+// Gallery arrangements — how many image slots each layout preset fills.
+// Extra images past the layout's slot count are ignored (never break the grid).
+const GALLERY_SLOTS: Record<string, number> = {
+  full: 1,
+  'two-up': 2,
+  'split-8-4': 2,
+  'split-5-7': 2,
+  'three-up': 3,
+};
 
 // Mobile swipe-cue copy — PLACEHOLDER labels, pending the naming call.
 const CUE_STORY = 'THE STORY'; // page 1 → write-up
@@ -86,9 +92,13 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
 
       <div class="pp__galleryWrap">
         <section class="pp__gallery">
-          {project.gallery.map((src, i) => (
-            <div class={tileClass(i)}>
-              <img src={src} alt="" loading="lazy" />
+          {project.gallery.map((row) => (
+            <div class={`pp__gRow pp__gRow--${row.layout}`}>
+              {row.images.slice(0, GALLERY_SLOTS[row.layout] ?? row.images.length).map((src, i) => (
+                <div class={`pp__g pp__g--slot${i + 1}`}>
+                  <img src={src} alt="" loading="lazy" />
+                </div>
+              ))}
             </div>
           ))}
         </section>
@@ -356,17 +366,18 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     transition-delay: 55ms;
   }
 
-  /* ---- gallery ---- */
+  /* ---- gallery (arrangements) ---- */
   .pp__galleryWrap {
     display: block; /* the panel is fixed, so no flex row is needed here */
   }
+  /* The gallery is now a vertical stack of authored rows; each row lays its
+     own slots on the shared 12-col grid. */
   .pp__gallery {
     width: 100%;
-    display: grid;
-    grid-template-columns: repeat(12, 1fr);
+    display: flex;
+    flex-direction: column;
     gap: 80px;
     margin-top: 72px;
-    align-items: start;
     transition: width var(--dl), gap var(--dl);
     transition-delay: 84ms; /* stage 3, closing */
   }
@@ -374,6 +385,18 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     width: 49%;
     gap: 24px;
     transition-delay: 165ms; /* stage 3, opening */
+  }
+  .pp__gRow {
+    display: grid;
+    grid-template-columns: repeat(12, 1fr);
+    gap: 80px;
+    align-items: start;
+    transition: gap var(--dl);
+    transition-delay: 84ms;
+  }
+  [data-expanded='true'] .pp__gRow {
+    gap: 24px;
+    transition-delay: 165ms;
   }
   .pp__g {
     position: relative;
@@ -386,14 +409,15 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     object-fit: cover;
     display: block;
   }
-  .pp__g--a { grid-column: 1 / span 8; aspect-ratio: 16 / 9; }
-  .pp__g--b { grid-column: 9 / span 4; align-self: end; aspect-ratio: 1 / 1; }
-  .pp__g--c { grid-column: 1 / span 5; aspect-ratio: 4 / 3; }
-  .pp__g--d { grid-column: 6 / span 7; align-self: end; aspect-ratio: 16 / 9; }
-  .pp__g--full {
-    grid-column: 1 / -1;
-    height: calc((95cqw - 550px) * 0.5 + 262.5px);
-  }
+  /* Layout presets — fixed aspect ratios per slot, keeping the page's rhythm.
+     The two asymmetric splits mirror the old a/b and c/d tiles. */
+  .pp__gRow--full .pp__g { grid-column: 1 / -1; aspect-ratio: 16 / 7; }
+  .pp__gRow--two-up .pp__g { grid-column: span 6; aspect-ratio: 4 / 3; }
+  .pp__gRow--split-8-4 .pp__g--slot1 { grid-column: 1 / span 8; aspect-ratio: 16 / 9; }
+  .pp__gRow--split-8-4 .pp__g--slot2 { grid-column: 9 / span 4; align-self: end; aspect-ratio: 1 / 1; }
+  .pp__gRow--split-5-7 .pp__g--slot1 { grid-column: 1 / span 5; aspect-ratio: 4 / 3; }
+  .pp__gRow--split-5-7 .pp__g--slot2 { grid-column: 6 / span 7; align-self: end; aspect-ratio: 16 / 9; }
+  .pp__gRow--three-up .pp__g { grid-column: span 4; aspect-ratio: 4 / 3; }
 
   /* ---- stats ---- */
   .pp__stats {
@@ -790,12 +814,16 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     .pp__gallery {
       gap: 12px;
     }
-    .pp__g,
-    .pp__g--full {
+    /* Every arrangement collapses to a single full-width column on phones. */
+    .pp__gRow {
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+    .pp__g {
       grid-column: 1 / -1 !important;
       align-self: auto !important;
       height: auto;
-      aspect-ratio: 16 / 9;
+      aspect-ratio: 16 / 9 !important;
     }
     .pp__stats {
       gap: 24px 12px;
@@ -849,6 +877,10 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     }
     [data-expanded='true'] .pp__gallery {
       width: 100%;
+      gap: 12px;
+    }
+    [data-expanded='true'] .pp__gRow {
+      grid-template-columns: 1fr;
       gap: 12px;
     }
     [data-expanded='true'] .pp__stats {

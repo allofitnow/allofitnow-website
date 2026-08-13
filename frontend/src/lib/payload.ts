@@ -15,9 +15,12 @@ function mediaUrl(media: { url?: string } | null | undefined): string {
 
 /** Map a Payload projects REST doc to the frontend `Project` shape. */
 export function mapPayloadProject(doc: any): Project {
-  const gallery = (doc.gallery ?? [])
-    .map((g: any) => mediaUrl(g?.image))
-    .filter((url: string) => url !== '');
+  const gallery = (doc.gallery ?? []).map((row: any) => ({
+    layout: row?.layout ?? 'full',
+    images: (row?.images ?? [])
+      .map((it: any) => mediaUrl(it?.image))
+      .filter((url: string) => url !== ''),
+  }));
 
   const credits = (doc.credits ?? []).map((g: any) => ({
     title: g?.title ?? '',
