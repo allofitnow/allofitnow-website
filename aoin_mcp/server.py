@@ -367,9 +367,9 @@ async def delete_portfolio(slug: str) -> Dict[str, Any]:
         
     return {"success": True, "slug": slug}
 
-# To run: uvicorn mcp.server:app --host 127.0.0.1 --port 8788
+# To run: uvicorn aoin_mcp.server:app --host 127.0.0.1 --port 8788
 # But wait, this is a FastMCP instance. To expose it via ASGI:
-app = mcp.get_starlette_app()
+# app = mcp.http_app
 
 # Now we need to add Starlette middleware for Bearer token and /hook
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -419,7 +419,7 @@ routes = [
 ]
 
 # We must merge mcp.get_starlette_app() routes with our custom routes
-mcp_app = mcp.get_starlette_app()
+mcp_app = mcp.http_app
 mcp_app.routes.insert(0, Route("/hook", hook_endpoint, methods=["POST"]))
 
 app = Starlette(routes=mcp_app.routes)
