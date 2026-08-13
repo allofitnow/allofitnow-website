@@ -423,7 +423,7 @@ from starlette.middleware import Middleware
 
 app = create_sse_app(
     server=mcp,
-    message_path="/messages",
+    message_path="/mcp/messages",
     sse_path="/mcp",
     routes=[Route("/hook", hook_endpoint, methods=["POST"])],
     middleware=[Middleware(AuthMiddleware)]
