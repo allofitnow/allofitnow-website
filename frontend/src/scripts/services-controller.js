@@ -37,6 +37,7 @@ class ServicesController {
     }
     root.querySelectorAll('[data-slot]').forEach((b) => {
       b.addEventListener('click', () => {
+        if (this._introOnly) { this.scrollToSection(+b.dataset.i); return; }
         if (this.active < 0) this.go(+b.dataset.i);
       });
       const shift = () => 0;
@@ -56,6 +57,10 @@ class ServicesController {
         }
       });
     });
+    // Panel-navigation handlers (clicks into subcategories, inventory rows, drag,
+    // wheel, keys). Skipped in intro-only mode — on the scrollable page the intro
+    // is just the field + labels, and wheel/drag belong to the page scroll.
+    if (!this._introOnly) {
     root.querySelectorAll('[data-other]').forEach((b) => {
       b.addEventListener('click', () => {
         const t = +b.dataset.target;
@@ -261,6 +266,7 @@ class ServicesController {
       if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { if (this.active === 0) this.home(); else this.go(this.active - 1, -1); }
     };
     window.addEventListener('keydown', this._key);
+    } // end !introOnly panel-navigation handlers
     const bar0 = root.querySelector('[data-bar]');
     this._barHome = bar0 ? (bar0.style.top || '52vh') : '52vh';
     const loop = () => {
@@ -310,10 +316,13 @@ class ServicesController {
     this._reAscii = null;
     this._tick = setInterval(() => this.clock(), 1000);
     this.clock();
-    const auto = null;
-    if (auto && auto !== 'None') {
-      const i = SERVICES.findIndex((s) => s.name === auto);
-      if (i >= 0) setTimeout(() => this.go(i), 300);
+    // Deep-link (panel-switch mode only): /services#<slug> opens that panel.
+    // In the scrollable/intro build the effects module handles hash → scroll.
+    if (!this._introOnly) {
+      const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+      const hash = (typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '').toLowerCase();
+      const autoIdx = hash ? SERVICES.findIndex((s) => slugify(s.name) === hash) : -1;
+      if (autoIdx >= 0) setTimeout(() => this.go(autoIdx), 300);
     }
   }
 
@@ -333,6 +342,15 @@ class ServicesController {
   }
 
   el() { return document.querySelector('[data-root]'); }
+
+  // Intro-only: a capability label click smooth-scrolls to that service's section.
+  // The effects module owns Lenis and listens for this event.
+  scrollToSection(i) {
+    const svc = SERVICES[i];
+    if (!svc) return;
+    const slug = svc.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    window.dispatchEvent(new CustomEvent('services:scrollto', { detail: { slug } }));
+  }
 
   clock() {
     const root = this.el();
@@ -1789,9 +1807,10 @@ class ServicesController {
 
 let instance = null;
 
-export function mountServices() {
+export function mountServices(opts) {
   if (instance) return instance;
   instance = new ServicesController();
+  instance._introOnly = !!(opts && opts.introOnly);
   instance.componentDidMount();
   return instance;
 }
