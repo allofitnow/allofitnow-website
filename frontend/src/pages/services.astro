@@ -5,7 +5,7 @@
    notes in the redesign package. Do NOT convert inline styles to classes or rename data
    attributes — the controller measures the DOM and writes styles back. */
 import '../styles/services.css';
-import SiteNav from '../components/services/SiteNav.astro';
+import Nav from '../components/chrome/Nav.astro';
 import PageTitle from '../components/services/PageTitle.astro';
 import CapabilityBar from '../components/services/CapabilityBar.astro';
 import AsciiField from '../components/services/AsciiField.astro';
@@ -22,8 +22,12 @@ import ServicePanel3 from '../components/services/ServicePanel3.astro';
 <title>Services — All Of It Now</title>
 </head>
 <body style="margin:0;background:#000">
-<div data-root="" style="position:relative;height:100vh;overflow:hidden;background:#000;color:rgb(217,225,234);font-family:'Denim INK WD',sans-serif;font-weight:400">
-<SiteNav />
+{/* Nav sits at body level, above the page. [data-root] gets its own stacking
+   context (isolation:isolate) so its internal z-indices (up to 40) stay contained
+   and the shared nav — including the fullscreen mobile menu (z:19) — always
+   overlays it, matching every other page. */}
+<Nav />
+<div data-root="" style="position:relative;height:100vh;overflow:hidden;isolation:isolate;background:#000;color:rgb(217,225,234);font-family:'Denim INK WD',sans-serif;font-weight:400">
 <PageTitle />
 <CapabilityBar />
 <div data-stage="" style="position:absolute;left:48px;right:48px;top:clamp(150px,22vh,240px);bottom:64px;overflow:visible;z-index:10;opacity:0;transition:opacity 500ms ease;pointer-events:none">

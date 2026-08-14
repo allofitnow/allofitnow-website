@@ -6,6 +6,19 @@
 @font-face { font-family: "Denim INK WD"; src: url("/fonts/DenimINKWD-Medium.otf") format("opentype"); font-weight: 500 700; font-style: normal; font-display: block; }
 @font-face { font-family: "SN Ja Mono"; src: url("/fonts/SNJaMono-Light.otf") format("opentype"); font-weight: 300; font-style: normal; font-display: block; }
 
+/* The shared site nav (chrome/Nav.astro) reads these tokens from tokens.css, which
+   this page deliberately does NOT import (its html,body{text-transform:uppercase}
+   would wreck the sentence-case panel copy). Mirror only the tokens the nav needs —
+   values copied verbatim from tokens.css. */
+:root {
+  --content-max: 2432px;
+  --aoin-cool-white: rgb(217, 225, 234);
+  --font-headline: "Denim INK WD", -apple-system, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "SN Ja Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --weight-headline: 500;
+  --weight-mono: 300;
+}
+
 html,body{margin:0;background:#000;overflow:hidden}
 [data-inv]::-webkit-scrollbar{width:0;height:0}
 a{color:rgb(217,225,234);text-decoration:none}
