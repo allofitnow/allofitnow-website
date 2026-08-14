@@ -1,0 +1,43 @@
+---
+/* Standalone services page — a full-viewport takeover, deliberately outside Base.astro
+   (no ClientRouter/Grain/site-Nav). It ships its own chrome (SiteNav) and the measured
+   WebGL/controller runtime. Ported from the AOIN "Services 0813" design; see the port
+   notes in the redesign package. Do NOT convert inline styles to classes or rename data
+   attributes — the controller measures the DOM and writes styles back. */
+import '../styles/services.css';
+import SiteNav from '../components/services/SiteNav.astro';
+import PageTitle from '../components/services/PageTitle.astro';
+import CapabilityBar from '../components/services/CapabilityBar.astro';
+import AsciiField from '../components/services/AsciiField.astro';
+import ServicePanel0 from '../components/services/ServicePanel0.astro';
+import ServicePanel1 from '../components/services/ServicePanel1.astro';
+import ServicePanel2 from '../components/services/ServicePanel2.astro';
+import ServicePanel3 from '../components/services/ServicePanel3.astro';
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Services — All Of It Now</title>
+</head>
+<body style="margin:0;background:#000">
+<div data-root="" style="position:relative;height:100vh;overflow:hidden;background:#000;color:rgb(217,225,234);font-family:'Denim INK WD',sans-serif;font-weight:400">
+<SiteNav />
+<PageTitle />
+<CapabilityBar />
+<div data-stage="" style="position:absolute;left:48px;right:48px;top:clamp(150px,22vh,240px);bottom:64px;overflow:visible;z-index:10;opacity:0;transition:opacity 500ms ease;pointer-events:none">
+<ServicePanel0 />
+<ServicePanel1 />
+<ServicePanel2 />
+<ServicePanel3 />
+</div>
+<AsciiField />
+<div data-hint="" style="position:absolute;left:48px;bottom:16px;z-index:40;font-family:'SN Ja Mono',ui-monospace,Menlo,monospace;font-weight:300;font-size:10px;letter-spacing:.3em;color:rgba(217,225,234,0.45);opacity:0;transition:opacity 400ms ease">SCROLL FOR NEXT</div>
+</div>
+<script>
+  import { mountServices } from '../scripts/services-controller.js';
+  mountServices();
+</script>
+</body>
+</html>
