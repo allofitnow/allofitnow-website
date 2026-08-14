@@ -35,8 +35,10 @@ export interface Project {
   image: string;
   order: number;
   // --- Work-page fields ----------------------------------------------------
-  /** Drives the filters + overlay tags + list chips + project meta. */
+  /** Indexing only — drives the work filters, tile overlay tags, list chips. */
   capabilities: Capability[];
+  /** Shown in the project-page meta block (replaces capabilities there). */
+  services: Capability[];
   /** Overlay + list secondary line, ALL CAPS, e.g. "WORLD TOUR". */
   tour: string;
   /** Overlay bottom line, e.g. "ALL OF IT NOW X PHNTM". */
