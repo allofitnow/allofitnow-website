@@ -145,10 +145,10 @@ const Projects: CollectionConfig = {
         },
         {
           name: "images",
-          type: "upload",
+          type: "relationship",
           relationTo: "media",
           hasMany: true,
-          admin: { description: "Drag in multiple images at once; extras beyond the layout's slot count are ignored." },
+          admin: { description: "Add several images at once; drag to reorder. Extras beyond the layout's slot count are ignored." },
         },
       ],
     },
