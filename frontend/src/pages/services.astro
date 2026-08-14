@@ -1,18 +1,42 @@
 ---
-/* Standalone services page — a full-viewport takeover, deliberately outside Base.astro
-   (no ClientRouter/Grain/site-Nav). It ships its own chrome (SiteNav) and the measured
-   WebGL/controller runtime. Ported from the AOIN "Services 0813" design; see the port
-   notes in the redesign package. Do NOT convert inline styles to classes or rename data
-   attributes — the controller measures the DOM and writes styles back. */
+/* Services — a scrollable page. A WebGL "STUDIO / CAPABILITIES" intro (the ported
+   character field, run in intro-only mode), then one full-screen section per service,
+   each running its own motion-gallery effect (ported from the Codrops "mwg" demos):
+     real-time  → mwg_083 scroll-scrubbed gallery
+     screens    → mwg_051 gallery, scrubbed by scroll
+     mixed      → mwg_061 self-running 3D orbit
+     equipment  → the disguise inventory list + server plate
+   Effects live in services-effects.js (Lenis + GSAP/ScrollTrigger). The page is a
+   full HTML doc, outside Base.astro, but uses the shared site nav. Inline styles /
+   data-attrs on the intro are the controller's API — don't refactor them. */
 import '../styles/services.css';
 import Nav from '../components/chrome/Nav.astro';
 import PageTitle from '../components/services/PageTitle.astro';
 import CapabilityBar from '../components/services/CapabilityBar.astro';
 import AsciiField from '../components/services/AsciiField.astro';
-import ServicePanel0 from '../components/services/ServicePanel0.astro';
-import ServicePanel1 from '../components/services/ServicePanel1.astro';
-import ServicePanel2 from '../components/services/ServicePanel2.astro';
-import ServicePanel3 from '../components/services/ServicePanel3.astro';
+
+const pad = (n: number) => String(n).padStart(2, '0');
+// Real-time gallery: the clean photos from the set (skip the demo's branded title cards).
+const RTC = [1, 2, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14, 15, 16, 18, 19, 20, 22, 23, 24, 25, 26, 27, 29, 30, 32].map(
+  (n) => `/img/services/rtc/${pad(n)}.png`
+);
+const SCREENS = Array.from({ length: 14 }, (_, i) => `/img/services/screens/${pad(i + 1)}.png`);
+const MR = Array.from({ length: 15 }, (_, i) => `/img/services/mr/${pad(i + 1)}.png`);
+
+const equipment = [
+  { label: 'DISGUISE GX3', img: 'GX3.png', tip: 'The flagship server for touring and live events, the disguise gx3 boasts the best-in-class graphics card for real-time content and visual effects' },
+  { label: 'DISGUISE GX2C', img: 'gx2c.png', tip: 'The industry workhorse, and a great solution for real time performances on a budget.' },
+  { label: 'DISGUISE VX4', img: 'vx4.png', tip: 'The server for when you need to push as many pixels as possible.' },
+  { label: 'DISGUISE GX2', img: 'gx2.png', tip: 'The most budget friendly server with all the benefits of the disguise software platform. Great for simple shows, starter tours, or basic Notch IMAG treatments.' },
+  { label: 'DISGUISE VX2', img: 'vx2.png', tip: 'The server for smaller XR or experiential projects. Better GPU hardware than a gx2, and less expensive than a gx3, the vx2 makes for a great previz machine, or pure director for larger shows.' },
+  { label: 'DISGUISE RX2', img: 'rx2.png', tip: 'The server required for XR, VP and Unreal Renderstream projects.' },
+  { label: 'RENDERSTREAM HARDWARE', img: 'Mellanox-SN2010.png', tip: 'The most budget friendly server with all the benefits of the disguise software platform. Great for simple shows, starter tours, or basic Notch IMAG treatments.' },
+  { label: 'VFC CARDS', img: 'vfc.png', tip: 'We carry VFC cards for every connection type. SDI VFC · HDMI VFC · DISPLAYPORT VFC · DVI VFC' },
+  { label: 'DISGUISE OMNICAL', img: 'OmniCal_Ipod_1.png', tip: 'iPod Kit' },
+  { label: 'SILVERDRAFT A6000 RENDER NODES', img: 'SilverDraft.png', tip: 'AOIN has a fleet of 10 Silverdraft render engines, racked and ready for Augmented Reality, Ndisplay, or Render farm scenarios. The servers are available with either a fresh windows install, or a custom disk image purpose built for any use case.' },
+  { label: 'CUSTOM RACK BUILD SOLUTIONS', img: 'CustomRacks.png', tip: 'AOIN can also provide prebuilt, custom configured racks that are built for plug and play project rentals. Each rack is custom built for each project, and ready for anything, from Music Touring, Augmented Reality for Broadcast, Ndisplay Render nodes or onsite render farms.' },
+];
+const WP = 'https://allofitnow.com/wp-content/uploads/';
 ---
 <!doctype html>
 <html lang="en">
@@ -21,27 +45,96 @@ import ServicePanel3 from '../components/services/ServicePanel3.astro';
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Services — All Of It Now</title>
 </head>
-<body style="margin:0;background:#000">
-{/* Nav sits at body level, above the page. [data-root] gets its own stacking
-   context (isolation:isolate) so its internal z-indices (up to 40) stay contained
-   and the shared nav — including the fullscreen mobile menu (z:19) — always
-   overlays it, matching every other page. */}
+<body>
 <Nav />
-<div data-root="" style="position:relative;height:100vh;overflow:hidden;isolation:isolate;background:#000;color:rgb(217,225,234);font-family:'Denim INK WD',sans-serif;font-weight:400">
-<PageTitle />
-<CapabilityBar />
-<div data-stage="" style="position:absolute;left:48px;right:48px;top:clamp(150px,22vh,240px);bottom:64px;overflow:visible;z-index:10;opacity:0;transition:opacity 500ms ease;pointer-events:none">
-<ServicePanel0 />
-<ServicePanel1 />
-<ServicePanel2 />
-<ServicePanel3 />
-</div>
-<AsciiField />
-<div data-hint="" style="position:absolute;left:48px;bottom:16px;z-index:40;font-family:'SN Ja Mono',ui-monospace,Menlo,monospace;font-weight:300;font-size:10px;letter-spacing:.3em;color:rgba(217,225,234,0.45);opacity:0;transition:opacity 400ms ease">SCROLL FOR NEXT</div>
-</div>
+
+<!-- ===== INTRO — STUDIO / CAPABILITIES + WebGL field (intro-only controller) ===== -->
+<section class="svc-intro" data-root="" style="position:relative;height:100svh;overflow:hidden;isolation:isolate;background:#000;color:rgb(217,225,234);font-family:'Denim INK WD',sans-serif;font-weight:400">
+  <PageTitle />
+  <CapabilityBar />
+  <!-- empty stage: the controller measures it to place the field + fit the bar -->
+  <div data-stage="" style="position:absolute;left:48px;right:48px;top:clamp(150px,22vh,240px);bottom:64px;pointer-events:none"></div>
+  <AsciiField />
+  <div data-hint="" class="svc-scrollhint" style="position:absolute;left:48px;bottom:16px;z-index:40;font-family:'SN Ja Mono',ui-monospace,Menlo,monospace;font-weight:300;font-size:10px;letter-spacing:.3em;color:rgba(217,225,234,0.45)">SCROLL FOR NEXT</div>
+</section>
+
+<!-- ===== REAL-TIME CONTENT — mwg_083 scroll-scrubbed gallery ===== -->
+<section class="svc" id="real-time-content">
+  <div class="mwg_effect083" data-fx="083">
+    <div class="pin-height">
+      <div class="container">
+        <header class="svc-head">
+          <div class="svc-kicker">01 — SERVICES</div>
+          <h2 class="svc-name">REAL-TIME CONTENT</h2>
+          <div class="svc-subs">INTERACTIVE ENVIRONMENTS · LIVE GRAPHICS · VISUAL EFFECTS</div>
+          <p class="svc-desc">We use Unreal Engine and Notch to develop Interactive Environments, Live Graphics, and bespoke visual effects for use in fast paced production environments.</p>
+        </header>
+        {RTC.map((src) => <img class="media" src={src} alt="" />)}
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ===== SCREENS PRODUCTION — mwg_051 gallery, scrubbed by scroll ===== -->
+<section class="svc" id="screens-production">
+  <div class="mwg_effect051" data-fx="051">
+    <header class="svc-head">
+      <div class="svc-kicker">02 — SERVICES</div>
+      <h2 class="svc-name">SCREENS PRODUCTION</h2>
+      <div class="svc-subs">SCREENS PRODUCING · TECHNICAL DIRECTION · MEDIA SERVER PROGRAMMING</div>
+      <p class="svc-desc">We offer a comprehensive range of Screens producing, technical direction, and media server programming solutions that ensure your event runs smoothly and leaves a lasting impression on your audience.</p>
+    </header>
+    <div class="listMedias">
+      {SCREENS.map((src) => <img class="listMedia" src={src} alt="" />)}
+    </div>
+    <img class="media media1" src="" alt="" />
+    <img class="media media2" src="" alt="" />
+    <img class="media media3" src="" alt="" />
+  </div>
+</section>
+
+<!-- ===== MIXED REALITY — mwg_061 self-running 3D orbit ===== -->
+<section class="svc" id="mixed-reality">
+  <div class="mwg_effect061" data-fx="061">
+    <div class="container">
+      {MR.map((src) => <img src={src} alt="" />)}
+    </div>
+    <header class="svc-head svc-head--overlay">
+      <div class="svc-kicker">03 — SERVICES</div>
+      <h2 class="svc-name">MIXED REALITY</h2>
+      <div class="svc-subs">AUGMENTED REALITY · VIRTUAL REALITY · PROJECTION MAPPING</div>
+      <p class="svc-desc">We’re dedicated to creating Mixed Reality experiences that merge the physical and digital worlds, and create immersive, interactive experiences. Our services encompass Augmented Reality, Virtual Reality, and Projection Mapping, each tailored to meet your unique needs and captivate your audience.</p>
+    </header>
+  </div>
+</section>
+
+<!-- ===== EQUIPMENT RENTAL — disguise inventory list + server plate ===== -->
+<section class="svc svc--equip" id="equipment-rental">
+  <div class="equip" data-fx="equip">
+    <header class="svc-head">
+      <div class="svc-kicker">04 — SERVICES</div>
+      <h2 class="svc-name">EQUIPMENT RENTAL</h2>
+      <div class="svc-subs">DISGUISE SERVERS · RENDER NODES · CUSTOM RACK BUILDS</div>
+      <p class="svc-desc" data-equip-copy>All of it Now provides a comprehensive range of equipment rentals designed to support your production needs. As a long time Disguise solutions partner and workflow specialist, AOIN has disguise servers available in many different configurations.</p>
+    </header>
+    <div class="equip-body">
+      <div class="equip-list" data-equip-list>
+        {equipment.map((e, i) => (
+          <button type="button" class="equip-row" data-equip-row data-img={e.img} data-tip={e.tip} data-i={i}>{e.label}</button>
+        ))}
+      </div>
+      <div class="equip-plate">
+        <img data-equip-img src={`${WP}${equipment[0].img}`} alt="Disguise server" />
+      </div>
+    </div>
+  </div>
+</section>
+
 <script>
   import { mountServices } from '../scripts/services-controller.js';
-  mountServices();
+  import { mountEffects } from '../scripts/services-effects.js';
+  mountServices({ introOnly: true });
+  mountEffects();
 </script>
 </body>
 </html>
