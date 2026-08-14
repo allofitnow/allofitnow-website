@@ -103,7 +103,19 @@ const Projects: CollectionConfig = {
       type: "select",
       required: true,
       hasMany: true,
-      admin: { description: "Services — drives the work-grid filters, tile tags, and the project meta block." },
+      admin: { description: "Indexing only — drives the work-grid filters, tile tags, and list chips. Not shown on the project page (see services)." },
+      options: [
+        { label: "Real-Time Content", value: "REAL-TIME CONTENT" },
+        { label: "Screens Production", value: "SCREENS PRODUCTION" },
+        { label: "Mixed Reality", value: "MIXED REALITY" },
+        { label: "Equipment Rental", value: "EQUIPMENT RENTAL" },
+      ],
+    },
+    {
+      name: "services",
+      type: "select",
+      hasMany: true,
+      admin: { description: "Shown in the project-page meta block (replaces the old capabilities display there). Independently editable from capabilities." },
       options: [
         { label: "Real-Time Content", value: "REAL-TIME CONTENT" },
         { label: "Screens Production", value: "SCREENS PRODUCTION" },
@@ -133,12 +145,10 @@ const Projects: CollectionConfig = {
         },
         {
           name: "images",
-          type: "array",
-          minRows: 1,
-          admin: { description: "Add the images for this row's layout (extras beyond the layout's slots are ignored)." },
-          fields: [
-            { name: "image", type: "upload", relationTo: "media" },
-          ],
+          type: "upload",
+          relationTo: "media",
+          hasMany: true,
+          admin: { description: "Drag in multiple images at once; extras beyond the layout's slot count are ignored." },
         },
       ],
     },

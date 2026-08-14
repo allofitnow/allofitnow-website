@@ -64,7 +64,8 @@ const PROJECTS = [
 const ALL_STILLS = PROJECTS.map((p) => p.thumb); // 7 filenames, indexed by project order
 
 function buildGallery(projectIndex) {
-  const img = (k) => ({ image: MEDIA_MAP[ALL_STILLS[(projectIndex + k) % 7]] });
+  // `images` is a hasMany upload → an array of media ids.
+  const img = (k) => MEDIA_MAP[ALL_STILLS[(projectIndex + k) % 7]];
   // Arrangement rows that reproduce the original 6-slot rhythm.
   return [
     { layout: "split-8-4", images: [img(0), img(1)] },
@@ -84,6 +85,7 @@ function buildProject(p, index) {
     // Single key image, used as both the work-list thumbnail and the hero.
     image: MEDIA_MAP[p.thumb],
     capabilities: p.capabilities,
+    services: p.capabilities,
     tour: p.tour,
     collaborator: p.collaborator,
     summary: SUMMARY,

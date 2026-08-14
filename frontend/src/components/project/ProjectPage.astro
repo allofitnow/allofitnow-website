@@ -32,7 +32,7 @@ const { project, prev, next } = Astro.props;
 const metaCols: { label: string; values: string[] }[] = [
   { label: 'YEAR', values: [project.year] },
   { label: 'COLLABORATOR', values: [project.collaborator] },
-  { label: 'CAPABILITIES', values: project.capabilities },
+  { label: 'SERVICES', values: project.services },
 ];
 
 // Prev / next projects — passed as props from the page (wrap-around computed

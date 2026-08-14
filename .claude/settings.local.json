@@ -5,6 +5,7 @@
       "Read(//c/Users/Admin/Downloads/files/**)",
       "Bash(node -e ' *)",
       "Bash(ls \"C:/Program Files/nodejs/npm.cmd\" \"C:/Program Files/nodejs/node_modules/npm/bin/npm-cli.js\" 2>&1)"
+      "Bash(git push:*)"
     ]
   }
 }

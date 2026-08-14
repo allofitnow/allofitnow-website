@@ -17,8 +17,9 @@ function mediaUrl(media: { url?: string } | null | undefined): string {
 export function mapPayloadProject(doc: any): Project {
   const gallery = (doc.gallery ?? []).map((row: any) => ({
     layout: row?.layout ?? 'full',
+    // `images` is now a hasMany upload → an array of populated media objects.
     images: (row?.images ?? [])
-      .map((it: any) => mediaUrl(it?.image))
+      .map((m: any) => mediaUrl(m))
       .filter((url: string) => url !== ''),
   }));
 
@@ -38,6 +39,7 @@ export function mapPayloadProject(doc: any): Project {
     image: mediaUrl(doc.image),
     order: doc.order,
     capabilities: doc.capabilities ?? [],
+    services: doc.services ?? [],
     tour: doc.tour ?? '',
     collaborator: doc.collaborator ?? '',
     summary: doc.summary ?? '',
