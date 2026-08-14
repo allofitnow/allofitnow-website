@@ -1,11 +1,15 @@
-/* Services page — a scrollable page. Font family names match the site's tokens.css
-   ("Denim INK WD" / "SN Ja Mono"); the mono file is the site's SNJaMono-Light.otf.
-   This page deliberately does NOT import tokens.css (its global uppercase would wreck
-   the sentence-case service copy), so it mirrors only the tokens the shared nav needs. */
+/* Services page globals — ported from the design's <helmet> block. Nothing else is
+   class-based here: every other style on the /services page is an inline style, by design.
+   Font family names match the site's tokens.css ("Denim INK WD" / "SN Ja Mono"); the mono
+   file is the site's SNJaMono-Light.otf (the design shipped it as JaMonoSN-Light.otf). */
 @font-face { font-family: "Denim INK WD"; src: url("/fonts/DenimINKWD-Regular.otf") format("opentype"); font-weight: 400; font-style: normal; font-display: block; }
 @font-face { font-family: "Denim INK WD"; src: url("/fonts/DenimINKWD-Medium.otf") format("opentype"); font-weight: 500 700; font-style: normal; font-display: block; }
 @font-face { font-family: "SN Ja Mono"; src: url("/fonts/SNJaMono-Light.otf") format("opentype"); font-weight: 300; font-style: normal; font-display: block; }
 
+/* The shared site nav (chrome/Nav.astro) reads these tokens from tokens.css, which
+   this page deliberately does NOT import (its html,body{text-transform:uppercase}
+   would wreck the sentence-case panel copy). Mirror only the tokens the nav needs —
+   values copied verbatim from tokens.css. */
 :root {
   --content-max: 2432px;
   --aoin-cool-white: rgb(217, 225, 234);
@@ -15,75 +19,7 @@
   --weight-mono: 300;
 }
 
-* { box-sizing: border-box; }
-html, body { margin: 0; background: #000; color: rgb(217, 225, 234); }
-a { color: rgb(217, 225, 234); text-decoration: none; }
-a:hover { color: rgba(217, 225, 234, 0.45); }
-[data-inv]::-webkit-scrollbar { width: 0; height: 0; }
-
-/* Lenis smooth scroll (recommended base rules) */
-html.lenis, html.lenis body { height: auto; }
-.lenis.lenis-smooth { scroll-behavior: auto !important; }
-.lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
-.lenis.lenis-stopped { overflow: hidden; }
-
-/* ===== Intro (WebGL field screen) ===== */
-.svc-intro { display: block; }
-.svc-scrollhint { animation: svcHintPulse 2.4s ease-in-out infinite; }
-@keyframes svcHintPulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.7; } }
-
-/* ===== Shared section + copy ===== */
-.svc { position: relative; background: #000; }
-.svc-head {
-  position: absolute; top: 92px; left: 48px; right: 48px; z-index: 20;
-  pointer-events: none; max-width: 680px;
-}
-.svc-head--overlay { text-shadow: 0 2px 30px rgba(0, 0, 0, 0.55); }
-/* Soft top-left scrim so the copy stays legible over the moving galleries. */
-.svc-head::before {
-  content: ''; position: absolute; inset: -48px -90px -64px -60px; z-index: -1; pointer-events: none;
-  background: radial-gradient(125% 135% at 0% 0%, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.45) 38%, rgba(0, 0, 0, 0) 72%);
-}
-.svc--equip .svc-head::before { display: none; }
-.svc-kicker { font-family: var(--font-mono); font-weight: 300; font-size: 11px; letter-spacing: 0.3em; color: rgba(217, 225, 234, 0.45); }
-.svc-name { font-family: var(--font-headline); font-weight: 500; font-size: clamp(40px, 7vw, 120px); line-height: 0.9; letter-spacing: -0.01em; margin: 0.12em 0 0.22em; }
-.svc-subs { font-family: var(--font-mono); font-weight: 300; font-size: 12px; letter-spacing: 0.2em; color: rgba(217, 225, 234, 0.72); }
-.svc-desc { font-family: var(--font-headline); font-weight: 400; font-size: clamp(13px, 1.4vw, 17px); line-height: 1.45; color: rgba(217, 225, 234, 0.86); margin-top: 18px; max-width: 48ch; }
-
-/* ===== REAL-TIME CONTENT — mwg_083 ===== */
-.mwg_effect083 { position: relative; }
-.mwg_effect083 .pin-height { height: 300vh; }
-.mwg_effect083 .container { height: 100vh; position: relative; overflow: hidden; }
-.mwg_effect083 .media { position: absolute; top: 0; left: 0; width: 20vw; aspect-ratio: 1; display: block; object-fit: cover; border-radius: 8px; }
-
-/* ===== SCREENS PRODUCTION — mwg_051 ===== */
-.mwg_effect051 { position: relative; height: 100vh; overflow: hidden; }
-.mwg_effect051 .listMedia { position: absolute; visibility: hidden; pointer-events: none; }
-.mwg_effect051 .media { position: absolute; left: 0; top: 100vh; width: 24vw; aspect-ratio: 0.75; border-radius: 8px; object-fit: cover; will-change: transform; }
-
-/* ===== MIXED REALITY — mwg_061 (3D orbit) ===== */
-.mwg_effect061 { position: relative; height: 100vh; perspective: 50vw; overflow: hidden; }
-.mwg_effect061 .container { position: relative; height: 100vh; transform-style: preserve-3d; transform-origin: 50% 50%; width: 100%; will-change: transform; }
-.mwg_effect061 .container img { width: 20vw; aspect-ratio: 1; display: block; object-fit: cover; position: absolute; top: calc(50% - 10vw); left: calc(50% - 10vw); transform-origin: 50% 0 50vw; border-radius: 8px; }
-
-/* ===== EQUIPMENT RENTAL ===== */
-.svc--equip { min-height: 100vh; padding: 116px 48px 64px; }
-.svc--equip .svc-head { position: static; max-width: none; margin-bottom: 40px; pointer-events: auto; }
-.equip { display: block; }
-.equip-body { display: flex; gap: clamp(32px, 6vw, 96px); align-items: stretch; }
-.equip-list { flex: 0 0 40%; display: flex; flex-direction: column; }
-.equip-row { text-align: left; background: none; border: 0; border-top: 1px solid rgba(217, 225, 234, 0.28); color: rgba(217, 225, 234, 0.45); font-family: var(--font-headline); font-weight: 500; font-size: clamp(12px, 1.4vw, 16px); letter-spacing: 0.02em; padding: 11px 0; cursor: pointer; transition: color 0.24s ease; }
-.equip-row:last-child { border-bottom: 1px solid rgba(217, 225, 234, 0.28); }
-.equip-row.is-active, .equip-row:hover { color: rgb(217, 225, 234); }
-.equip-plate { flex: 1 1 auto; display: grid; place-items: center; }
-.equip-plate img { max-width: 78%; max-height: 58vh; object-fit: contain; display: block; transition: opacity 0.22s ease; }
-
-@media (max-width: 768px) {
-  .svc-head { top: 80px; left: 20px; right: 20px; }
-  .mwg_effect083 .media { width: 40vw; }
-  .mwg_effect051 .media { width: 42vw; }
-  .mwg_effect061 .container img { width: 34vw; top: calc(50% - 17vw); left: calc(50% - 17vw); transform-origin: 50% 0 50vw; }
-  .svc--equip { padding: 92px 20px 48px; }
-  .equip-body { flex-direction: column; gap: 28px; }
-  .equip-list { flex: none; }
-}
+html,body{margin:0;background:#000;overflow:hidden}
+[data-inv]::-webkit-scrollbar{width:0;height:0}
+a{color:rgb(217,225,234);text-decoration:none}
+a:hover{color:rgba(217,225,234,0.45)}

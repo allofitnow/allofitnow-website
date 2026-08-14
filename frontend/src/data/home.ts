@@ -76,24 +76,24 @@ export const services: ServiceItem[] = [
   {
     title: ['REAL-TIME', 'CONTENT'],
     blurb: 'GENERATIVE AND PRE-RENDERED CONTENT BUILT FOR LED, DRIVEN LIVE AT SHOW RESOLUTION.',
-    href: '/services#real-time-content',
+    href: '#studio',
   },
   {
     title: ['SCREENS', 'PRODUCTION'],
     blurb:
       'SCREENS DIRECTION, PLAYBACK, AND ON-SITE ENGINEERING FOR ARENA AND STADIUM PRODUCTIONS.',
-    href: '/services#screens-production',
+    href: '#studio',
   },
   {
     title: ['MIXED', 'REALITY'],
     blurb:
       'AR, XR, AND VIRTUAL PRODUCTION STAGES — CAMERA TRACKING, CALIBRATION, AND REAL-TIME COMPOSITING.',
-    href: '/services#mixed-reality',
+    href: '#studio',
   },
   {
     title: ['EQUIPMENT', 'RENTAL'],
     blurb: 'MEDIA SERVERS, TRACKING SYSTEMS, AND PROCESSING, PACKAGED AND SUPPORTED FOR TOUR OR STUDIO.',
-    href: '/services#equipment-rental',
+    href: '#studio',
   },
 ];
 
