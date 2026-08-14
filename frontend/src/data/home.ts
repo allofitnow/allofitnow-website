@@ -29,7 +29,7 @@ export const tagline = 'REDEFINING THE BOUNDARIES OF REAL-TIME CONTENT';
 
 export const nav: NavLink[] = [
   { label: 'WORK', href: '/work' },
-  { label: 'SERVICES', href: '#services' },
+  { label: 'SERVICES', href: '/services' },
   { label: 'STUDIO', href: '#studio' },
   { label: 'CONTACT', href: '#contact' },
 ];
@@ -120,7 +120,7 @@ export const footer = {
   legal: ['ALL OF IT NOW. ESTD. 2014.', '2026 ALL RIGHTS RESERVED.'],
   navPrimary: [
     { label: 'WORK', href: '/work' },
-    { label: 'SERVICES', href: '#services' },
+    { label: 'SERVICES', href: '/services' },
   ] as NavLink[],
   navSecondary: [
     { label: 'STUDIO', href: '#studio' },

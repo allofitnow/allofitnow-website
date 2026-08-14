@@ -1,0 +1,12 @@
+/* Services page globals — ported from the design's <helmet> block. Nothing else is
+   class-based here: every other style on the /services page is an inline style, by design.
+   Font family names match the site's tokens.css ("Denim INK WD" / "SN Ja Mono"); the mono
+   file is the site's SNJaMono-Light.otf (the design shipped it as JaMonoSN-Light.otf). */
+@font-face { font-family: "Denim INK WD"; src: url("/fonts/DenimINKWD-Regular.otf") format("opentype"); font-weight: 400; font-style: normal; font-display: block; }
+@font-face { font-family: "Denim INK WD"; src: url("/fonts/DenimINKWD-Medium.otf") format("opentype"); font-weight: 500 700; font-style: normal; font-display: block; }
+@font-face { font-family: "SN Ja Mono"; src: url("/fonts/SNJaMono-Light.otf") format("opentype"); font-weight: 300; font-style: normal; font-display: block; }
+
+html,body{margin:0;background:#000;overflow:hidden}
+[data-inv]::-webkit-scrollbar{width:0;height:0}
+a{color:rgb(217,225,234);text-decoration:none}
+a:hover{color:rgba(217,225,234,0.45)}
