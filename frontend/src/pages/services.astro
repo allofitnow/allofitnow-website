@@ -1,18 +1,45 @@
 ---
-/* Standalone services page — a full-viewport takeover, deliberately outside Base.astro
-   (no ClientRouter/Grain/site-Nav). It ships its own chrome (SiteNav) and the measured
-   WebGL/controller runtime. Ported from the AOIN "Services 0813" design; see the port
-   notes in the redesign package. Do NOT convert inline styles to classes or rename data
-   attributes — the controller measures the DOM and writes styles back. */
+/* Services — a HORIZONTAL scroller. The WebGL "STUDIO / CAPABILITIES" hero and its
+   capability bar are PERSISTENT chrome (the ported controller runs in intro-only mode:
+   field + clock + bar sizing only). Vertical wheel/trackpad drives a 5-panel track
+   sideways; as each service comes into focus the persistent bar SCRAMBLES to it
+   (slot 0 = name, slots 1-3 = subcategories — mirroring the hero), its content slides
+   and pops into place, and a bottom-right service nav tracks the active panel.
+
+   The horizontal-scroll engine + entrance animations + orbit + equipment hover live in
+   services-effects.js (Lenis + GSAP/ScrollTrigger). The intro chrome's data-attrs /
+   inline styles are the controller's API — don't refactor them. The track deliberately
+   avoids the controller's [data-panel]/[data-other]/[data-imgs]/[data-copy] attrs so the
+   controller's layout() never touches it. The page is a full HTML doc outside Base.astro
+   but uses the shared site nav. */
 import '../styles/services.css';
 import Nav from '../components/chrome/Nav.astro';
 import PageTitle from '../components/services/PageTitle.astro';
 import CapabilityBar from '../components/services/CapabilityBar.astro';
 import AsciiField from '../components/services/AsciiField.astro';
-import ServicePanel0 from '../components/services/ServicePanel0.astro';
-import ServicePanel1 from '../components/services/ServicePanel1.astro';
-import ServicePanel2 from '../components/services/ServicePanel2.astro';
-import ServicePanel3 from '../components/services/ServicePanel3.astro';
+import { getServiceSections } from '../data/services';
+import { getEquipment } from '../data/equipment';
+
+const pad = (n: number) => String(n).padStart(2, '0');
+
+// Section copy + gallery images — Payload-ready via a typed async accessor (local seed today,
+// a Payload collection later). The galleries feed the ported Codrops "mwg" components.
+const services = await getServiceSections();
+const RTC = services[0].images;
+const SCREENS = services[1].images;
+const MR = services[2].images;
+
+const SVC_NAV = [
+  { i: 0, label: 'REAL-TIME CONTENT' },
+  { i: 1, label: 'SCREENS PRODUCTION' },
+  { i: 2, label: 'MIXED REALITY' },
+  { i: 3, label: 'EQUIPMENT RENTAL' },
+];
+
+// Equipment fleet — Payload-ready: a typed async accessor (local seed today, a Payload
+// `equipment` collection later). Ordered left→right; one item is flagged `center`.
+const equipment = await getEquipment();
+const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
 ---
 <!doctype html>
 <html lang="en">
@@ -21,27 +48,102 @@ import ServicePanel3 from '../components/services/ServicePanel3.astro';
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Services — All Of It Now</title>
 </head>
-<body style="margin:0;background:#000">
-{/* Nav sits at body level, above the page. [data-root] gets its own stacking
-   context (isolation:isolate) so its internal z-indices (up to 40) stay contained
-   and the shared nav — including the fullscreen mobile menu (z:19) — always
-   overlays it, matching every other page. */}
+<body>
 <Nav />
-<div data-root="" style="position:relative;height:100vh;overflow:hidden;isolation:isolate;background:#000;color:rgb(217,225,234);font-family:'Denim INK WD',sans-serif;font-weight:400">
-<PageTitle />
-<CapabilityBar />
-<div data-stage="" style="position:absolute;left:48px;right:48px;top:clamp(150px,22vh,240px);bottom:64px;overflow:visible;z-index:10;opacity:0;transition:opacity 500ms ease;pointer-events:none">
-<ServicePanel0 />
-<ServicePanel1 />
-<ServicePanel2 />
-<ServicePanel3 />
+
+<!-- ===== Pinned viewport: persistent chrome + horizontal track ===== -->
+<div class="svc-stage" data-root="" style="position:fixed;inset:0;overflow:hidden;isolation:isolate;background:#000;color:rgb(217,225,234);font-family:'Denim INK WD',sans-serif;font-weight:400">
+
+  <!-- persistent chrome (never translated) -->
+  <PageTitle />
+  <CapabilityBar />
+  <!-- empty stage: the controller measures it to place the field + fit the bar -->
+  <div data-stage="" style="position:absolute;left:48px;right:48px;top:clamp(150px,22vh,240px);bottom:64px;pointer-events:none"></div>
+  <AsciiField />
+
+  <!-- stacked section layers: each is inset:0; the scroll engine scrubs their galleries -->
+  <div class="svc-track" data-track="">
+
+    <!-- REAL-TIME CONTENT — mwg_083 fly-across, scrubbed R→L -->
+    <section class="svc-panel svc-panel--realtime" data-svc-panel="" data-i="0" id="real-time-content">
+      <div class="mwg_effect083" data-fx="083">
+        <div class="container">
+          {RTC.map((src) => <img class="media" src={src} alt="" loading="lazy" />)}
+        </div>
+      </div>
+      <p class="svc-desc svc-desc--overlay" data-desc="">{services[0].desc}</p>
+    </section>
+
+    <!-- SCREENS PRODUCTION — mwg_051 columns, scrubbed bottom→top (fixed image set) -->
+    <section class="svc-panel svc-panel--screens" data-svc-panel="" data-i="1" id="screens-production">
+      <div class="mwg_effect051" data-fx="051">
+        {SCREENS.map((src) => <img class="media" src={src} alt="" loading="lazy" />)}
+      </div>
+      <p class="svc-desc svc-desc--overlay" data-desc="">{services[1].desc}</p>
+    </section>
+
+    <!-- MIXED REALITY — mwg_061 3D orbit: assembles, then self-runs (scroll drives ring speed) -->
+    <section class="svc-panel svc-panel--mixed" data-svc-panel="" data-i="2" id="mixed-reality">
+      <div class="mwg_effect061" data-fx="061">
+        <div class="container">
+          {MR.map((src) => <img src={src} alt="" loading="lazy" />)}
+        </div>
+      </div>
+      <p class="svc-desc svc-desc--overlay" data-desc="">{services[2].desc}</p>
+    </section>
+
+    <!-- EQUIPMENT RENTAL — server plate + a draggable one-line marquee of the fleet.
+         Static until dragged; whichever name crosses page-center becomes active and swaps
+         the plate + body copy (wired in services-effects.js initEquipment). -->
+    <section class="svc-panel svc-panel--equip" data-svc-panel="" data-i="3" id="equipment-rental">
+      <div class="equip" data-fx="equip">
+        <div class="equip-plate" data-equip-plate>
+          <img data-equip-img src={equipCenter.image} alt="" />
+          <div class="equip-plate-ph" data-equip-ph aria-hidden="true"></div>
+        </div>
+        <div class="equip-marquee" data-equip-marquee aria-label="Drag to browse equipment">
+          <div class="equip-track" data-equip-track>
+            {equipment.map((e, i) => (
+              <button
+                type="button"
+                class="equip-item"
+                data-equip-row
+                data-img={e.image}
+                data-tip={e.tip}
+                data-slug={e.slug}
+                data-placeholder={e.placeholder ? 'true' : undefined}
+                data-center={e.center ? 'true' : undefined}
+                data-i={i}
+              >{e.label}</button>
+            ))}
+          </div>
+        </div>
+      </div>
+      <p class="svc-desc" data-desc="" data-equip-copy>{equipCenter.tip}</p>
+    </section>
+
+  </div>
+
+  <!-- persistent bottom-right service nav -->
+  <nav class="svc-nav" data-svc-nav="" aria-label="Services">
+    {SVC_NAV.map((s) => (
+      <button type="button" class="svc-nav-row" data-svc-jump data-i={s.i}>
+        <span class="svc-nav-idx">{pad(s.i + 1)}</span><span class="svc-nav-label">{s.label}</span>
+      </button>
+    ))}
+  </nav>
+
+  <div data-hint="" class="svc-scrollhint" style="position:absolute;left:48px;bottom:16px;z-index:40;font-family:'SN Ja Mono',ui-monospace,Menlo,monospace;font-weight:300;font-size:10px;letter-spacing:.3em;color:rgba(217,225,234,0.45)">SCROLL TO EXPLORE</div>
 </div>
-<AsciiField />
-<div data-hint="" style="position:absolute;left:48px;bottom:16px;z-index:40;font-family:'SN Ja Mono',ui-monospace,Menlo,monospace;font-weight:300;font-size:10px;letter-spacing:.3em;color:rgba(217,225,234,0.45);opacity:0;transition:opacity 400ms ease">SCROLL FOR NEXT</div>
-</div>
+
+<!-- scroll distance for the whole scrubbed narrative (intro → 4 sections) -->
+<div class="svc-scrolldist" data-scroll="" style="height:900vh"></div>
+
 <script>
   import { mountServices } from '../scripts/services-controller.js';
-  mountServices();
+  import { mountEffects } from '../scripts/services-effects.js';
+  const ctrl = mountServices({ introOnly: true });
+  mountEffects(ctrl);
 </script>
 </body>
 </html>

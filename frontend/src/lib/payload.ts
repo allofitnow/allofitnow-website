@@ -3,6 +3,8 @@
 // REST JSON into the frontend `Project` interface (see data/projects.ts).
 
 import type { Project } from '@/data/projects';
+import type { Equipment } from '@/data/equipment';
+import type { ServiceSection } from '@/data/services';
 
 const API_URL = import.meta.env.PAYLOAD_URL || 'http://192.168.30.245';
 
@@ -74,6 +76,61 @@ export function getProjects(): Promise<Project[]> {
     req.catch(() => { projectsCache = null; });
   }
   return req;
+}
+
+// ---------------------------------------------------------------------------
+// Equipment fleet + /services page content.
+//
+// Unlike projects (CMS is the hard source of truth, build fails if unreachable), these are
+// NEWER content types: their collection/global may not exist or be populated yet. So the
+// fetchers return [] on any error/empty response and the data-module accessors fall back to
+// (or merge over) their local seed — the build works whether or not the CMS is live.
+// ---------------------------------------------------------------------------
+
+/** Map a Payload equipment doc to the frontend `Equipment` shape. */
+export function mapPayloadEquipment(doc: any): Equipment {
+  return {
+    slug: doc.slug,
+    label: doc.label ?? '',
+    image: mediaUrl(doc.image),
+    tip: doc.tip ?? '',
+    order: typeof doc.order === 'number' ? doc.order : 0,
+    center: !!doc.center,
+    placeholder: !!doc.placeholder,
+  };
+}
+
+/** Fetch the equipment fleet from the CMS, ordered. `[]` if unreachable/empty. */
+export async function getEquipmentDocs(): Promise<Equipment[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/equipment?limit=100&depth=1&sort=order`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.docs ?? []).map(mapPayloadEquipment);
+  } catch {
+    return [];
+  }
+}
+
+/** Map one `services` global section row to the frontend `ServiceSection` shape. */
+export function mapPayloadServiceSection(row: any): ServiceSection {
+  return {
+    slug: row.slug,
+    desc: row.desc ?? '',
+    images: (row.images ?? []).map((m: any) => mediaUrl(m)).filter((url: string) => url !== ''),
+  };
+}
+
+/** Fetch the /services page sections from the `services` global. `[]` if unreachable/empty. */
+export async function getServicesGlobal(): Promise<ServiceSection[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/globals/services?depth=1`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.sections ?? []).map(mapPayloadServiceSection);
+  } catch {
+    return [];
+  }
 }
 
 /** Fetch a single project by slug. */

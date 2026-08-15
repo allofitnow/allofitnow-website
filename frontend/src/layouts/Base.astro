@@ -68,6 +68,17 @@ const flightOrder = JSON.stringify(projects.map((p) => p.slug));
     <script>
       import '@/lib/flight';
       import '@/lib/hovercard';
+      import { ensureLenis } from '@/lib/smooth-scroll';
+
+      // Site-wide smooth scroll: ensure the shared Lenis exists and is measured on each page,
+      // and sync its position to the top after a ClientRouter swap (Astro resets native scroll,
+      // but Lenis keeps its own). The homepage controller and /services reuse the same instance.
+      const bootScroll = () => { const l = ensureLenis(); if (l) l.resize(); };
+      document.addEventListener('astro:page-load', bootScroll);
+      document.addEventListener('astro:after-swap', () => {
+        const l = ensureLenis();
+        if (l) l.scrollTo(0, { immediate: true });
+      });
     </script>
   </body>
 </html>
