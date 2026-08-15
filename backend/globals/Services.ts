@@ -27,8 +27,10 @@ const Services: GlobalConfig = {
         { name: "slug", type: "text", required: true, admin: { description: "Section id / anchor (e.g. real-time-content)." } },
         { name: "desc", type: "textarea", admin: { description: "Bottom-left body copy shown when the section is active." } },
         {
+          // Payload 2 rejects a hasMany *upload* nested in an array field — ts-node exits on boot.
+          // Use a hasMany *relationship* to media instead (same shape the Projects gallery uses).
           name: "images",
-          type: "upload",
+          type: "relationship",
           relationTo: "media",
           hasMany: true,
           admin: { description: "Gallery stills, in scrub order. Drag to reorder. (Leave empty for Equipment.)" },
