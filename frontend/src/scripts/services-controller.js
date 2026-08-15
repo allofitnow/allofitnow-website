@@ -276,7 +276,7 @@ class ServicesController {
         if (p3 && p3.style.backgroundColor !== 'rgb(0, 0, 0)') { p3.style.transition = 'none'; p3.style.backgroundColor = 'rgb(0, 0, 0)'; }
       }
       
-      if (this.active < 0) { this.tickAscii(performance.now()); this.sweep(performance.now()); }
+      if (this.active < 0) { this.tickAscii(performance.now()); if (this._heroSweep !== false) this.sweep(performance.now()); }
       const thresh = 1400;
       const hold = 0;
       const ease = 0.062;
@@ -310,7 +310,7 @@ class ServicesController {
     window.addEventListener('resize', this._resize);
     requestAnimationFrame(() => this.layout());
     setTimeout(() => this.layout(), 600);
-    const boot = () => { this.layout(); this.buildAscii(); };
+    const boot = () => { this.layout(); this.buildAscii(); if (this._introOnly) this.playIntro(); };
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(boot, 60));
     else setTimeout(boot, 400);
     this._reAscii = null;
@@ -350,6 +350,114 @@ class ServicesController {
     if (!svc) return;
     const slug = svc.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
     window.dispatchEvent(new CustomEvent('services:scrollto', { detail: { slug } }));
+  }
+
+  // Horizontal scroller: scramble the persistent capability bar to reflect the
+  // active service. i < 0 = hero (the four service names); i in 0..3 = that
+  // service (slot 0 = name, slots 1-3 = its subcategories). Reuses the same
+  // slot-target + scramble() path as go()/home(); guarded so scroll updates
+  // don't re-scramble unchanged text every frame.
+  setActiveService(i) {
+    const root = this.el();
+    if (!root) return;
+    const slots = root.querySelectorAll('[data-slot]');
+    slots.forEach((s, k) => {
+      let target, bright;
+      if (i < 0 || i == null) {
+        target = SERVICES[k] ? SERVICES[k].name : '';
+        bright = false;
+      } else {
+        const svc = SERVICES[i];
+        target = k === 0 ? svc.name : (svc.subs[k - 1] || '');
+        bright = k === 0;
+      }
+      s.style.color = bright ? 'rgb(217,225,234)' : 'rgba(217,225,234,0.45)';
+      if (s.__svcTarget === target) return;
+      s.__svcTarget = target;
+      s.__target = target;
+      this.scramble(s, target);
+    });
+  }
+
+  // Scroll-driven field dissolve: t=0 (full field) → 1 (fully gone), reversible. Whole
+  // horizontal "strings" vanish together (shared per-run thresholds seeded in buildAscii).
+  // The alpha write runs in tickAscii (after flicker/hover) so it wins the frame.
+  dissolveField(t) {
+    const prev = this._dissolveT || 0;
+    this._dissolveT = t;
+    if (t <= 0.001 && prev > 0.001) this._restoreField();
+    this._glDirty = true;
+  }
+  _applyDissolve() {
+    if (!(this._dissolveT > 0.001) || !this._dyn || !this._dissolveThresh) return;
+    const th = this._dissolveThresh, dyn = this._dyn, ba = this._baseA, n = this._n, t = this._dissolveT;
+    for (let i = 0; i < n; i++) dyn[i * 5 + 1] = th[i] < t ? 0 : ba[i];
+  }
+  _restoreField() {
+    if (!this._dyn) return;
+    const dyn = this._dyn, ba = this._baseA, n = this._n;
+    for (let i = 0; i < n; i++) dyn[i * 5 + 1] = ba[i];
+    this._glDirty = true;
+  }
+
+  // On-load intro: STUDIO/CAPABILITIES → the four capability links → the field, overlapping
+  // (mirrors the homepage About motion). The text emerges from behind a line — each element is
+  // clipped (overflow:hidden) and its inner slides up from translateY(110%). No scramble. Skips
+  // (shows everything instantly) on a deep-link hash or reduced-motion, then signals the effects
+  // module via `services:introdone` so it can release the scroll lock.
+  playIntro() {
+    if (this._introPlayed) return;
+    this._introPlayed = true;
+    const root = this.el();
+    if (!root) return;
+    const a = root.querySelector('[data-title-a]');
+    const b = root.querySelector('[data-title-b]');
+    const slots = Array.from(root.querySelectorAll('[data-slot]'));
+    const field = root.querySelector('[data-ascii]');
+    const EASE = 'cubic-bezier(0.05,0.89,0,0.99)';
+    const reduce = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    const slugify = (s) => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+    const hash = (typeof location !== 'undefined' ? location.hash : '').replace(/^#/, '').toLowerCase();
+    const skip = !!hash && SERVICES.some((s) => slugify(s.name) === hash);
+    const done = () => { if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('services:introdone')); };
+    const show = (el) => { if (el) { el.style.opacity = '1'; el.style.transform = 'none'; el.style.overflow = 'visible'; } };
+
+    if (skip || reduce) { [a, b, ...slots, field].forEach(show); done(); return; }
+
+    // wrap the element's content in an inner span; clip the element; park the inner below the line
+    const clip = (el) => {
+      const inner = document.createElement('span');
+      inner.style.display = 'block';
+      inner.style.willChange = 'transform';
+      inner.style.transform = 'translateY(110%)';
+      while (el.firstChild) inner.appendChild(el.firstChild);
+      el.appendChild(inner);
+      el.style.overflow = 'hidden';
+      el.style.opacity = '1'; // element visible; inner clipped so nothing shows until it rises
+      return inner;
+    };
+    const rise = (el, delay, dur) => {
+      if (!el) return;
+      const inner = clip(el);
+      inner.animate(
+        [{ transform: 'translateY(110%)', easing: EASE }, { transform: 'translateY(0)' }],
+        { duration: dur, delay, fill: 'both' }
+      );
+    };
+    const lead = 260, stag = 90;
+    rise(a, lead, 900);
+    rise(b, lead + stag, 900);
+    slots.forEach((s, i) => rise(s, lead + 2 * stag + i * stag, 820));
+    const fieldDelay = lead + 3 * stag + slots.length * stag;
+    if (field) field.animate([{ opacity: 0, easing: EASE }, { opacity: 1 }], { duration: 900, delay: fieldDelay, fill: 'both' });
+    // Once the links have risen: unwrap the clip inner span (so the sweep's background-clip:text
+    // renders instead of black) and drop the clip so hover letter-spacing isn't cut off.
+    setTimeout(() => slots.forEach((s) => {
+      const inner = s.querySelector('span');
+      if (inner) s.textContent = inner.textContent;
+      s.style.overflow = 'visible';
+    }), lead + 2 * stag + slots.length * stag + 900);
+    setTimeout(done, fieldDelay + 940);
   }
 
   clock() {
@@ -590,7 +698,9 @@ class ServicesController {
       }
       const gapV = this._compact ? 16 : 44;
       const activeTop = Math.round(tb + gapV);
-      bar.style.top = this.active >= 0 ? activeTop + 'px' : '52vh';
+      // In intro-only mode the horizontal-scroll engine owns the bar's vertical position
+      // (52vh on the hero, risen under the title on a service) — don't clobber it here.
+      if (!this._introOnly) bar.style.top = this.active >= 0 ? activeTop + 'px' : '52vh';
       stage.style.top = Math.round(activeTop + bar.offsetHeight + gapV) + 'px';
     }
     const sw = stage.clientWidth;
@@ -959,6 +1069,10 @@ class ServicesController {
     const nb = (NAV_BRIGHTNESS) / 100;
     const base = Math.min(1, this._bgHov ? nb + 0.18 : nb);
     slots.forEach((b) => {
+      // While the intro clip still wraps a slot's text in an inner <span>, background-clip:text
+      // can't map onto the descendant glyphs — the text renders black. Leave those alone; they
+      // keep their plain inline color until playIntro() unwraps them, then the shine takes over.
+      if (b.firstElementChild) return;
       const r = b.getBoundingClientRect();
       if (b.__sw !== 1) {
         b.__sw = 1;
@@ -996,6 +1110,24 @@ class ServicesController {
       b.style.webkitBackgroundClip = '';
       b.style.webkitTextFillColor = '';
     });
+  }
+
+  // Capability bar mode. Hero (on=true): the animated shine runs and the links are clickable
+  // (jump into a section). Section (on=false): the shine stops and the text renders solid — no
+  // gradient — and the bar is pointer-events:none so only the global nav + bottom-right nav
+  // remain interactive. The effects module flips this at the hero↔section boundary.
+  setBarInteractive(on) {
+    const root = this.el();
+    if (!root) return;
+    const bar = root.querySelector('[data-bar]');
+    if (on) {
+      this._heroSweep = true;
+      if (bar) bar.style.pointerEvents = '';
+    } else {
+      this._heroSweep = false;
+      this.sweepOff(); // drop the gradient fill so the slots show their solid color
+      if (bar) bar.style.pointerEvents = 'none';
+    }
   }
 
   buildAscii() {
@@ -1128,6 +1260,21 @@ class ServicesController {
     this._moving = new Set();
     this._tOff = new Float32Array(n * 2);
     this._tScale = tScale;
+
+    // Per-run random dissolve thresholds: contiguous horizontal runs (i = r*cols+c) share a
+    // value so whole "strings" vanish together as dissolveField(t) ramps 0→1. Regenerated
+    // with the grid on every resize/rebuild.
+    const diss = new Float32Array(n);
+    for (let r = 0; r < rows; r++) {
+      let c = 0;
+      while (c < cols) {
+        const runLen = 2 + ((Math.random() * 7) | 0);
+        const rv = Math.random();
+        for (let k = 0; k < runLen && c < cols; k++, c++) diss[r * cols + c] = rv;
+      }
+    }
+    this._dissolveThresh = diss;
+    if (this._dissolveT > 0.001) this._applyDissolve(); // survive a rebuild mid-dissolve
 
     if (!this._prog) {
       const vs = '#version 300 es\n' +
@@ -1484,6 +1631,7 @@ class ServicesController {
       done.forEach((i) => this._moving.delete(i));
       this._glDirty = true;
     }
+    this._applyDissolve(); // wins the frame — after flicker/fade/hover, before the draw
     if (!this._glDirty) return;
     this._glDirty = false;
     this.drawAscii();
@@ -1808,10 +1956,14 @@ class ServicesController {
 let instance = null;
 
 export function mountServices(opts) {
+  // Reuse an existing controller across a hot-reload / accidental re-run so we never
+  // build a second WebGL field + clock on the same page.
   if (instance) return instance;
+  if (typeof window !== 'undefined' && window.__aoinSvcCtrl) return (instance = window.__aoinSvcCtrl);
   instance = new ServicesController();
   instance._introOnly = !!(opts && opts.introOnly);
   instance.componentDidMount();
+  if (typeof window !== 'undefined') window.__aoinSvcCtrl = instance;
   return instance;
 }
 

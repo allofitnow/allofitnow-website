@@ -1,5 +1,5 @@
-/* Services page — a scrollable page. Font family names match the site's tokens.css
-   ("Denim INK WD" / "SN Ja Mono"); the mono file is the site's SNJaMono-Light.otf.
+/* Services — a HORIZONTAL scroller. Font family names match the site's tokens.css
+   ("Denim INK WD" / "SN Ja Mono"; mono file is the site's SNJaMono-Light.otf).
    This page deliberately does NOT import tokens.css (its global uppercase would wreck
    the sentence-case service copy), so it mirrors only the tokens the shared nav needs. */
 @font-face { font-family: "Denim INK WD"; src: url("/fonts/DenimINKWD-Regular.otf") format("opentype"); font-weight: 400; font-style: normal; font-display: block; }
@@ -19,7 +19,6 @@
 html, body { margin: 0; background: #000; color: rgb(217, 225, 234); }
 a { color: rgb(217, 225, 234); text-decoration: none; }
 a:hover { color: rgba(217, 225, 234, 0.45); }
-[data-inv]::-webkit-scrollbar { width: 0; height: 0; }
 
 /* Lenis smooth scroll (recommended base rules) */
 html.lenis, html.lenis body { height: auto; }
@@ -27,63 +26,152 @@ html.lenis, html.lenis body { height: auto; }
 .lenis.lenis-smooth [data-lenis-prevent] { overscroll-behavior: contain; }
 .lenis.lenis-stopped { overflow: hidden; }
 
-/* ===== Intro (WebGL field screen) ===== */
-.svc-intro { display: block; }
-.svc-scrollhint { animation: svcHintPulse 2.4s ease-in-out infinite; }
-@keyframes svcHintPulse { 0%, 100% { opacity: 0.25; } 50% { opacity: 0.7; } }
+/* ===== Pinned stage ===== */
+.svc-stage { user-select: none; }
+.svc-scrollhint { animation: svcHintPulse 2.4s ease-in-out infinite; will-change: opacity; transition: opacity 0.4s ease; }
+.svc-scrollhint.is-hidden { opacity: 0 !important; animation: none; }
+@keyframes svcHintPulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.72; } }
 
-/* ===== Shared section + copy ===== */
-.svc { position: relative; background: #000; }
-.svc-head {
-  position: absolute; top: 92px; left: 48px; right: 48px; z-index: 20;
-  pointer-events: none; max-width: 680px;
+/* ===== Stacked section layers (all inset:0; the scroll engine scrubs their galleries) ===== */
+.svc-track {
+  position: absolute; inset: 0;
+  z-index: 10; pointer-events: none;
 }
-.svc-head--overlay { text-shadow: 0 2px 30px rgba(0, 0, 0, 0.55); }
-/* Soft top-left scrim so the copy stays legible over the moving galleries. */
-.svc-head::before {
-  content: ''; position: absolute; inset: -48px -90px -64px -60px; z-index: -1; pointer-events: none;
-  background: radial-gradient(125% 135% at 0% 0%, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0.45) 38%, rgba(0, 0, 0, 0) 72%);
+.svc-panel {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; /* engine sets pointer-events:auto on the active section only */
 }
-.svc--equip .svc-head::before { display: none; }
-.svc-kicker { font-family: var(--font-mono); font-weight: 300; font-size: 11px; letter-spacing: 0.3em; color: rgba(217, 225, 234, 0.45); }
-.svc-name { font-family: var(--font-headline); font-weight: 500; font-size: clamp(40px, 7vw, 120px); line-height: 0.9; letter-spacing: -0.01em; margin: 0.12em 0 0.22em; }
-.svc-subs { font-family: var(--font-mono); font-weight: 300; font-size: 12px; letter-spacing: 0.2em; color: rgba(217, 225, 234, 0.72); }
-.svc-desc { font-family: var(--font-headline); font-weight: 400; font-size: clamp(13px, 1.4vw, 17px); line-height: 1.45; color: rgba(217, 225, 234, 0.86); margin-top: 18px; max-width: 48ch; }
 
-/* ===== REAL-TIME CONTENT — mwg_083 ===== */
-.mwg_effect083 { position: relative; }
-.mwg_effect083 .pin-height { height: 300vh; }
-.mwg_effect083 .container { height: 100vh; position: relative; overflow: hidden; }
-.mwg_effect083 .media { position: absolute; top: 0; left: 0; width: 20vw; aspect-ratio: 1; display: block; object-fit: cover; border-radius: 8px; }
+/* ===== Per-service description ===== */
+.svc-desc {
+  position: absolute; left: 48px; bottom: 92px; z-index: 12; margin: 0;
+  max-width: 34ch; font-family: var(--font-headline); font-weight: 400;
+  font-size: clamp(13px, 1.35vw, 17px); line-height: 1.45; color: rgba(217, 225, 234, 0.86);
+  pointer-events: none;
+}
+.svc-desc--overlay { text-shadow: 0 2px 30px rgba(0, 0, 0, 0.55); }
 
-/* ===== SCREENS PRODUCTION — mwg_051 ===== */
-.mwg_effect051 { position: relative; height: 100vh; overflow: hidden; }
-.mwg_effect051 .listMedia { position: absolute; visibility: hidden; pointer-events: none; }
-.mwg_effect051 .media { position: absolute; left: 0; top: 100vh; width: 24vw; aspect-ratio: 0.75; border-radius: 8px; object-fit: cover; will-change: transform; }
+/* Scrim keeping the bar (top) + description (bottom) legible over the moving photo galleries.
+   Gated by .is-lit so the hero stays a clean field; the engine lights the active photo section. */
+.svc-panel--realtime::before, .svc-panel--screens::before {
+  content: ''; position: absolute; inset: 0; z-index: 11; pointer-events: none;
+  opacity: 0; transition: opacity 0.5s ease;
+  background:
+    linear-gradient(to bottom, rgba(0, 0, 0, 0.72) 0%, rgba(0, 0, 0, 0) 24%),
+    linear-gradient(to top, rgba(0, 0, 0, 0.78) 0%, rgba(0, 0, 0, 0) 26%);
+}
+.svc-panel.is-lit::before { opacity: 1; }
+
+/* ===== REAL-TIME CONTENT — mwg_083 (fly-across, self-running) ===== */
+.svc-panel--realtime .mwg_effect083 { position: absolute; inset: 0; overflow: hidden; }
+.mwg_effect083 .container { position: relative; width: 100%; height: 100%; overflow: hidden; }
+.mwg_effect083 .media {
+  position: absolute; top: 0; left: 0; width: clamp(210px, 24vw, 420px); aspect-ratio: 1;
+  display: block; object-fit: cover; border-radius: 8px; will-change: transform;
+}
+
+/* ===== SCREENS PRODUCTION — mwg_051 (columns rise bottom→top, scrubbed) ===== */
+.svc-panel--screens .mwg_effect051 { position: absolute; inset: 0; overflow: hidden; }
+.mwg_effect051 .media {
+  position: absolute; left: 0; top: 0; width: clamp(180px, 22vw, 360px); aspect-ratio: 0.75;
+  display: block; object-fit: cover; border-radius: 8px; will-change: transform;
+}
 
 /* ===== MIXED REALITY — mwg_061 (3D orbit) ===== */
-.mwg_effect061 { position: relative; height: 100vh; perspective: 50vw; overflow: hidden; }
-.mwg_effect061 .container { position: relative; height: 100vh; transform-style: preserve-3d; transform-origin: 50% 50%; width: 100%; will-change: transform; }
-.mwg_effect061 .container img { width: 20vw; aspect-ratio: 1; display: block; object-fit: cover; position: absolute; top: calc(50% - 10vw); left: calc(50% - 10vw); transform-origin: 50% 0 50vw; border-radius: 8px; }
+.svc-panel--mixed .mwg_effect061 {
+  position: absolute; inset: 0; height: 100%; perspective: 50vw; overflow: hidden;
+  /* pointer-events inherited from the panel — the engine enables the active section only */
+}
+.mwg_effect061 .container {
+  position: relative; height: 100%; transform-style: preserve-3d;
+  transform-origin: 50% 50%; width: 100%; will-change: transform;
+}
+.mwg_effect061 .container img {
+  width: 20vw; aspect-ratio: 1; display: block; object-fit: cover;
+  position: absolute; top: calc(50% - 10vw); left: calc(50% - 10vw);
+  transform-origin: 50% 0 50vw; border-radius: 8px;
+}
 
-/* ===== EQUIPMENT RENTAL ===== */
-.svc--equip { min-height: 100vh; padding: 116px 48px 64px; }
-.svc--equip .svc-head { position: static; max-width: none; margin-bottom: 40px; pointer-events: auto; }
-.equip { display: block; }
-.equip-body { display: flex; gap: clamp(32px, 6vw, 96px); align-items: stretch; }
-.equip-list { flex: 0 0 40%; display: flex; flex-direction: column; }
-.equip-row { text-align: left; background: none; border: 0; border-top: 1px solid rgba(217, 225, 234, 0.28); color: rgba(217, 225, 234, 0.45); font-family: var(--font-headline); font-weight: 500; font-size: clamp(12px, 1.4vw, 16px); letter-spacing: 0.02em; padding: 11px 0; cursor: pointer; transition: color 0.24s ease; }
-.equip-row:last-child { border-bottom: 1px solid rgba(217, 225, 234, 0.28); }
-.equip-row.is-active, .equip-row:hover { color: rgb(217, 225, 234); }
-.equip-plate { flex: 1 1 auto; display: grid; place-items: center; }
-.equip-plate img { max-width: 78%; max-height: 58vh; object-fit: contain; display: block; transition: opacity 0.22s ease; }
+/* ===== EQUIPMENT RENTAL — plate above a draggable one-line fleet marquee ===== */
+.svc-panel--equip .equip {
+  position: absolute; top: 200px; left: 48px; right: 48px; bottom: 148px;
+  display: flex; flex-direction: column; align-items: stretch; gap: clamp(20px, 3.4vh, 44px);
+  /* pointer-events inherited from the panel — enabled only when Equipment is the active section */
+}
+.equip-plate { position: relative; flex: 1 1 auto; display: grid; place-items: center; min-height: 0; min-width: 0; }
+.equip-plate img { max-width: 68%; max-height: 100%; object-fit: contain; display: block; transition: opacity 0.22s ease; will-change: transform, opacity; }
+/* placeholder plate — shown for fleet items with no plate asset yet (pending the CMS) */
+.equip-plate-ph {
+  position: absolute; inset: 14% 20%; display: grid; place-items: center; text-align: center;
+  border: 1px dashed rgba(217, 225, 234, 0.22); border-radius: 12px; padding: 24px;
+  font-family: var(--font-headline); font-weight: 500; font-size: clamp(14px, 1.5vw, 20px);
+  letter-spacing: 0.04em; color: rgba(217, 225, 234, 0.5); line-height: 1.3;
+  opacity: 0; transition: opacity 0.22s ease; pointer-events: none;
+}
+.equip-plate.is-placeholder .equip-plate-ph { opacity: 1; }
+
+/* the fleet as one draggable line; a faint center "playhead" marks the active slot */
+.equip-marquee {
+  position: relative; flex: 0 0 auto; height: clamp(42px, 6vh, 58px); overflow: hidden;
+  cursor: grab; touch-action: pan-y;   /* let vertical page scroll pass through; we own horizontal */
+  -webkit-mask: linear-gradient(to right, transparent, #000 11%, #000 89%, transparent);
+          mask: linear-gradient(to right, transparent, #000 11%, #000 89%, transparent);
+}
+.equip-marquee.is-grabbing { cursor: grabbing; }
+.equip-marquee::before {
+  content: ''; position: absolute; left: 50%; top: 12%; bottom: 12%; width: 1px; z-index: 1;
+  transform: translateX(-50%); background: rgba(217, 225, 234, 0.22); pointer-events: none;
+}
+.equip-track {
+  position: absolute; top: 0; left: 0; height: 100%; display: flex; align-items: center;
+  gap: clamp(30px, 4vw, 72px); will-change: transform;
+}
+.equip-item {
+  flex: 0 0 auto; white-space: nowrap; background: none; border: 0; padding: 0 4px;
+  color: rgba(217, 225, 234, 0.36); font-family: var(--font-headline); font-weight: 500;
+  font-size: clamp(14px, 1.6vw, 22px); letter-spacing: 0.02em; cursor: grab;
+  transition: color 0.3s ease, opacity 0.3s ease;
+}
+.equip-marquee.is-grabbing .equip-item { cursor: grabbing; }
+.equip-item.is-active { color: rgb(217, 225, 234); }
+.svc-panel--equip .svc-desc { max-width: 62ch; bottom: 56px; }
+
+/* ===== Persistent bottom-right service nav ===== */
+.svc-nav {
+  position: absolute; right: 48px; bottom: 44px; z-index: 35;
+  display: flex; flex-direction: column; align-items: flex-end; gap: 9px;
+}
+.svc-nav-row {
+  display: inline-flex; align-items: baseline; gap: 12px; background: none; border: 0;
+  padding: 0; cursor: pointer; font-family: var(--font-mono); font-weight: 300;
+  font-size: 12px; letter-spacing: 0.18em; color: rgba(217, 225, 234, 0.4);
+  transition: color 0.26s ease; white-space: nowrap;
+}
+.svc-nav-idx { font-size: 10px; letter-spacing: 0.2em; color: rgba(217, 225, 234, 0.3); transition: color 0.26s ease; }
+.svc-nav-row:hover, .svc-nav-row.is-active { color: rgb(217, 225, 234); }
+.svc-nav-row.is-active .svc-nav-idx, .svc-nav-row:hover .svc-nav-idx { color: rgba(217, 225, 234, 0.7); }
 
 @media (max-width: 768px) {
-  .svc-head { top: 80px; left: 20px; right: 20px; }
-  .mwg_effect083 .media { width: 40vw; }
-  .mwg_effect051 .media { width: 42vw; }
+  .svc-desc {
+    left: 20px; right: 20px; bottom: 54px; max-width: none;
+    padding-top: 16px; background: linear-gradient(to top, #000 72%, rgba(0, 0, 0, 0) 100%);
+  }
+  .mwg_effect083 .media { width: clamp(104px, 36vw, 185px); }
+  .mwg_effect051 .media { width: clamp(96px, 34vw, 165px); }
   .mwg_effect061 .container img { width: 34vw; top: calc(50% - 17vw); left: calc(50% - 17vw); transform-origin: 50% 0 50vw; }
-  .svc--equip { padding: 92px 20px 48px; }
-  .equip-body { flex-direction: column; gap: 28px; }
-  .equip-list { flex: none; }
+  /* deeper scrim so the title + stacked bar stay legible over the moving galleries */
+  .svc-panel--realtime::before, .svc-panel--screens::before {
+    background:
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.84) 0%, rgba(0, 0, 0, 0) 44%),
+      linear-gradient(to top, rgba(0, 0, 0, 0.86) 0%, rgba(0, 0, 0, 0) 30%);
+  }
+  .svc-panel--equip .equip { top: 22vh; left: 20px; right: 20px; bottom: 130px; gap: 18px; }
+  .equip-plate img { max-width: 82%; max-height: 30vh; }
+  .equip-marquee { height: 46px; }
+  .equip-item { font-size: clamp(14px, 5vw, 22px); }
+  .svc-panel--equip .svc-desc { bottom: 54px; }
+  /* nav → a compact horizontal row along the very bottom; desc sits just above it */
+  .svc-nav { left: 20px; right: 20px; bottom: 18px; flex-direction: row; justify-content: flex-end; align-items: center; gap: 16px; }
+  .svc-nav-row { gap: 6px; }
+  .svc-nav-label { display: none; }
 }
