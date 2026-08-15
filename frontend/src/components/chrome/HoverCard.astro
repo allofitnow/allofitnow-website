@@ -1,20 +1,22 @@
 ---
-// Work-grid / home-marquee hover card — a cursor-following "VIEW PROJECT" plate.
-// Ported look from docs/prototypes/reflow-transition.html (#hovercard): a
-// cool-white highlight. The label writes on character-by-character (staggered)
-// each time the card appears (see lib/hovercard.ts).
+// Work-grid / home-marquee hover card — a cursor-following cool-white plate.
+// Ported look from docs/prototypes/reflow-transition.html (#hovercard).
+//
+// TWO modes, chosen by what's under the cursor (see lib/hovercard.ts):
+//   • Work grid tiles (.tile[data-slug]) → the "VIEW PROJECT" label, written on
+//     character-by-character.
+//   • Home bleed-carousel slides (.slide[data-title]) → a richer project card:
+//     name / tour / capabilities, each line rising in staggered.
+// The plate is populated by JS on show, so the markup below is just the empty
+// persisted shell.
 //
 // The element persists across ClientRouter swaps (like the flyer + cursor) so
-// lib/hovercard.ts can bind its pointer listeners once. It shows over the work
-// grid tiles and the home bleed-carousel slides ([data-slug] things that fly);
-// pages without either just never trigger it.
-const LABEL = 'VIEW PROJECT';
+// lib/hovercard.ts can bind its pointer listeners once. Pages without either
+// target just never trigger it.
 ---
 
 <div id="aoin-hovercard" aria-hidden="true" transition:persist="aoin-hovercard">
-  <span class="plate">
-    {LABEL.split('').map((c) => <span class="ch">{c}</span>)}
-  </span>
+  <span class="plate"></span>
 </div>
 
 <style>
@@ -46,7 +48,44 @@ const LABEL = 'VIEW PROJECT';
     padding: 6px 10px 5px;
     overflow: hidden; /* safety while the letters rise into place */
   }
-  .ch {
+  /* The letters (VIEW PROJECT) and the rich lines are injected by
+     lib/hovercard.ts at runtime, so they carry NO Astro scope hash — their
+     rules must be :global to reach them (kept under #aoin-hovercard so the
+     class names don't leak site-wide). */
+  :global(#aoin-hovercard .ch) {
     display: inline-block;
+  }
+
+  /* Rich mode — the home bleed card: name / tour / capabilities, each its OWN
+     highlight box, stacked and revealed line by line. The container itself is
+     transparent; the cool-white highlight lives on each line. */
+  .plate.rich {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    text-align: left;
+    background: transparent;
+    padding: 0;
+    overflow: visible;
+    gap: 4px;
+  }
+  /* Every line — name, tour, each capability — shares ONE look: JetBrains Mono,
+     one size, one weight. Only the content differs. */
+  :global(#aoin-hovercard .hc-line) {
+    display: inline-block;
+    width: max-content;
+    max-width: 44vw;
+    white-space: nowrap; /* each line is its own single-line highlight */
+    overflow: hidden;
+    text-overflow: ellipsis;
+    text-transform: uppercase;
+    background: var(--aoin-cool-white);
+    color: var(--aoin-black);
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 12px;
+    line-height: 1;
+    letter-spacing: 0.16em;
+    padding: 5px 9px;
   }
 </style>

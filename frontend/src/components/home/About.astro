@@ -37,7 +37,15 @@ const projects = await getProjects();
         <div class="track" data-ref="track">
           {
             projects.map((p) => (
-              <a class="slide" data-slide="1" href={`/work/${p.slug}`} data-slug={p.slug}>
+              <a
+                class="slide"
+                data-slide="1"
+                href={`/work/${p.slug}`}
+                data-slug={p.slug}
+                data-title={p.title}
+                data-tour={p.tour}
+                data-caps={p.capabilities.join('|')}
+              >
                 <img src={p.image} alt={p.title} draggable="false" loading="lazy" />
               </a>
             ))
@@ -48,7 +56,17 @@ const projects = await getProjects();
           <div class="mirror" data-ref="mirror">
             {
               projects.map((p) => (
-                <a class="slide" data-slide="1" href={`/work/${p.slug}`} data-slug={p.slug} aria-hidden="true" tabindex="-1">
+                <a
+                  class="slide"
+                  data-slide="1"
+                  href={`/work/${p.slug}`}
+                  data-slug={p.slug}
+                  data-title={p.title}
+                  data-tour={p.tour}
+                  data-caps={p.capabilities.join('|')}
+                  aria-hidden="true"
+                  tabindex="-1"
+                >
                   <img src={p.image} alt="" draggable="false" loading="lazy" />
                 </a>
               ))
