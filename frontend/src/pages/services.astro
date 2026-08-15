@@ -14,6 +14,7 @@
    but uses the shared site nav. */
 import '../styles/services.css';
 import Nav from '../components/chrome/Nav.astro';
+import Preloader from '../components/home/Preloader.astro';
 import PageTitle from '../components/services/PageTitle.astro';
 import CapabilityBar from '../components/services/CapabilityBar.astro';
 import AsciiField from '../components/services/AsciiField.astro';
@@ -52,6 +53,11 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
 <title>Services — All Of It Now</title>
 </head>
 <body>
+{/* Covers the raw stacked section layers (which paint for a frame before the
+    effects module positions them off-stage) with the same branded LOADING beat
+    as the homepage. Its render-blocking CSS means it's black on the first paint,
+    so there's no flash; the bottom script lifts it once the stage is set. */}
+<Preloader />
 <Nav />
 
 <!-- ===== Pinned viewport: persistent chrome + horizontal track ===== -->
@@ -145,8 +151,51 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
 <script>
   import { mountServices } from '../scripts/services-controller.js';
   import { mountEffects } from '../scripts/services-effects.js';
+
   const ctrl = mountServices({ introOnly: true });
+  // mountEffects positions every gallery off-stage synchronously (master.progress(0)),
+  // so once it has run the preloader can lift with no raw-content behind it.
   mountEffects(ctrl);
+
+  // --- Preloader lift ---------------------------------------------------------
+  const pre = document.querySelector('[data-ref="preloader"]');
+  const preCount = document.querySelector('[data-ref="preCount"]');
+  const preLabel = document.querySelector('[data-ref="preLabel"]');
+  const SLUGS = ['real-time-content', 'screens-production', 'mixed-reality', 'equipment-rental'];
+  const deepLink = SLUGS.includes((location.hash || '').replace(/^#/, ''));
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  const lift = () => {
+    if (!pre) return;
+    [preLabel, preCount].filter(Boolean).forEach((el, i) =>
+      el.animate(
+        [{ transform: 'translateY(0%)' }, { transform: 'translateY(-115%)' }],
+        { duration: 440, delay: 20 + i * 60, easing: 'cubic-bezier(.05,.89,0,.99)', fill: 'both' },
+      ),
+    );
+    setTimeout(() => { pre.style.background = 'transparent'; }, 200);
+    setTimeout(() => { pre.style.display = 'none'; }, 560);
+  };
+
+  if (pre && !deepLink && !reduced) {
+    // Normal load: count 0 -> 100, then lift (the intro plays underneath).
+    const dur = 1200;
+    const t0 = performance.now();
+    const ease = (t) => 1 - Math.pow(1 - t, 3);
+    const step = (now) => {
+      const t = Math.min(1, (now - t0) / dur);
+      if (preCount) preCount.textContent = String(Math.round(ease(t) * 100));
+      if (t < 1) requestAnimationFrame(step);
+      else lift();
+    };
+    requestAnimationFrame(step);
+  } else if (pre) {
+    // Deep-link / reduced-motion: skip the count, just cover the flash until the
+    // page has loaded (the deep-link jump lands on `load`), then lift.
+    const go = () => setTimeout(lift, 60);
+    if (document.readyState === 'complete') go();
+    else window.addEventListener('load', go, { once: true });
+  }
 </script>
 </body>
 </html>

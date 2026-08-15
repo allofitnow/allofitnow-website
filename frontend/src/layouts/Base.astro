@@ -5,16 +5,23 @@ import { ClientRouter } from 'astro:transitions';
 import Nav from '@/components/chrome/Nav.astro';
 import Cursor from '@/components/chrome/Cursor.astro';
 import HoverCard from '@/components/chrome/HoverCard.astro';
+import Preloader from '@/components/home/Preloader.astro';
 import { getProjects } from '@/data/projects';
 
 interface Props {
   title?: string;
   description?: string;
+  /** Render the branded preloader as an instant black cover on a FULL document
+   *  load (direct visit / refresh). It's hidden on every ClientRouter soft-nav
+   *  so it never covers the flight morph. The homepage opts out — it drives its
+   *  own preloader (with the intro lockup) from home.controller. */
+  preloader?: boolean;
 }
 
 const {
   title = 'All Of It Now',
   description = 'All Of It Now — a real-time content and show production studio in Los Angeles.',
+  preloader = false,
 } = Astro.props;
 
 // The flight engine needs the ordered project roster (for the morph sequence),
@@ -48,6 +55,15 @@ const flightOrder = JSON.stringify(projects.map((p) => p.slug));
     <ClientRouter />
   </head>
   <body>
+    {/* Instant black cover on a full document load — its render-blocking CSS
+        paints black on the first frame, so page content never flashes before
+        its intro. Hidden on any soft-nav (see the script) so the flight is
+        never covered. */}
+    {preloader && (
+      <div data-base-preloader>
+        <Preloader />
+      </div>
+    )}
     {/* Nav + Cursor persist across soft swaps (transition:persist is on their
         own root elements) so their once-bound scripts — clock, reveal, crosshair
         — keep working instead of re-binding to fresh nodes each navigation. */}
@@ -78,7 +94,47 @@ const flightOrder = JSON.stringify(projects.map((p) => p.slug));
       document.addEventListener('astro:after-swap', () => {
         const l = ensureLenis();
         if (l) l.scrollTo(0, { immediate: true });
+        // Any swap is a soft-nav — hide the preloader instantly (this runs
+        // pre-paint) so it can never cover a flight morph into a project.
+        const p = document.querySelector('[data-base-preloader] [data-ref="preloader"]');
+        if (p) { p.style.display = 'none'; p.dataset.done = '1'; }
       });
+
+      // Branded preloader — runs its 0->100 count only on a full document load
+      // (this module executes once per load, not on soft-navs). The `[data-base-
+      // preloader]` scope keeps it clear of the homepage's own preloader.
+      const scope = document.querySelector('[data-base-preloader]');
+      const pre = scope && scope.querySelector<HTMLElement>('[data-ref="preloader"]');
+      if (pre && !pre.dataset.done) {
+        pre.dataset.done = '1';
+        const count = scope!.querySelector<HTMLElement>('[data-ref="preCount"]');
+        const label = scope!.querySelector<HTMLElement>('[data-ref="preLabel"]');
+        const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        const lift = () => {
+          [label, count].filter(Boolean).forEach((el, i) =>
+            el!.animate(
+              [{ transform: 'translateY(0%)' }, { transform: 'translateY(-115%)' }],
+              { duration: 440, delay: 20 + i * 60, easing: 'cubic-bezier(.05,.89,0,.99)', fill: 'both' },
+            ),
+          );
+          setTimeout(() => { pre.style.background = 'transparent'; }, 200);
+          setTimeout(() => { pre.style.display = 'none'; }, 560);
+        };
+        if (reduced) {
+          pre.style.display = 'none';
+        } else {
+          const dur = 1100;
+          const t0 = performance.now();
+          const ease = (t: number) => 1 - Math.pow(1 - t, 3);
+          const step = (now: number) => {
+            const t = Math.min(1, (now - t0) / dur);
+            if (count) count.textContent = String(Math.round(ease(t) * 100));
+            if (t < 1) requestAnimationFrame(step);
+            else lift();
+          };
+          requestAnimationFrame(step);
+        }
+      }
     </script>
   </body>
 </html>

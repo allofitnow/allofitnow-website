@@ -15,6 +15,10 @@ gsap.registerPlugin(ScrollTrigger, CustomEase);
 CustomEase.create('aboutEase', 'M0,0 C0.05,0.89 0,0.99 1,1'); // homepage About easing
 
 let mounted = false;
+// True while a programmatic deep-link scroll (lenis.scrollTo) is in flight — the
+// orbit ignores scroll velocity during it, so a jump's huge instantaneous
+// velocity never spikes the ring's spin. Cleared when the jump settles.
+let progScroll = false;
 const SLUGS = ['real-time-content', 'screens-production', 'mixed-reality', 'equipment-rental'];
 const ANCHOR = { 'real-time-content': 0.16, 'screens-production': 0.48, 'mixed-reality': 0.74, 'equipment-rental': 0.94 };
 const ABOUT_EASE = 'cubic-bezier(0.05,0.89,0,0.99)';
@@ -202,7 +206,7 @@ export function mountEffects(ctrl) {
     onUpdate: (self) => {
       const p = self.progress;
       master.progress(p);
-      orbit.setBoost(p, self.getVelocity());
+      orbit.setBoost(p, progScroll ? 0 : self.getVelocity());
       driveSection(p);
       driveReveal(p);
     },
@@ -294,6 +298,11 @@ function buildMixed(root) {
   // one ticker writer integrates angular velocity into rotationY
   let orbitRot = 0, angVel = ORBIT_BASE, targetVel = ORBIT_BASE;
   gsap.ticker.add((t, dt) => {
+    // Always ease the boost target back toward baseline. Scroll bumps it UP
+    // (setBoost); this pulls it DOWN every frame — so when scrolling stops
+    // (including a programmatic jump that fires no further onUpdate) the ring
+    // can never stay stuck at a peak velocity, it settles to its resting spin.
+    targetVel += (ORBIT_BASE - targetVel) * 0.05;
     angVel += (targetVel - angVel) * 0.08;
     orbitRot += angVel * (dt || 16);
     gsap.set(container, { rotationY: orbitRot });
@@ -308,7 +317,13 @@ function buildMixed(root) {
 
   return {
     setBoost(p, vel) {
-      targetVel = (p >= MIX[0] && p <= MIX[1]) ? Math.min(ORBIT_BASE + Math.abs(vel) * 0.00006, ORBIT_MAX) : ORBIT_BASE;
+      // Only RAISE the target from scroll speed (inside the mixed section); the
+      // ticker eases it back down. vel arrives as 0 during programmatic jumps,
+      // so a deep-link never bumps the spin.
+      if (p >= MIX[0] && p <= MIX[1]) {
+        const v = Math.min(ORBIT_BASE + Math.abs(vel) * 0.00006, ORBIT_MAX);
+        if (v > targetVel) targetVel = v;
+      }
     },
     assemble() {
       gsap.fromTo(
@@ -435,7 +450,17 @@ function initEquipment(root) {
 function initNav(lenis, st) {
   if (typeof window !== 'undefined') { window.__aoinLenis = lenis; window.__aoinST = st; }
   const targetFor = (slug) => st.start + (ANCHOR[slug] || 0) * (st.end - st.start);
-  const jump = (slug, immediate) => lenis.scrollTo(targetFor(slug), immediate ? { immediate: true } : { duration: 1.1 });
+  const jump = (slug, immediate) => {
+    // Flag the jump so the orbit ignores its velocity spike, and clear the flag
+    // once the scroll settles (onComplete for the eased jump; next frame for an
+    // immediate one, which fires no onComplete).
+    progScroll = true;
+    const clear = () => { progScroll = false; };
+    lenis.scrollTo(targetFor(slug), immediate ? { immediate: true, onComplete: clear } : { duration: 1.1, onComplete: clear });
+    if (immediate) requestAnimationFrame(clear);
+    clearTimeout(jump._t);
+    jump._t = setTimeout(clear, 1400); // safety net
+  };
 
   document.querySelectorAll('[data-svc-jump]').forEach((b) => {
     b.addEventListener('click', () => jump(SLUGS[+b.dataset.i]));

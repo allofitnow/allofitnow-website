@@ -23,6 +23,6 @@ interface Props {
 const { project, prev, next } = Astro.props;
 ---
 
-<Base title={`${project.title} — All Of It Now`} description={project.summary}>
+<Base title={`${project.title} — All Of It Now`} description={project.summary} preloader>
   <ProjectPage project={project} prev={prev} next={next} />
 </Base>
