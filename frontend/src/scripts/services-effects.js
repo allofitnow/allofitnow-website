@@ -122,7 +122,7 @@ export function mountEffects(ctrl) {
   const activeTop = () => {
     const tr = titleRow();
     if (!tr) return 200;
-    return Math.round(tr.getBoundingClientRect().bottom - root.getBoundingClientRect().top + 44);
+    return Math.round(tr.getBoundingClientRect().bottom - root.getBoundingClientRect().top + 20);
   };
   const descOf = (i) => panels[i] && panels[i].querySelector('[data-desc]');
   const equipEl = panels[3] && panels[3].querySelector('.equip');
@@ -159,7 +159,7 @@ export function mountEffects(ctrl) {
       pan.style.pointerEvents = i === s ? 'auto' : 'none';
     });
     if (!(prev === -2 && s === -1)) ctrl.setActiveService && ctrl.setActiveService(s);
-    if (bar) bar.style.top = activeTop() + 'px'; // always under the title (no mid-viewport deadspace)
+    if (bar) bar.style.top = s < 0 ? '52vh' : activeTop() + 'px'; // hero: mid-viewport; section: risen tight under the title
     navRows.forEach((r) => r.classList.toggle('is-active', +r.dataset.i === s));
     if (hint) hint.classList.toggle('is-hidden', s >= 0);
     orbit.show(s === 2 ? 1 : 0);
@@ -215,10 +215,6 @@ export function mountEffects(ctrl) {
 
   // initial hero paint
   master.progress(0);
-  // The bar now sits at a constant position (under the title) in every state, so its 900ms
-  // top-transition is vestigial — kill it so it snaps into place on load instead of sliding
-  // up from the old 52vh inline.
-  if (bar) bar.style.transition = 'none';
   if (equipEl) gsap.set(equipEl, { autoAlpha: 0 });
   hideAllReveals();
   driveSection(0);
@@ -239,7 +235,7 @@ export function mountEffects(ctrl) {
 
   let reFit = null;
   window.addEventListener('resize', () => {
-    if (bar) bar.style.top = activeTop() + 'px';
+    if (bar) bar.style.top = lastSection < 0 ? '52vh' : activeTop() + 'px';
     clearTimeout(reFit);
     reFit = setTimeout(() => { ScrollTrigger.refresh(); }, 220); // onRefresh re-applies the dissolve
   });
