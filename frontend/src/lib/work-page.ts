@@ -118,6 +118,15 @@ export function initWorkPage(root: HTMLElement) {
       n.style.transition = `transform .55s ${EASE_BRAND} ${d}ms, opacity 0s linear ${d}ms`;
       n.style.opacity = '1';
       n.style.transform = 'translateY(0)';
+      // Once the reveal has landed, drop the inline transition. Its per-row
+      // `opacity 0s linear ${d}ms` delay would otherwise gate the hover dim/
+      // undim — the active row only lit up ~d ms (up to ~0.5s) after you
+      // hovered. Cleared, rows fall back to the CSS `.row` opacity ease, so the
+      // highlight tracks the cursor instantly.
+      window.setTimeout(() => {
+        n.style.transition = '';
+        n.style.transform = '';
+      }, d + 620);
     });
   }
 

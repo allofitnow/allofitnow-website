@@ -28,6 +28,10 @@ const { project: p } = Astro.props;
     padding: 26px 4px;
     min-width: 0;
     border-bottom: 1px solid var(--rule);
+    /* Hover dim/undim is driven by JS setting opacity (active row 1, rest .35).
+       This fast ease is what lights the row up — the intro-stagger's delayed
+       inline transition is cleared once the reveal lands (see work-page.ts). */
+    transition: opacity 0.2s ease;
   }
   .row:hover {
     color: var(--aoin-cool-white);
