@@ -1355,7 +1355,8 @@ class ServicesController {
         let near = false;
         if (bar) {
           const br = bar.getBoundingClientRect();
-          near = e.clientY < br.bottom + 70;
+          const pad = (this._ch || 20) * 1.5; // mute hover only within ~1–2 rows of the middle nav bar
+          near = e.clientY > br.top - pad && e.clientY < br.bottom + pad;
         }
         if (near) {
           if (this._mIn) { this._mIn = false; this.asciiClear(true); }

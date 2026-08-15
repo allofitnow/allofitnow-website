@@ -24,7 +24,7 @@ const RTC = { start: 0.06, travel: 0.16, stag: 0.016 };  // fly-across: fast + s
 const SCR = { start: 0.36, travel: 0.17, stag: 0.020 };  // rise bottom→top
 const MIX = [0.60, 0.86];             // orbit section (scroll drives ring speed)
 const B = [0.06, 0.34, 0.60, 0.86];   // section ENTER — bar scramble + rise + field dissolve
-const R = [0.15, 0.42, 0.68, 0.90];   // text REVEAL — held back until the images are in view
+const R = [0.08, 0.36, 0.62, 0.88];   // text REVEAL — as soon as the first images enter view (just past B)
 const HYST = 0.012;                   // tighter dead-band → crisper hand-offs
 // depth layers for parallax (back → front): different reach (speed) + scale
 const LAYERS = [
@@ -159,7 +159,7 @@ export function mountEffects(ctrl) {
       pan.style.pointerEvents = i === s ? 'auto' : 'none';
     });
     if (!(prev === -2 && s === -1)) ctrl.setActiveService && ctrl.setActiveService(s);
-    if (bar) bar.style.top = s < 0 ? '52vh' : activeTop() + 'px';
+    if (bar) bar.style.top = activeTop() + 'px'; // always under the title (no mid-viewport deadspace)
     navRows.forEach((r) => r.classList.toggle('is-active', +r.dataset.i === s));
     if (hint) hint.classList.toggle('is-hidden', s >= 0);
     orbit.show(s === 2 ? 1 : 0);
@@ -215,6 +215,10 @@ export function mountEffects(ctrl) {
 
   // initial hero paint
   master.progress(0);
+  // The bar now sits at a constant position (under the title) in every state, so its 900ms
+  // top-transition is vestigial — kill it so it snaps into place on load instead of sliding
+  // up from the old 52vh inline.
+  if (bar) bar.style.transition = 'none';
   if (equipEl) gsap.set(equipEl, { autoAlpha: 0 });
   hideAllReveals();
   driveSection(0);
@@ -235,7 +239,7 @@ export function mountEffects(ctrl) {
 
   let reFit = null;
   window.addEventListener('resize', () => {
-    if (bar) bar.style.top = lastSection < 0 ? '52vh' : activeTop() + 'px';
+    if (bar) bar.style.top = activeTop() + 'px';
     clearTimeout(reFit);
     reFit = setTimeout(() => { ScrollTrigger.refresh(); }, 220); // onRefresh re-applies the dissolve
   });
