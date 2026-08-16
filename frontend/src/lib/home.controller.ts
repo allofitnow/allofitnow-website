@@ -79,6 +79,7 @@ export class HomeController {
   private aboutTimers: number[] = [];
   private aboutDoneId = 0;
   private refitQueued = false;
+  private stmtHealed = false;
   private aboutIo?: IntersectionObserver;
   private stmtRO?: ResizeObserver;
   private stmtW = 0;
@@ -135,6 +136,7 @@ export class HomeController {
       this.raf = requestAnimationFrame(() => {
         this.raf = 0;
         this.updateHero();
+        this.healStatement();
       });
     };
     window.addEventListener('scroll', this.onScroll, { passive: true });
@@ -207,6 +209,10 @@ export class HomeController {
           this.applyServicesType();
         })
       );
+      // Safety net for a page that loads already scrolled to About (bfcache /
+      // restored position), where no scroll event fires to drive healStatement.
+      window.setTimeout(() => this.healStatement(), 600);
+      window.setTimeout(() => this.healStatement(), 1600);
     });
   }
 
@@ -829,6 +835,34 @@ export class HomeController {
       el.innerHTML = this.stmtHTML;
     }
     return lines.map((l) => l.items.filter((n) => n.nodeType === 1).length);
+  }
+
+  // Self-heal for the statement blurb. On the tighter production timing the
+  // one-shot About IntersectionObserver can fire (marking aboutShown + playing
+  // the reveal) BEFORE fitAndBuild has produced any lines, and its guard then
+  // blocks a rebuild — leaving stmtOut permanently empty (dev's looser timing
+  // dodges this). So on every scroll frame, once About is on screen, guarantee
+  // the statement is built; if the reveal already ran, snap the lines visible.
+  // Self-guarded by stmtHealed so it costs one boolean check per frame at rest.
+  private healStatement() {
+    if (this.stmtHealed) return;
+    const sec = this.ref('about');
+    const out = this.ref('stmtOut');
+    if (!sec || !out) return;
+    const r = sec.getBoundingClientRect();
+    if (r.top >= window.innerHeight || r.bottom <= 0) return; // wait until About is on screen
+    if (out.childElementCount > 0) {
+      // Already built — the normal (animated) reveal owns it; don't interfere.
+      this.stmtHealed = true;
+      return;
+    }
+    this.fitAndBuild();
+    if (out.childElementCount > 0) {
+      // Snap visible if the reveal already fired (stranded), or under reduced
+      // motion (no observer runs at all, so nothing would ever un-mask it).
+      if (this.aboutShown || reducedMotion()) this.snapAbout(true);
+      this.stmtHealed = true;
+    }
   }
 
   private fitAndBuild() {

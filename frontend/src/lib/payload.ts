@@ -40,6 +40,8 @@ export function mapPayloadProject(doc: any): Project {
     year: doc.year,
     image: mediaUrl(doc.image),
     order: doc.order,
+    featured: !!doc.featured,
+    featuredOrder: typeof doc.featuredOrder === 'number' ? doc.featuredOrder : undefined,
     capabilities: doc.capabilities ?? [],
     services: doc.services ?? [],
     tour: doc.tour ?? '',
@@ -62,20 +64,44 @@ export function mapPayloadProject(doc: any): Project {
 // failure clear it so a retry can re-fetch instead of replaying the rejection.
 let projectsCache: Promise<Project[]> | null = null;
 
-/** Fetch all projects, ordered by `order`. Memoised for the production build. */
+/** Fetch all published projects, sorted chronologically (newest year first),
+ *  with the manual `order` field only breaking ties within a year. Memoised for
+ *  the production build. */
 export function getProjects(): Promise<Project[]> {
   if (import.meta.env.PROD && projectsCache) return projectsCache;
   const req = (async () => {
     const res = await fetch(`${API_URL}/api/projects?limit=100&depth=2&sort=order&where[status][equals]=published`);
     if (!res.ok) throw new Error(`Payload API ${res.status}: ${await res.text()}`);
     const data = await res.json();
-    return data.docs.map(mapPayloadProject);
+    const projects: Project[] = data.docs.map(mapPayloadProject);
+    projects.sort((a, b) => {
+      const ya = parseInt(a.year, 10) || 0;
+      const yb = parseInt(b.year, 10) || 0;
+      if (yb !== ya) return yb - ya;                 // newest year first
+      return (a.order ?? 0) - (b.order ?? 0);        // manual tiebreak within a year
+    });
+    return projects;
   })();
   if (import.meta.env.PROD) {
     projectsCache = req;
     req.catch(() => { projectsCache = null; });
   }
   return req;
+}
+
+/** Projects for the homepage bleed marquee: the `featured` set ordered by
+ *  `featuredOrder`, falling back to every project (chronological) when nothing
+ *  has been featured yet — so the marquee is never empty. Reuses the memoised
+ *  getProjects fetch, so it costs no extra request. */
+export async function getHomeMarquee(): Promise<Project[]> {
+  const all = await getProjects();
+  const featured = all
+    .filter((p) => p.featured)
+    .sort(
+      (a, b) =>
+        (a.featuredOrder ?? Number.MAX_SAFE_INTEGER) - (b.featuredOrder ?? Number.MAX_SAFE_INTEGER),
+    );
+  return featured.length ? featured : all;
 }
 
 // ---------------------------------------------------------------------------

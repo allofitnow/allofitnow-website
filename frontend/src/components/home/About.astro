@@ -1,8 +1,10 @@
 ---
 import { about } from '@/data/home';
-import { getProjects } from '@/data/projects';
+import { getHomeMarquee } from '@/data/projects';
 
-const projects = await getProjects();
+// Curated homepage marquee: featured projects in featured-order, falling back to
+// all projects (chronological) until any are marked featured in the CMS.
+const projects = await getHomeMarquee();
 ---
 
 <section class="about" data-ref="about" data-screen-label="About" id="about">

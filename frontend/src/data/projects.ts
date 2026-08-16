@@ -33,7 +33,13 @@ export interface Project {
   /** Absolute URL (Payload media). Serves as both the work-list thumbnail and
    *  the project hero (a single authored image). */
   image: string;
+  /** Manual sort nudge — now only a tiebreak within a year (default sort is
+   *  chronological, newest first). */
   order: number;
+  /** Marks the project for the homepage bleed marquee. */
+  featured?: boolean;
+  /** Order within the homepage marquee (lower = earlier). */
+  featuredOrder?: number;
   // --- Work-page fields ----------------------------------------------------
   /** Indexing only — drives the work filters, tile overlay tags, list chips. */
   capabilities: Capability[];
@@ -58,4 +64,4 @@ export interface Project {
   writeup: RichText;
 }
 
-export { getProjects, getProject } from '@/lib/payload';
+export { getProjects, getProject, getHomeMarquee } from '@/lib/payload';

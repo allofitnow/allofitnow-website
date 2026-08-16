@@ -198,7 +198,32 @@ const Projects: CollectionConfig = {
       },
       index: true,
     },
-    { name: "order", type: "number", required: true, admin: { position: "sidebar" } },
+    {
+      name: "order",
+      type: "number",
+      required: true,
+      admin: {
+        position: "sidebar",
+        description: "Manual sort nudge — now only breaks ties within a year (default sort is newest-first).",
+      },
+    },
+    {
+      name: "featured",
+      type: "checkbox",
+      defaultValue: false,
+      admin: {
+        position: "sidebar",
+        description: "Show this project in the homepage bleed marquee.",
+      },
+    },
+    {
+      name: "featuredOrder",
+      type: "number",
+      admin: {
+        position: "sidebar",
+        description: "Order within the homepage marquee (lower = earlier). Only used when Featured is on.",
+      },
+    },
   ],
 };
 
