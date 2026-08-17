@@ -112,8 +112,8 @@ html.lenis, html.lenis body { height: auto; }
      pointer-events inherited from the panel — the engine enables the active section only. */
   position: absolute; inset: 0; height: 100%; perspective: 50vw; overflow: hidden;
   /* --mr-w sets the GAP between slots (wider image = smaller gap, paired with RING_SLOTS in
-     services.astro); --mr-h is a free ratio choice. For width 28vw: 16/9 → 15.75vw · 4/3 → 21vw · 1/1 → 28vw. */
-  --mr-w: 28vw; --mr-h: 15.75vw;
+     services.astro); --mr-h is a free ratio choice. For width 31vw: 16/9 → 17.44vw · 4/3 → 23.25vw · 1/1 → 31vw. */
+  --mr-w: 31vw; --mr-h: 17.44vw;
 }
 .mwg_effect061 .container {
   position: relative; height: 100%; transform-style: preserve-3d;

@@ -285,10 +285,21 @@ function buildScreens(root, master) {
   const medias = [...el.querySelectorAll('.media')];
   const n = medias.length;
   const mob = window.innerWidth < 768;
+  // Columns are distributed CENTRED across the width so the composition never clusters to one side
+  // (the old lane/(n-1) under-normalised → left-biased, empty right half on ultrawide). Use the unique
+  // lane set as the columns and the MEASURED image width (it's clamped in px, so on ultrawide it's a
+  // small % — centring must account for that) to keep equal gutters left and right.
+  const uniq = [...new Set(medias.map((_, i) => (i * 3) % n))].sort((a, b) => a - b);
+  const nc = uniq.length;
+  const sampleW = medias[0] ? medias[0].getBoundingClientRect().width : window.innerWidth * 0.22;
+  const imgPct = (sampleW / window.innerWidth) * 100;      // actual image width as % of viewport
+  const MARGIN = mob ? 4 : 6;                               // % gutter from the viewport edge to the outer image
+  const travel = Math.max(0, 100 - 2 * MARGIN - imgPct);   // left-edge range so images span MARGIN..(100-MARGIN)
   medias.forEach((m, i) => {
     const L = LAYERS[i % LAYERS.length];
-    const lane = (i * 3) % n;                         // spread across the width
-    const left = (mob ? 5 : 6) + (lane / Math.max(1, n - 1)) * (mob ? 68 : 66);  // tighter horizontal columns
+    const col = uniq.indexOf((i * 3) % n);                  // 0..nc-1 (which centred column)
+    const t = nc > 1 ? col / (nc - 1) : 0.5;
+    const left = MARGIN + t * travel;
     const scale = mob ? L.scale * 0.78 : L.scale;
     const fromY = () => window.innerHeight * L.reach + 120;
     const toY = () => -window.innerHeight * L.reach - 120;
