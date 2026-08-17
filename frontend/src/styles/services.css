@@ -95,9 +95,9 @@ html.lenis, html.lenis body { height: auto; }
      spin is AOIN's scroll-velocity ticker (services-effects.js), not the tutorial's constant tween.
      pointer-events inherited from the panel — the engine enables the active section only. */
   position: absolute; inset: 0; height: 100%; perspective: 50vw; overflow: hidden;
-  /* Tutorial is 20vw square. --mr-w sets the GAP between slots (narrower = bigger gap with the slot
-     count in services.astro); --mr-h is a free ratio choice. For width 16vw: 16/9 → 9vw · 4/3 → 12vw · 1/1 → 16vw. */
-  --mr-w: 16vw; --mr-h: 9vw;
+  /* --mr-w sets the GAP between slots (wider image = smaller gap, paired with RING_SLOTS in
+     services.astro); --mr-h is a free ratio choice. For width 28vw: 16/9 → 15.75vw · 4/3 → 21vw · 1/1 → 28vw. */
+  --mr-w: 28vw; --mr-h: 15.75vw;
 }
 .mwg_effect061 .container {
   position: relative; height: 100%; transform-style: preserve-3d;

@@ -29,7 +29,8 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const still = (src: string): GalleryItem => ({ src }); // seed stills are static (no project link) for now
 const rtcImages = [1, 4, 6, 8, 11, 13, 15, 18, 20, 23, 25, 27, 30].map((n) => still(`/img/services/rtc/${pad(n)}.png`));
 const screensImages = [1, 3, 5, 7, 9, 11, 13].map((n) => still(`/img/services/screens/${pad(n)}.png`));
-const mrImages = Array.from({ length: 15 }, (_, i) => still(`/img/services/mr/${pad(i + 1)}.png`));
+// Only 6 placeholder stills exist today; the ring loops them to fill its slots (see services.astro).
+const mrImages = Array.from({ length: 6 }, (_, i) => still(`/img/services/mr/${pad(i + 1)}.png`));
 
 const SEED: ServiceSection[] = [
   {

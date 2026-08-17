@@ -28,15 +28,14 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const services = await getServiceSections();
 const RTC = services[0].images;
 const SCREENS = services[1].images;
-// Mixed-reality orbit: build the ring from however many images the CMS provides, and if that's
-// fewer than a full circle, LOOP them to fill it. At radius 50vw with 18vw-wide images, 12 evenly-
-// spaced slots (360/12 = 30° apart, image ≈ 20° of arc) close the circle with a clean ~10° gap
-// between neighbours; more source images than that are all used (denser ring, smaller gaps).
-// buildMixed() spaces whatever is rendered at 360/count.
-const RING_SLOTS = 12;
+// Mixed-reality orbit: a fixed-size ring of RING_SLOTS, cycling whatever stills the CMS provides to
+// fill every slot (so 6 images comfortably fill a 10-slot ring). Fewer, larger slots = bigger images
+// and a smaller gap. At radius 50vw with 28vw-wide images, 10 slots (360/10 = 36° apart, image ≈ 31°
+// of arc) leave a ~5° gap. buildMixed() spaces whatever is rendered evenly at 360/count.
+const RING_SLOTS = 10;
 const mrSrc = services[2].images;
 const MR = mrSrc.length
-  ? Array.from({ length: Math.max(RING_SLOTS, mrSrc.length) }, (_, i) => mrSrc[i % mrSrc.length])
+  ? Array.from({ length: RING_SLOTS }, (_, i) => mrSrc[i % mrSrc.length])
   : [];
 
 const SVC_NAV = [
