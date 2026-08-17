@@ -12,6 +12,8 @@
 :root {
   --content-max: 2432px;
   --aoin-cool-white: rgb(217, 225, 234);
+  --aoin-black: rgb(0, 0, 0);                        /* hovercard plate text (on the light plate) */
+  --fly-ease: cubic-bezier(0.05, 0.89, 0, 0.99);     /* brand ease — hovercard "write on" */
   --font-headline: "Denim INK WD", -apple-system, "Helvetica Neue", Arial, sans-serif;
   --font-mono: "SN Ja Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --font-display: "OO Theran", -apple-system, "Helvetica Neue", Arial, sans-serif;

@@ -11,6 +11,12 @@ export interface GalleryItem {
   src: string;
   /** If set, the still links to this project page (/work/<slug>); a static still otherwise. */
   href?: string;
+  /** Project data for the cursor hovercard (only on project-linked stills — mirrors the home marquee). */
+  slug?: string;
+  title?: string;
+  tour?: string;
+  /** Capabilities, pipe-joined (one highlighted line each in the card). */
+  caps?: string;
 }
 
 export interface ServiceSection {

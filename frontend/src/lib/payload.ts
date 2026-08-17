@@ -161,7 +161,9 @@ export function mapPayloadServiceSection(row: any): ServiceSection {
     const proj = it && it.project && typeof it.project === 'object' ? it.project : null;
     const src = it && it.image ? mediaUrl(it.image) : proj ? mediaUrl(proj.image) : '';
     const href = proj && proj.slug ? `/work/${proj.slug}` : undefined;
-    return { src, href };
+    // Project data for the hovercard — mirrors the home marquee (title / tour / capabilities).
+    const caps = proj && Array.isArray(proj.capabilities) ? proj.capabilities.join('|') : undefined;
+    return { src, href, slug: proj?.slug, title: proj?.title, tour: proj?.tour, caps };
   }).filter((g: any) => g.src !== '');
   return { slug: row.slug, desc: row.desc ?? '', images: items };
 }

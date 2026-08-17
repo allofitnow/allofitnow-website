@@ -260,8 +260,9 @@ function buildRealtime(root, master) {
   medias.forEach((m, i) => {
     const L = LAYERS[i % LAYERS.length];             // depth: reach (speed) + scale
     const lane = (i * 7) % n;                         // shuffle into evenly-spread vertical lanes
-    // on phones keep the stream in a mid band so it clears the title/bar above and desc below
-    const top = (mob ? 36 : 5) + (lane / (n - 1)) * (mob ? 40 : 82);
+    // Keep the stream in a centred band so large stills don't hang off the top/bottom edges
+    // (the top lane used to sit at 5% and get cropped). Phones stay in a tighter mid band.
+    const top = (mob ? 36 : 22) + (lane / Math.max(1, n - 1)) * (mob ? 40 : 54);
     const scale = mob ? L.scale * 0.72 : L.scale;
     const fromX = () => window.innerWidth * L.reach + 140;
     const toX = () => -window.innerWidth * L.reach - 140;

@@ -38,9 +38,10 @@ function init() {
   }
 
   // A key for the current content: work tiles all read 'v' (one shared VIEW
-  // PROJECT label, so hovering tile→tile never replays); home slides key by
-  // slug, so moving slide→slide re-renders the new project's card.
-  const richTarget = (t: Element) => t.matches('.slide[data-title]');
+  // PROJECT label, so hovering tile→tile never replays); home slides + /services
+  // project-linked stills key by slug, so moving between them re-renders the card.
+  // Rich (name/tour/capabilities) whenever the target carries data-title.
+  const richTarget = (t: Element) => t.hasAttribute('data-title');
   function keyFor(t: Element) {
     return richTarget(t) ? 'r:' + (t.getAttribute('data-slug') || '') : 'v';
   }
@@ -77,7 +78,7 @@ function init() {
   // place, staggered on the brand ease — the "write on". Units are the letters
   // (VIEW PROJECT) or the stacked lines (rich card).
   function writeOn() {
-    const ease = getVar('--fly-ease');
+    const ease = getVar('--fly-ease') || 'cubic-bezier(0.05, 0.89, 0, 0.99)';
     const rich = plate!.classList.contains('rich');
     const units = Array.from(
       plate!.querySelectorAll<HTMLElement>(rich ? '.hc-line' : '.ch'),
@@ -143,8 +144,8 @@ function init() {
     // Not while flighting, on touch, or with a button held (the home marquee
     // scrubs on a held pointer).
     if (!canHover() || flighting() || e.buttons) return hide();
-    // Work grid tiles AND home bleed-carousel slides both fly to a project.
-    const t = (e.target as Element)?.closest?.('.tile[data-slug], .slide[data-slug]');
+    // Work grid tiles, home bleed slides, AND /services project-linked stills.
+    const t = (e.target as Element)?.closest?.('.tile[data-slug], .slide[data-slug], img[data-slug][data-href]');
     if (!t) return hide();
     show(t);
   });
