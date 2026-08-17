@@ -29,6 +29,19 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const services = await getServiceSections();
 const RTC = services[0].images;
 const SCREENS = services[1].images;
+
+// --- PREVIZ storyboard (temporary) -------------------------------------------------------------
+// Fill the RTC + Screens compositions with flat NUMBERED cards instead of the real stills, so we can
+// decide story + placement (which slot holds notch design / multicam / RT tools, where the blurbs
+// go). Flip PREVIZ to false to render the real CMS/seed stills again. Card/still ASPECT is mixed —
+// 4/3 or 16/9, pseudo-random but stable per slot index (no per-build drift).
+const PREVIZ = true;
+const RTC_PREVIZ = 12;
+const SCREENS_PREVIZ = 9;
+const pickAR = (i: number) => {
+  const h = Math.sin((i + 1) * 12.9898) * 43758.5453;
+  return h - Math.floor(h) < 0.5 ? '4 / 3' : '16 / 9';
+};
 // Mixed-reality orbit: a fixed-size ring of RING_SLOTS, cycling whatever stills the CMS provides to
 // fill every slot (so 6 images comfortably fill a 10-slot ring). Fewer, larger slots = bigger images
 // and a smaller gap. At radius 50vw with 28vw-wide images, 10 slots (360/10 = 36° apart, image ≈ 31°
@@ -89,7 +102,11 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
     <section class="svc-panel svc-panel--realtime" data-svc-panel="" data-i="0" id="real-time-content">
       <div class="mwg_effect083" data-fx="083">
         <div class="container">
-          {RTC.map((g) => <img class="media" src={g.src} alt="" loading="lazy" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
+          {PREVIZ
+            ? Array.from({ length: RTC_PREVIZ }, (_, i) => (
+                <div class="media previz-card" style={`aspect-ratio:${pickAR(i)}`}>{pad(i + 1)}</div>
+              ))
+            : RTC.map((g, i) => <img class="media" style={`aspect-ratio:${pickAR(i)}`} src={g.src} alt="" loading="lazy" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
         </div>
       </div>
       <p class="svc-desc svc-desc--overlay" data-desc="">{services[0].desc}</p>
@@ -98,7 +115,11 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
     <!-- SCREENS PRODUCTION — mwg_051 columns, scrubbed bottom→top (fixed image set) -->
     <section class="svc-panel svc-panel--screens" data-svc-panel="" data-i="1" id="screens-production">
       <div class="mwg_effect051" data-fx="051">
-        {SCREENS.map((g) => <img class="media" src={g.src} alt="" loading="lazy" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
+        {PREVIZ
+          ? Array.from({ length: SCREENS_PREVIZ }, (_, i) => (
+              <div class="media previz-card" style={`aspect-ratio:${pickAR(i + 100)}`}>{pad(i + 1)}</div>
+            ))
+          : SCREENS.map((g, i) => <img class="media" style={`aspect-ratio:${pickAR(i)}`} src={g.src} alt="" loading="lazy" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
       </div>
       <p class="svc-desc svc-desc--overlay" data-desc="">{services[1].desc}</p>
     </section>
@@ -193,6 +214,8 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
     if (imgs.length) gsap.to(imgs, { opacity: 0, duration: 0.26, ease: 'power2.in', stagger: { each: 0.035 }, overwrite: 'auto' });
     if (field) gsap.to(field, { opacity: 0, duration: 0.3, ease: 'power2.in', overwrite: 'auto' });
     if (lift.length) gsap.to(lift, { y: -36, opacity: 0, duration: 0.4, ease: 'power3.in', stagger: 0.03, overwrite: 'auto' });
+    // Tell the destination project page to skip its preloader count (this exit is the transition).
+    try { sessionStorage.setItem('aoin-from-services', '1'); } catch (_) {}
     const ms = Math.min(560, 260 + imgs.length * 35);
     setTimeout(() => { window.location.href = href; }, ms);
   };

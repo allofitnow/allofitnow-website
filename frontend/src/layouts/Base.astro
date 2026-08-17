@@ -110,6 +110,11 @@ const flightOrder = JSON.stringify(projects.map((p) => p.slug));
         const count = scope!.querySelector<HTMLElement>('[data-ref="preCount"]');
         const label = scope!.querySelector<HTMLElement>('[data-ref="preLabel"]');
         const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+        // Linked from /services (which already played its own staggered exit) — skip the 0->100 count
+        // beat but keep the black flash-cover, lifting straight away. One-shot flag, cleared on read.
+        const fromServices = (() => {
+          try { const v = sessionStorage.getItem('aoin-from-services'); if (v) sessionStorage.removeItem('aoin-from-services'); return !!v; } catch (_) { return false; }
+        })();
         const lift = () => {
           [label, count].filter(Boolean).forEach((el, i) =>
             el!.animate(
@@ -122,6 +127,8 @@ const flightOrder = JSON.stringify(projects.map((p) => p.slug));
         };
         if (reduced) {
           pre.style.display = 'none';
+        } else if (fromServices) {
+          lift(); // skip the count, keep the cover, lift immediately
         } else {
           const dur = 1100;
           const t0 = performance.now();

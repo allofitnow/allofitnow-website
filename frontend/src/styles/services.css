@@ -54,6 +54,18 @@ html.lenis, html.lenis body { height: auto; }
 .mwg_effect051 .media[data-href],
 .mwg_effect061 .container img[data-href] { cursor: pointer; }
 
+/* Previz storyboard cards — flat numbered placeholders standing in for real stills so we can plan
+   story + placement. Temporary (PREVIZ flag in services.astro); aspect is set inline per card. */
+.previz-card {
+  display: grid; place-items: center;
+  background: rgba(217, 225, 234, 0.05);
+  border: 1px solid rgba(217, 225, 234, 0.3);
+  color: rgba(217, 225, 234, 0.72);
+  font-family: var(--font-mono); font-weight: 300;
+  font-size: clamp(22px, 3vw, 52px); letter-spacing: 0.08em;
+  border-radius: 8px;
+}
+
 /* ===== Per-service description ===== */
 .svc-desc {
   position: absolute; left: 48px; bottom: 92px; z-index: 12; margin: 0;
