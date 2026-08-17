@@ -97,7 +97,7 @@ const Projects: CollectionConfig = {
       admin: { description: "Key image — used as both the work-list thumbnail and the project hero." },
     },
     { name: "year", type: "text", required: true },
-    { name: "collaborator", type: "text", admin: { description: 'e.g. ALL OF IT NOW X PHNTM' } },
+    { name: "collaborator", type: "text", admin: { description: "Partner name only, e.g. PHNTM — the site adds the \"ALL OF IT NOW X\" prefix automatically. Leave empty for solo AOIN work." } },
     {
       name: "capabilities",
       type: "select",
@@ -112,16 +112,15 @@ const Projects: CollectionConfig = {
       ],
     },
     {
+      // Editable taxonomy (unlike `capabilities`, which stays a fixed select): a hasMany relationship
+      // to the `service-categories` collection renders as a multi-select with a "Create new" option,
+      // so editors can add services beyond the original four from the CMS. Existing string values are
+      // converted to category records by the one-off migration (scripts/migrate-services.js).
       name: "services",
-      type: "select",
+      type: "relationship",
+      relationTo: "service-categories",
       hasMany: true,
-      admin: { description: "Shown in the project-page meta block (replaces the old capabilities display there). Independently editable from capabilities." },
-      options: [
-        { label: "Real-Time Content", value: "REAL-TIME CONTENT" },
-        { label: "Screens Production", value: "SCREENS PRODUCTION" },
-        { label: "Mixed Reality", value: "MIXED REALITY" },
-        { label: "Equipment Rental", value: "EQUIPMENT RENTAL" },
-      ],
+      admin: { description: "Shown in the project-page meta block. Pick from the Services list; use \"Create new\" in the picker to add a category. (The capabilities field and the /services page stay fixed at the original four.)" },
     },
     { name: "summary", type: "textarea", admin: { description: "Short lede beside the meta block." } },
     {

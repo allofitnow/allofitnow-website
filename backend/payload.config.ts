@@ -5,6 +5,7 @@ import { slateEditor } from "@payloadcms/richtext-slate";
 
 import Media from "./collections/Media";
 import Projects from "./collections/Projects";
+import ServiceCategories from "./collections/ServiceCategories";
 import Equipment from "./collections/Equipment";
 import Users from "./collections/Users";
 import Homepage from "./globals/Homepage";
@@ -16,7 +17,7 @@ export default buildConfig({
     user: Users.slug,
     bundler: webpackBundler(),
   },
-  collections: [Users, Media, Projects, Equipment],
+  collections: [Users, Media, Projects, ServiceCategories, Equipment],
   globals: [Homepage, Settings, Services],
   db: mongooseAdapter({
     url: process.env.DATABASE_URI || "mongodb://localhost:27017/payload",

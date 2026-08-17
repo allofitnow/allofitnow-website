@@ -15,6 +15,17 @@ function mediaUrl(media: { url?: string } | null | undefined): string {
   return url.startsWith('/') ? `${API_URL}${url}` : url;
 }
 
+/** Collaborator display: the CMS stores the PARTNER NAME only (e.g. "PHNTM"); the site always
+ *  shows it as "ALL OF IT NOW X <partner>". Idempotent — strips any pre-existing prefix first, so it
+ *  reads correctly whether the stored value is already migrated (partner-only) or still the old full
+ *  string. Empty stays empty (solo AOIN work → no collaborator row). */
+function formatCollaborator(c: unknown): string {
+  const raw = typeof c === 'string' ? c.trim() : '';
+  if (!raw) return '';
+  const partner = raw.replace(/^ALL\s+OF\s+IT\s+NOW\s*X\s*/i, '').trim();
+  return partner ? `ALL OF IT NOW X ${partner}` : raw;
+}
+
 /** Map a Payload projects REST doc to the frontend `Project` shape. */
 export function mapPayloadProject(doc: any): Project {
   const gallery = (doc.gallery ?? []).map((row: any) => ({
@@ -43,9 +54,13 @@ export function mapPayloadProject(doc: any): Project {
     featured: !!doc.featured,
     featuredOrder: typeof doc.featuredOrder === 'number' ? doc.featuredOrder : undefined,
     capabilities: doc.capabilities ?? [],
-    services: doc.services ?? [],
+    // `services` is a relationship to `service-categories` (populated at depth ≥ 1 → objects with
+    // `label`). Pre-migration it may still be plain strings, so map both to a label string.
+    services: (doc.services ?? [])
+      .map((s: any) => (s && typeof s === 'object' ? s.label : s))
+      .filter((x: any) => typeof x === 'string' && x !== ''),
     tour: doc.tour ?? '',
-    collaborator: doc.collaborator ?? '',
+    collaborator: formatCollaborator(doc.collaborator),
     summary: doc.summary ?? '',
     gallery,
     stats: doc.stats ?? [],
