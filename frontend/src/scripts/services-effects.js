@@ -39,10 +39,17 @@ const LAYERS = [
 
 const ORBIT_BASE = 0.05;              // deg/ms baseline spin
 const ORBIT_MAX = 0.55;               // deg/ms cap when scrolling hard
-// Geometry follows the madewithgsap effect-061 tutorial verbatim (services.css): perspective 50vw,
-// image translateZ(-50vw), transform-origin 50% 0 50vw — the camera is at the centre of the disc and
-// images balloon past it ("orbit drift"). Only the SPIN differs: instead of a constant tween we keep
-// AOIN's scroll-velocity ticker below (baseline spin + faster while you scroll the section).
+const DEG2RAD = Math.PI / 180;
+// Geometry follows the madewithgsap effect-061 tutorial (services.css): perspective 50vw, image
+// translateZ(-50vw), transform-origin 50% 0 50vw — the camera sits at the ring's front edge, so an
+// image rotating to the front reaches the camera plane and balloons to infinity → the hard clip/pop
+// off the left/right edges. We keep that immersive camera but FADE each image out as it sweeps to the
+// front, so it drifts away instead of clipping. All vw-based, so it behaves the same at any width.
+// (Spin stays AOIN's scroll-velocity ticker below: baseline spin + faster while you scroll.)
+const ORBIT_R_VW = 0.50;              // ring radius (matches translateZ -50vw)
+const ORBIT_P_VW = 0.50;              // perspective (matches services.css perspective:50vw)
+const ORBIT_FADE_NEAR = 0.14;         // image fully gone once within this (vw) of the camera (~mag 3.5x)
+const ORBIT_FADE_SPAN = 0.16;         // fades over this vw span just before that
 
 const reduce = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -313,6 +320,12 @@ function buildMixed(root) {
     angVel += (targetVel - angVel) * 0.08;
     orbitRot += angVel * (dt || 16);
     gsap.set(container, { rotationY: orbitRot });
+    // Drift fade: d = an image's distance in front of the camera (vw). As it sweeps to the front
+    // (d → 0) it would balloon and clip off the edges, so fade it out over the last band first.
+    for (let i = 0; i < medias.length; i++) {
+      const d = ORBIT_P_VW + ORBIT_R_VW * Math.cos((angle * i + orbitRot) * DEG2RAD);
+      medias[i].style.opacity = String(clamp01((d - ORBIT_FADE_NEAR) / ORBIT_FADE_SPAN));
+    }
   });
 
   // mouse/touch tilt (rotationX — a different prop, no conflict with the spin)
@@ -333,10 +346,12 @@ function buildMixed(root) {
       }
     },
     assemble() {
+      // Scale-only — per-image opacity is owned by the ticker's drift fade; the section fades in via
+      // show(). Animating autoAlpha here would fight that fade.
       gsap.fromTo(
         medias,
-        { scale: 0, autoAlpha: 0 },
-        { scale: 1, autoAlpha: 1, ease: 'power3.out', duration: 0.9, stagger: { each: 0.05, from: 'random' }, overwrite: true }
+        { scale: 0 },
+        { scale: 1, ease: 'power3.out', duration: 0.9, stagger: { each: 0.05, from: 'random' }, overwrite: true }
       );
     },
     show(v) { gsap.to(el, { autoAlpha: v, duration: 0.35, overwrite: 'auto' }); },
