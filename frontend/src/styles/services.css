@@ -55,8 +55,10 @@ html.lenis, html.lenis body { height: auto; }
 .mwg_effect061 .container img[data-href] { cursor: pointer; }
 
 /* Previz storyboard cards — flat numbered placeholders standing in for real stills so we can plan
-   story + placement. Temporary (PREVIZ flag in services.astro); aspect is set inline per card. */
-.previz-card {
+   story + placement. Temporary (PREVIZ flag in services.astro); aspect is set inline per card.
+   Selector carries the section prefix so `display:grid` beats `.mwg_effectNNN .media { display:block }`. */
+.mwg_effect083 .media.previz-card,
+.mwg_effect051 .media.previz-card {
   display: grid; place-items: center;
   background: rgba(217, 225, 234, 0.05);
   border: 1px solid rgba(217, 225, 234, 0.3);
