@@ -84,7 +84,11 @@ html.lenis, html.lenis body { height: auto; }
 
 /* ===== MIXED REALITY — mwg_061 (3D orbit) ===== */
 .svc-panel--mixed .mwg_effect061 {
-  position: absolute; inset: 0; height: 100%; perspective: 50vw; overflow: hidden;
+  /* Camera at 100vw while the ring radius is 50vw (each image sits at
+     translateZ(-50vw)). Perspective MUST stay > the ring's forward reach or a
+     near-side image reaches the camera plane, blows up and clips out — the
+     "pop". 2x radius keeps a strong 3D look with a smooth ~2x front magnify. */
+  position: absolute; inset: 0; height: 100%; perspective: 100vw; overflow: hidden;
   /* pointer-events inherited from the panel — the engine enables the active section only */
 }
 .mwg_effect061 .container {
