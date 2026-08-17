@@ -27,13 +27,30 @@ const Services: GlobalConfig = {
         { name: "slug", type: "text", required: true, admin: { description: "Section id / anchor (e.g. real-time-content)." } },
         { name: "desc", type: "textarea", admin: { description: "Bottom-left body copy shown when the section is active." } },
         {
-          // Payload 2 rejects a hasMany *upload* nested in an array field — ts-node exits on boot.
-          // Use a hasMany *relationship* to media instead (same shape the Projects gallery uses).
-          name: "images",
-          type: "relationship",
-          relationTo: "media",
-          hasMany: true,
-          admin: { description: "Gallery stills, in scrub order. Drag to reorder. (Leave empty for Equipment.)" },
+          // Each gallery item is a still that can optionally LINK to a project (click → /work/<slug>).
+          // Nested single *relationships* are fine in an array (unlike a nested hasMany *upload*, which
+          // crashes ts-node on boot — that's why the old flat `images` used a media relationship).
+          name: "gallery",
+          type: "array",
+          labels: { singular: "Gallery item", plural: "Gallery items" },
+          admin: {
+            description:
+              "Gallery stills, in scrub order (drag to reorder). Each still can link to a Project — clicking it opens /work/<project>. For a linked still, either leave Image empty to use the project's key image, or set Image to show a different still that still links to the project. A row with only an Image (no Project) is a static, non-clickable storytelling still. Leave empty for Equipment (its gallery is the fleet marquee).",
+          },
+          fields: [
+            {
+              name: "image",
+              type: "relationship",
+              relationTo: "media",
+              admin: { description: "The still shown. Optional when a Project is set — then the project's key image is used." },
+            },
+            {
+              name: "project",
+              type: "relationship",
+              relationTo: "projects",
+              admin: { description: "Link this still to a project (click → its project page). Leave empty for a static still." },
+            },
+          ],
         },
       ],
     },

@@ -6,22 +6,30 @@
 // the stills are still local (before they're migrated to Payload media). The Payload fetch/
 // mapper live in lib/payload.ts (getServicesGlobal). Equipment lives in data/equipment.ts.
 
+export interface GalleryItem {
+  /** Image URL, in scrub order. Absolute (Payload media) later; local for now. */
+  src: string;
+  /** If set, the still links to this project page (/work/<slug>); a static still otherwise. */
+  href?: string;
+}
+
 export interface ServiceSection {
   /** Stable id — matches the section anchor + capability slug. */
   slug: string;
   /** Bottom-left body copy shown when the section is active. */
   desc: string;
-  /** Gallery image URLs, in scrub order. Absolute (Payload media) later; local for now.
+  /** Gallery stills, in scrub order. Each may link to a project (click → /work/<slug>).
    *  Empty for Equipment — its "gallery" is the fleet marquee (see data/equipment.ts). */
-  images: string[];
+  images: GalleryItem[];
 }
 
 // Gallery stills currently ship from the frontend /public bundle; the CMS migration will
 // re-home them as Payload uploads (absolute URLs), same as project media.
 const pad = (n: number) => String(n).padStart(2, '0');
-const rtcImages = [1, 4, 6, 8, 11, 13, 15, 18, 20, 23, 25, 27, 30].map((n) => `/img/services/rtc/${pad(n)}.png`);
-const screensImages = [1, 3, 5, 7, 9, 11, 13].map((n) => `/img/services/screens/${pad(n)}.png`);
-const mrImages = Array.from({ length: 15 }, (_, i) => `/img/services/mr/${pad(i + 1)}.png`);
+const still = (src: string): GalleryItem => ({ src }); // seed stills are static (no project link) for now
+const rtcImages = [1, 4, 6, 8, 11, 13, 15, 18, 20, 23, 25, 27, 30].map((n) => still(`/img/services/rtc/${pad(n)}.png`));
+const screensImages = [1, 3, 5, 7, 9, 11, 13].map((n) => still(`/img/services/screens/${pad(n)}.png`));
+const mrImages = Array.from({ length: 15 }, (_, i) => still(`/img/services/mr/${pad(i + 1)}.png`));
 
 const SEED: ServiceSection[] = [
   {

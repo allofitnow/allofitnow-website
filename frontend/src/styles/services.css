@@ -47,6 +47,11 @@ html.lenis, html.lenis body { height: auto; }
   pointer-events: none; /* engine sets pointer-events:auto on the active section only */
 }
 
+/* Stills linked to a project are clickable (delegated nav in services.astro). */
+.mwg_effect083 .media[data-href],
+.mwg_effect051 .media[data-href],
+.mwg_effect061 .container img[data-href] { cursor: pointer; }
+
 /* ===== Per-service description ===== */
 .svc-desc {
   position: absolute; left: 48px; bottom: 92px; z-index: 12; margin: 0;

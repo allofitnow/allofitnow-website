@@ -86,7 +86,7 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
     <section class="svc-panel svc-panel--realtime" data-svc-panel="" data-i="0" id="real-time-content">
       <div class="mwg_effect083" data-fx="083">
         <div class="container">
-          {RTC.map((src) => <img class="media" src={src} alt="" loading="lazy" />)}
+          {RTC.map((g) => <img class="media" src={g.src} alt="" loading="lazy" data-href={g.href} />)}
         </div>
       </div>
       <p class="svc-desc svc-desc--overlay" data-desc="">{services[0].desc}</p>
@@ -95,7 +95,7 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
     <!-- SCREENS PRODUCTION — mwg_051 columns, scrubbed bottom→top (fixed image set) -->
     <section class="svc-panel svc-panel--screens" data-svc-panel="" data-i="1" id="screens-production">
       <div class="mwg_effect051" data-fx="051">
-        {SCREENS.map((src) => <img class="media" src={src} alt="" loading="lazy" />)}
+        {SCREENS.map((g) => <img class="media" src={g.src} alt="" loading="lazy" data-href={g.href} />)}
       </div>
       <p class="svc-desc svc-desc--overlay" data-desc="">{services[1].desc}</p>
     </section>
@@ -104,7 +104,7 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
     <section class="svc-panel svc-panel--mixed" data-svc-panel="" data-i="2" id="mixed-reality">
       <div class="mwg_effect061" data-fx="061">
         <div class="container">
-          {MR.map((src) => <img src={src} alt="" loading="lazy" />)}
+          {MR.map((g) => <img src={g.src} alt="" loading="lazy" data-href={g.href} />)}
         </div>
       </div>
       <p class="svc-desc svc-desc--overlay" data-desc="">{services[2].desc}</p>
@@ -165,6 +165,17 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
   // mountEffects positions every gallery off-stage synchronously (master.progress(0)),
   // so once it has run the preloader can lift with no raw-content behind it.
   mountEffects(ctrl);
+
+  // Project-linked stills: clicking one navigates to its project. Delegated on the stage so it
+  // covers all three galleries (the engine gates pointer-events to the active section, so only the
+  // visible section's stills are clickable). /services is a standalone doc → this is a full nav,
+  // and the project page plays its own preloader. Stills with no project have no data-href.
+  document.querySelector('[data-root]')?.addEventListener('click', (e) => {
+    const t = e.target as HTMLElement | null;
+    const img = t && t.closest ? (t.closest('img[data-href]') as HTMLElement | null) : null;
+    const href = img && img.dataset ? img.dataset.href : '';
+    if (href) window.location.href = href;
+  });
 
   // --- Preloader lift ---------------------------------------------------------
   const pre = document.querySelector('[data-ref="preloader"]');

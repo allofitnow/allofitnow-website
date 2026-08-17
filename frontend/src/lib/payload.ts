@@ -138,19 +138,24 @@ export async function getEquipmentDocs(): Promise<Equipment[]> {
   }
 }
 
-/** Map one `services` global section row to the frontend `ServiceSection` shape. */
+/** Map one `services` global section row to the frontend `ServiceSection` shape.
+ *  Each `gallery` item resolves to { src, href }: the shown still is its own `image` if set,
+ *  else the linked project's key image; `href` points at the project page when one is linked. */
 export function mapPayloadServiceSection(row: any): ServiceSection {
-  return {
-    slug: row.slug,
-    desc: row.desc ?? '',
-    images: (row.images ?? []).map((m: any) => mediaUrl(m)).filter((url: string) => url !== ''),
-  };
+  const items = (row.gallery ?? []).map((it: any) => {
+    const proj = it && it.project && typeof it.project === 'object' ? it.project : null;
+    const src = it && it.image ? mediaUrl(it.image) : proj ? mediaUrl(proj.image) : '';
+    const href = proj && proj.slug ? `/work/${proj.slug}` : undefined;
+    return { src, href };
+  }).filter((g: any) => g.src !== '');
+  return { slug: row.slug, desc: row.desc ?? '', images: items };
 }
 
-/** Fetch the /services page sections from the `services` global. `[]` if unreachable/empty. */
+/** Fetch the /services page sections from the `services` global. `[]` if unreachable/empty.
+ *  depth=2 so a gallery item → its project → the project's key image are all populated. */
 export async function getServicesGlobal(): Promise<ServiceSection[]> {
   try {
-    const res = await fetch(`${API_URL}/api/globals/services?depth=1`);
+    const res = await fetch(`${API_URL}/api/globals/services?depth=2`);
     if (!res.ok) return [];
     const data = await res.json();
     return (data.sections ?? []).map(mapPayloadServiceSection);
