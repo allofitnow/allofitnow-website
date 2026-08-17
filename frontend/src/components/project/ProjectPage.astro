@@ -355,6 +355,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     font-weight: var(--weight-body);
     font-size: clamp(18px, 1.5cqw, 32px);
     line-height: 1.25;
+    text-transform: none; /* summary reads as authored (sentence case), not the site-wide uppercase */
     text-box: trim-both cap alphabetic;
     text-wrap: pretty;
     transition: width var(--dl), font-size var(--dl);
