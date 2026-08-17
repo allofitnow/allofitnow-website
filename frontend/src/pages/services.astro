@@ -36,14 +36,12 @@ const SCREENS = services[1].images;
 // item lands on its 1-based `slot` (set in Payload — the numbered card it replaces); slotless items
 // drop into the first open position in list order. Empty positions stay numbered cards. Flip
 // CHECKLIST to false to render the finished look (real stills only, no cards, seed fallback). ASPECT
-// is mixed 4/3 or 16/9, pseudo-random but STABLE per position — so filling a card never reflows it.
+// is a uniform 16/9 across every still + card (matches the Mixed-Reality orbit). Kept as a per-slot
+// helper (still called at each render site) so mixed ratios can be reintroduced later without churn.
 const CHECKLIST = true;
 const RTC_SLOTS = 16;
 const SCREENS_SLOTS = 12;
-const pickAR = (i: number) => {
-  const h = Math.sin((i + 1) * 12.9898) * 43758.5453;
-  return h - Math.floor(h) < 0.5 ? '4 / 3' : '16 / 9';
-};
+const pickAR = (_i: number) => '16 / 9';
 
 // Place CMS gallery items into a fixed-length slot array: each on its 1-based `slot` (the card it
 // replaces); slotless / colliding / out-of-range items fill the earliest gap. Grows past `target` if

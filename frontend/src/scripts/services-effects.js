@@ -32,9 +32,9 @@ const R = [0.08, 0.36, 0.62, 0.88];   // text REVEAL — as soon as the first im
 const HYST = 0.012;                   // tighter dead-band → crisper hand-offs
 // depth layers for parallax (back → front): different reach (speed) + scale
 const LAYERS = [
-  { reach: 1.00, scale: 0.88, z: 1 },   // smallest — was 0.68 (+30%)
-  { reach: 1.20, scale: 1.10, z: 2 },   // 2nd — was 0.90 (+22%)
-  { reach: 1.42, scale: 1.12, z: 3 },   // largest — unchanged (keeps the depth hero on top)
+  { reach: 1.00, scale: 1.00, z: 1 },   // smallest — floor raised 0.88 → 1.00 (never below base size now)
+  { reach: 1.20, scale: 1.16, z: 2 },   // 2nd — raised 1.10 → 1.16
+  { reach: 1.42, scale: 1.22, z: 3 },   // largest — 1.12 → 1.22 to stay the depth hero above the raised 2nd
 ];
 
 const ORBIT_BASE = 0.05;              // deg/ms baseline spin
