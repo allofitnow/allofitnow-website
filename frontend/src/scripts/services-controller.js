@@ -14,6 +14,15 @@ const GL_ATLAS = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/';
 const HOVER_PEAK = 1.5;
 const HOVER_FALL_REACH = 22;
 const HOVER_RING_MAX = 0.42;
+// Field luminance (services hero): the field brightness is gated by a "light" value L in [0,1]
+// — L = max(cursor pool, middle-nav band). Away from all light the field dims toward LUM_FLOOR
+// (0 = it disappears, 1 = no darkening); at a light centre it's full brightness + LUM_BOOST pop
+// and shifts toward pure white. All five are tuning knobs — safe to dial after a visual test.
+const LUM_FLOOR = 0.3;       // residual field brightness away from all light
+const LUM_BOOST = 0.3;       // extra alpha pop right at a light's centre
+const LUM_CURSOR = 1.0;      // cursor-pool strength (uCurAmt when the mouse is over the field)
+const LUM_BAR = 1.0;         // middle-nav band strength (uBarAmt)
+const LUM_BAR_REACH = 0.5;   // band vertical reach as a fraction of the field height
 const COPY_GLYPHS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 const SERVICES = [
   { name: 'REAL-TIME CONTENT', subs: ['INTERACTIVE ENVIRONMENTS', 'LIVE GRAPHICS', 'VISUAL EFFECTS'] },
@@ -369,7 +378,9 @@ class ServicesController {
       } else {
         const svc = SERVICES[i];
         target = k === 0 ? svc.name : (svc.subs[k - 1] || '');
-        bright = k === 0;
+        // Risen under the title: the service name AND its subcategories are all
+        // full cool-white (the dim 0.45 is only the resting hero state below).
+        bright = true;
       }
       s.style.color = bright ? 'rgb(217,225,234)' : 'rgba(217,225,234,0.45)';
       if (s.__svcTarget === target) return;
@@ -1280,7 +1291,9 @@ class ServicesController {
       const vs = '#version 300 es\n' +
         'in vec2 aCorner; in vec2 aCell; in float aGlyph; in float aAlpha; in vec2 aOff; in float aScale;\n' +
         'uniform vec2 uRes; uniform vec2 uCellPx; uniform vec2 uGlyphPx; uniform vec2 uGrid;\n' +
-        'out vec2 vUV; out float vA; out float vS;\n' +
+        'uniform vec2 uCursor; uniform float uCurRadius; uniform float uCurAmt;\n' +
+        'uniform float uBarY; uniform float uBarReach; uniform float uBarAmt;\n' +
+        'out vec2 vUV; out float vA; out float vS; out float vL;\n' +
         'void main(){\n' +
         ' vec2 ctr = aCell * uCellPx + uCellPx * 0.5 + aOff;\n' +
         ' vec2 pos = ctr + (aCorner - 0.5) * uGlyphPx * aScale;\n' +
@@ -1289,14 +1302,21 @@ class ServicesController {
         ' vUV = (g + vec2(aCorner.x, aCorner.y)) / uGrid;\n' +
         ' vA = aAlpha;\n' +
         ' vS = aScale;\n' +
+        ' float cl = 0.0;\n' +
+        ' if (uCurAmt > 0.0) { float t = clamp(1.0 - distance(ctr, uCursor) / max(1.0, uCurRadius), 0.0, 1.0); cl = uCurAmt * t * t; }\n' +
+        ' float bl = 0.0;\n' +
+        ' if (uBarAmt > 0.0) { float t = clamp(1.0 - abs(ctr.y - uBarY) / max(1.0, uBarReach), 0.0, 1.0); bl = uBarAmt * t * t; }\n' +
+        ' vL = max(cl, bl);\n' +
         '}';
       const fsrc = '#version 300 es\n' +
         'precision mediump float;\n' +
-        'in vec2 vUV; in float vA; in float vS; out vec4 o; uniform sampler2D uTex; uniform float uOpacity; uniform float uPeak;\n' +
+        'in vec2 vUV; in float vA; in float vS; in float vL; out vec4 o; uniform sampler2D uTex; uniform float uOpacity; uniform float uPeak; uniform float uFloor; uniform float uBoost;\n' +
         'void main(){ float a = texture(uTex, vUV).a * vA; if(a < 0.01) discard;' +
         ' float w = pow(clamp((vS - 1.0) / max(0.001, uPeak - 1.0), 0.0, 1.0), 1.6);' +
-        ' vec3 c = mix(vec3(0.851, 0.882, 0.918), vec3(1.0), w);' +
-        ' o = vec4(c, min(1.0, a * uOpacity * (1.0 + w * 0.4))); }';
+        ' float lit = clamp(w + vL * 0.6, 0.0, 1.0);' +
+        ' vec3 c = mix(vec3(0.851, 0.882, 0.918), vec3(1.0), lit);' +
+        ' float litFactor = uFloor + (1.0 - uFloor) * vL;' +
+        ' o = vec4(c, min(1.0, a * uOpacity * (1.0 + w * 0.4) * litFactor * (1.0 + uBoost * vL))); }';
       const mk = (type, src) => {
         const sh = gl.createShader(type);
         gl.shaderSource(sh, src);
@@ -1322,7 +1342,15 @@ class ServicesController {
         grid: gl.getUniformLocation(pr, 'uGrid'),
         tex: gl.getUniformLocation(pr, 'uTex'),
         opacity: gl.getUniformLocation(pr, 'uOpacity'),
-        peak: gl.getUniformLocation(pr, 'uPeak')
+        peak: gl.getUniformLocation(pr, 'uPeak'),
+        cursor: gl.getUniformLocation(pr, 'uCursor'),
+        curRadius: gl.getUniformLocation(pr, 'uCurRadius'),
+        curAmt: gl.getUniformLocation(pr, 'uCurAmt'),
+        barY: gl.getUniformLocation(pr, 'uBarY'),
+        barReach: gl.getUniformLocation(pr, 'uBarReach'),
+        barAmt: gl.getUniformLocation(pr, 'uBarAmt'),
+        lumFloor: gl.getUniformLocation(pr, 'uFloor'),
+        lumBoost: gl.getUniformLocation(pr, 'uBoost')
       };
       this._bCorner = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, this._bCorner);
@@ -1584,6 +1612,14 @@ class ServicesController {
     if (!this._gl || !this._dyn) return;
     const dyn = this._dyn;
     if (this._mIn) this.asciiHover();
+    // Cursor-pool presence eases toward 1 while the mouse is over the field, 0 when it leaves or
+    // mutes near the bar — so the luminance halo fades rather than snapping (drawAscii reads _lumCurA).
+    {
+      const lt = this._mIn ? 1 : 0;
+      const l0 = this._lumCurA || 0;
+      if (Math.abs(lt - l0) > 0.001) { this._lumCurA = l0 + (lt - l0) * 0.16; this._glDirty = true; }
+      else if (this._lumCurA !== lt) { this._lumCurA = lt; this._glDirty = true; }
+    }
     if (!this._lastFlick || now - this._lastFlick > 55) {
       this._lastFlick = now;
       const live = this._liveIdx;
@@ -1678,6 +1714,29 @@ class ServicesController {
     gl.uniform2f(L.grid, this._atGrid[0], this._atGrid[1]);
     gl.uniform1f(L.opacity, (FIELD_OPACITY) / 100);
     gl.uniform1f(L.peak, HOVER_PEAK);
+    // --- Field luminance: cursor pool (#2) + middle-nav band (#3) ---
+    // Cursor pool centred on the highlighted word, radius = the magnify disc (matches asciiHover).
+    gl.uniform2f(L.cursor, (this._mc + 0.5) * this._cw, (this._mr + 0.5) * this._ch);
+    gl.uniform1f(L.curRadius, HOVER_FALL_REACH * this._cw);
+    gl.uniform1f(L.curAmt, (this._lumCurA || 0) * LUM_CURSOR);
+    // Middle-nav band: brightest at the bar row, falling off vertically until the field disappears.
+    // Bar centre expressed in the field box's local px space (same space the vertex uses for ctr).
+    const barEl = this.el() && this.el().querySelector('[data-bar]');
+    let barY = 0, barReach = 1, barAmt = 0;
+    if (barEl) {
+      const fr = box.getBoundingClientRect();
+      const brc = barEl.getBoundingClientRect();
+      if (brc.height > 0 && fr.height > 0) {
+        barY = (brc.top + brc.height / 2) - fr.top;
+        barReach = LUM_BAR_REACH * fr.height;
+        barAmt = LUM_BAR;
+      }
+    }
+    gl.uniform1f(L.barY, barY);
+    gl.uniform1f(L.barReach, barReach);
+    gl.uniform1f(L.barAmt, barAmt);
+    gl.uniform1f(L.lumFloor, LUM_FLOOR);
+    gl.uniform1f(L.lumBoost, LUM_BOOST);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this._tex);
     gl.uniform1i(L.tex, 0);
