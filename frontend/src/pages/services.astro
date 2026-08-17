@@ -28,10 +28,15 @@ const pad = (n: number) => String(n).padStart(2, '0');
 const services = await getServiceSections();
 const RTC = services[0].images;
 const SCREENS = services[1].images;
-// Mixed-reality orbit: cycle the source images so the ring stays full (≥12 slots) even when the
-// CMS provides only a few — keeps a consistent orbit shape regardless of image count.
+// Mixed-reality orbit: build the ring from however many images the CMS provides, and if that's
+// fewer than a full circle, LOOP them to fill it. At radius 50vw with 20vw-wide images the ring
+// needs ~18 evenly-spaced slots to close with slight overlap (12 left visible gaps); more images
+// than that are all used (denser ring). buildMixed() spaces whatever is rendered at 360/count.
+const RING_SLOTS = 18;
 const mrSrc = services[2].images;
-const MR = mrSrc.length ? Array.from({ length: Math.max(12, mrSrc.length) }, (_, i) => mrSrc[i % mrSrc.length]) : [];
+const MR = mrSrc.length
+  ? Array.from({ length: Math.max(RING_SLOTS, mrSrc.length) }, (_, i) => mrSrc[i % mrSrc.length])
+  : [];
 
 const SVC_NAV = [
   { i: 0, label: 'REAL-TIME CONTENT' },
