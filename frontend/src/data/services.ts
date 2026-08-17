@@ -17,6 +17,10 @@ export interface GalleryItem {
   tour?: string;
   /** Capabilities, pipe-joined (one highlighted line each in the card). */
   caps?: string;
+  /** 1-based composition position set in the CMS — the numbered previz card this still replaces.
+   *  Undefined → falls into the first open slot in list order. Only meaningful for the checklist
+   *  sections (RTC, Screens); Mixed Reality ignores it. */
+  slot?: number;
 }
 
 export interface ServiceSection {
@@ -75,4 +79,17 @@ export async function getServiceSections(): Promise<ServiceSection[]> {
       images: c.images.length ? c.images : seed.images,
     };
   });
+}
+
+/** CMS gallery items per section slug, straight from the `services` global — NO seed fallback.
+ *  Feeds the previz/checklist slot fill on /services: a slot shows its CMS still (pinned by the
+ *  item's 1-based `slot`, else the next open position) and every other slot stays a numbered card.
+ *  Empty/unreachable CMS → `{}` (all slots remain cards), so the page reads as a live fill-in list.
+ *  (getServiceSections keeps the seed fallback — that's for the desc copy + the finished render.) */
+export async function getServiceGalleries(): Promise<Record<string, GalleryItem[]>> {
+  const { getServicesGlobal } = await import('@/lib/payload');
+  const cms = await getServicesGlobal();
+  const out: Record<string, GalleryItem[]> = {};
+  for (const s of cms) out[s.slug] = s.images;
+  return out;
 }

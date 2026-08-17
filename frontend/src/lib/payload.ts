@@ -155,7 +155,8 @@ export async function getEquipmentDocs(): Promise<Equipment[]> {
 
 /** Map one `services` global section row to the frontend `ServiceSection` shape.
  *  Each `gallery` item resolves to { src, href }: the shown still is its own `image` if set,
- *  else the linked project's key image; `href` points at the project page when one is linked. */
+ *  else the linked project's key image; `href` points at the project page when one is linked.
+ *  `slot` (1-based) pins the still to a composition position (which numbered card it replaces). */
 export function mapPayloadServiceSection(row: any): ServiceSection {
   const items = (row.gallery ?? []).map((it: any) => {
     const proj = it && it.project && typeof it.project === 'object' ? it.project : null;
@@ -163,7 +164,8 @@ export function mapPayloadServiceSection(row: any): ServiceSection {
     const href = proj && proj.slug ? `/work/${proj.slug}` : undefined;
     // Project data for the hovercard — mirrors the home marquee (title / tour / capabilities).
     const caps = proj && Array.isArray(proj.capabilities) ? proj.capabilities.join('|') : undefined;
-    return { src, href, slug: proj?.slug, title: proj?.title, tour: proj?.tour, caps };
+    const slot = typeof it?.slot === 'number' ? it.slot : undefined;
+    return { src, href, slug: proj?.slug, title: proj?.title, tour: proj?.tour, caps, slot };
   }).filter((g: any) => g.src !== '');
   return { slug: row.slug, desc: row.desc ?? '', images: items };
 }

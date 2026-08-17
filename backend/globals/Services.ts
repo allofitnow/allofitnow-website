@@ -35,9 +35,18 @@ const Services: GlobalConfig = {
           labels: { singular: "Gallery item", plural: "Gallery items" },
           admin: {
             description:
-              "Gallery stills, in scrub order (drag to reorder). Each still can link to a Project — clicking it opens /work/<project>. For a linked still, either leave Image empty to use the project's key image, or set Image to show a different still that still links to the project. A row with only an Image (no Project) is a static, non-clickable storytelling still. Leave empty for Equipment (its gallery is the fleet marquee).",
+              "Gallery stills for the composition. While storyboarding, the page shows NUMBERED placeholder cards (Real-Time 01–16, Screens 01–12); a gallery item REPLACES the card at its Slot number, so the page doubles as a fill-in checklist of what's left. Each still can link to a Project — clicking it opens /work/<project>. For a linked still, either leave Image empty to use the project's key image, or set Image to show a different still that still links to the project. A row with only an Image (no Project) is a static, non-clickable storytelling still. Leave empty for Equipment (its gallery is the fleet marquee); Mixed Reality ignores Slot and simply orbits every still.",
           },
           fields: [
+            {
+              name: "slot",
+              type: "number",
+              min: 1,
+              admin: {
+                description:
+                  "Composition position — the numbered card this still replaces (e.g. 3 fills card 03). Leave empty to drop into the first open position in list order.",
+              },
+            },
             {
               name: "image",
               type: "relationship",

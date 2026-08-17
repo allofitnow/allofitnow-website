@@ -19,7 +19,7 @@ import Preloader from '../components/home/Preloader.astro';
 import PageTitle from '../components/services/PageTitle.astro';
 import CapabilityBar from '../components/services/CapabilityBar.astro';
 import AsciiField from '../components/services/AsciiField.astro';
-import { getServiceSections } from '../data/services';
+import { getServiceSections, getServiceGalleries, type GalleryItem } from '../data/services';
 import { getEquipment } from '../data/equipment';
 
 const pad = (n: number) => String(n).padStart(2, '0');
@@ -30,18 +30,46 @@ const services = await getServiceSections();
 const RTC = services[0].images;
 const SCREENS = services[1].images;
 
-// --- PREVIZ storyboard (temporary) -------------------------------------------------------------
-// Fill the RTC + Screens compositions with flat NUMBERED cards instead of the real stills, so we can
-// decide story + placement (which slot holds notch design / multicam / RT tools, where the blurbs
-// go). Flip PREVIZ to false to render the real CMS/seed stills again. Card/still ASPECT is mixed —
-// 4/3 or 16/9, pseudo-random but stable per slot index (no per-build drift).
-const PREVIZ = true;
-const RTC_PREVIZ = 16;
-const SCREENS_PREVIZ = 12;
+// --- Storyboard / fill-in checklist ------------------------------------------------------------
+// RTC + Screens render a FIXED grid of numbered flat cards; each CMS gallery item REPLACES the card
+// at its position, so the live page doubles as a checklist of what's left to shoot/assign. A gallery
+// item lands on its 1-based `slot` (set in Payload — the numbered card it replaces); slotless items
+// drop into the first open position in list order. Empty positions stay numbered cards. Flip
+// CHECKLIST to false to render the finished look (real stills only, no cards, seed fallback). ASPECT
+// is mixed 4/3 or 16/9, pseudo-random but STABLE per position — so filling a card never reflows it.
+const CHECKLIST = true;
+const RTC_SLOTS = 16;
+const SCREENS_SLOTS = 12;
 const pickAR = (i: number) => {
   const h = Math.sin((i + 1) * 12.9898) * 43758.5453;
   return h - Math.floor(h) < 0.5 ? '4 / 3' : '16 / 9';
 };
+
+// Place CMS gallery items into a fixed-length slot array: each on its 1-based `slot` (the card it
+// replaces); slotless / colliding / out-of-range items fill the earliest gap. Grows past `target` if
+// the CMS overflows it (or references a higher slot) so a still is never dropped. null = a card.
+const buildSlots = (items: GalleryItem[], target: number): (GalleryItem | null)[] => {
+  const maxSlot = items.reduce((m, it) => Math.max(m, typeof it.slot === 'number' ? it.slot : 0), 0);
+  const count = Math.max(target, maxSlot, items.length);
+  const slots: (GalleryItem | null)[] = Array.from({ length: count }, () => null);
+  const overflow: GalleryItem[] = [];
+  for (const it of items) {
+    const idx = typeof it.slot === 'number' ? it.slot - 1 : -1;
+    if (idx >= 0 && idx < count && !slots[idx]) slots[idx] = it;
+    else overflow.push(it);
+  }
+  for (const it of overflow) {
+    const k = slots.indexOf(null);
+    if (k === -1) slots.push(it);
+    else slots[k] = it;
+  }
+  return slots;
+};
+
+// CMS-only galleries (no seed fallback) → the checklist slot fill. Unfilled slots stay numbered.
+const galleries = await getServiceGalleries();
+const rtcSlots = buildSlots(galleries['real-time-content'] ?? [], RTC_SLOTS);
+const screensSlots = buildSlots(galleries['screens-production'] ?? [], SCREENS_SLOTS);
 // Mixed-reality orbit: a fixed-size ring of RING_SLOTS, cycling whatever stills the CMS provides to
 // fill every slot (so 6 images comfortably fill a 10-slot ring). Fewer, larger slots = bigger images
 // and a smaller gap. At radius 50vw with 28vw-wide images, 10 slots (360/10 = 36° apart, image ≈ 31°
@@ -102,10 +130,10 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
     <section class="svc-panel svc-panel--realtime" data-svc-panel="" data-i="0" id="real-time-content">
       <div class="mwg_effect083" data-fx="083">
         <div class="container">
-          {PREVIZ
-            ? Array.from({ length: RTC_PREVIZ }, (_, i) => (
-                <div class="media previz-card" style={`aspect-ratio:${pickAR(i)}`}>{pad(i + 1)}</div>
-              ))
+          {CHECKLIST
+            ? rtcSlots.map((g, i) => g
+                ? <img class="media" style={`aspect-ratio:${pickAR(i)}`} src={g.src} alt="" loading="lazy" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />
+                : <div class="media previz-card" style={`aspect-ratio:${pickAR(i)}`}>{pad(i + 1)}</div>)
             : RTC.map((g, i) => <img class="media" style={`aspect-ratio:${pickAR(i)}`} src={g.src} alt="" loading="lazy" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
         </div>
       </div>
@@ -115,10 +143,10 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
     <!-- SCREENS PRODUCTION — mwg_051 columns, scrubbed bottom→top (fixed image set) -->
     <section class="svc-panel svc-panel--screens" data-svc-panel="" data-i="1" id="screens-production">
       <div class="mwg_effect051" data-fx="051">
-        {PREVIZ
-          ? Array.from({ length: SCREENS_PREVIZ }, (_, i) => (
-              <div class="media previz-card" style={`aspect-ratio:${pickAR(i + 100)}`}>{pad(i + 1)}</div>
-            ))
+        {CHECKLIST
+          ? screensSlots.map((g, i) => g
+              ? <img class="media" style={`aspect-ratio:${pickAR(i + 100)}`} src={g.src} alt="" loading="lazy" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />
+              : <div class="media previz-card" style={`aspect-ratio:${pickAR(i + 100)}`}>{pad(i + 1)}</div>)
           : SCREENS.map((g, i) => <img class="media" style={`aspect-ratio:${pickAR(i)}`} src={g.src} alt="" loading="lazy" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
       </div>
       <p class="svc-desc svc-desc--overlay" data-desc="">{services[1].desc}</p>
