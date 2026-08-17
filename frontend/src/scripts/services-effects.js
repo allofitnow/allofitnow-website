@@ -25,16 +25,16 @@ const ABOUT_EASE = 'cubic-bezier(0.05,0.89,0,0.99)';
 
 // Timeline / section tuning (progress 0..1).
 const RTC = { start: 0.06, travel: 0.16, stag: 0.016 };  // fly-across: fast + staggered
-const SCR = { start: 0.36, travel: 0.17, stag: 0.020 };  // rise bottom→top
+const SCR = { start: 0.36, travel: 0.17, stag: 0.012 };  // rise bottom→top (tighter vertical spacing)
 const MIX = [0.60, 0.86];             // orbit section (scroll drives ring speed)
 const B = [0.06, 0.34, 0.60, 0.86];   // section ENTER — bar scramble + rise + field dissolve
 const R = [0.08, 0.36, 0.62, 0.88];   // text REVEAL — as soon as the first images enter view (just past B)
 const HYST = 0.012;                   // tighter dead-band → crisper hand-offs
 // depth layers for parallax (back → front): different reach (speed) + scale
 const LAYERS = [
-  { reach: 1.00, scale: 0.68, z: 1 },
-  { reach: 1.20, scale: 0.90, z: 2 },
-  { reach: 1.42, scale: 1.12, z: 3 },
+  { reach: 1.00, scale: 0.88, z: 1 },   // smallest — was 0.68 (+30%)
+  { reach: 1.20, scale: 1.10, z: 2 },   // 2nd — was 0.90 (+22%)
+  { reach: 1.42, scale: 1.12, z: 3 },   // largest — unchanged (keeps the depth hero on top)
 ];
 
 const ORBIT_BASE = 0.05;              // deg/ms baseline spin
@@ -281,7 +281,7 @@ function buildScreens(root, master) {
   medias.forEach((m, i) => {
     const L = LAYERS[i % LAYERS.length];
     const lane = (i * 3) % n;                         // spread across the width
-    const left = (mob ? 5 : 3) + (lane / (n - 1)) * (mob ? 68 : 80);
+    const left = (mob ? 5 : 6) + (lane / Math.max(1, n - 1)) * (mob ? 68 : 66);  // tighter horizontal columns
     const scale = mob ? L.scale * 0.78 : L.scale;
     const fromY = () => window.innerHeight * L.reach + 120;
     const toY = () => -window.innerHeight * L.reach - 120;

@@ -36,8 +36,8 @@ const SCREENS = services[1].images;
 // go). Flip PREVIZ to false to render the real CMS/seed stills again. Card/still ASPECT is mixed —
 // 4/3 or 16/9, pseudo-random but stable per slot index (no per-build drift).
 const PREVIZ = true;
-const RTC_PREVIZ = 12;
-const SCREENS_PREVIZ = 9;
+const RTC_PREVIZ = 16;
+const SCREENS_PREVIZ = 12;
 const pickAR = (i: number) => {
   const h = Math.sin((i + 1) * 12.9898) * 43758.5453;
   return h - Math.floor(h) < 0.5 ? '4 / 3' : '16 / 9';
