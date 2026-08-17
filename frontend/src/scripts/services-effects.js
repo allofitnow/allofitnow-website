@@ -39,6 +39,10 @@ const LAYERS = [
 
 const ORBIT_BASE = 0.05;              // deg/ms baseline spin
 const ORBIT_MAX = 0.55;               // deg/ms cap when scrolling hard
+const ORBIT_PUSH = '-28vw';           // push the whole ring back from the camera so the near arc
+                                      // (ring front at container-z +50vw) never reaches the 60vw
+                                      // perspective plane and clips. Pairs with perspective in
+                                      // services.css: more negative = safer/flatter, less = closer.
 
 const reduce = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -293,6 +297,10 @@ function buildMixed(root) {
   const medias = [...el.querySelectorAll('img')];
   const angle = 360 / medias.length;
   medias.forEach((m, i) => gsap.set(m, { z: '-50vw', rotationY: angle * i }));
+  // Push the whole ring back from the camera (kept as the container's z while the ticker only
+  // rewrites rotationY, and the tilt only rotationX — GSAP preserves the other components). This
+  // is the clearance that stops the near arc clipping the 60vw perspective plane.
+  gsap.set(container, { z: ORBIT_PUSH });
   gsap.set(el, { autoAlpha: 0 });
 
   // one ticker writer integrates angular velocity into rotationY

@@ -21,8 +21,8 @@ const HOVER_RING_MAX = 0.42;
 // (never dimmed). All knobs below are safe to dial after a visual test.
 const LUM_BOOST = 1.0;       // additive brightness at a light's centre (alpha ×(1 + this))
 const LUM_CURSOR = 1.0;      // cursor-pool strength
-const LUM_NAV = 0.9;         // per-word middle-nav pool strength
-const LUM_NAV_REACH = 18;    // nav-word pool radius, in cells
+const LUM_NAV = 1.0;         // per-word middle-nav pool strength
+const LUM_NAV_REACH = 30;    // nav-word pool radius, in cells (wider = the nav flashlight spreads further)
 const COPY_GLYPHS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 const SERVICES = [
   { name: 'REAL-TIME CONTENT', subs: ['INTERACTIVE ENVIRONMENTS', 'LIVE GRAPHICS', 'VISUAL EFFECTS'] },

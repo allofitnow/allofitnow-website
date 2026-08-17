@@ -84,14 +84,18 @@ html.lenis, html.lenis body { height: auto; }
 
 /* ===== MIXED REALITY — mwg_061 (3D orbit) ===== */
 .svc-panel--mixed .mwg_effect061 {
-  /* Camera at 72vw, ring radius 50vw (each image sits at translateZ(-50vw)).
-     Perspective MUST stay above the ring's +50vw forward reach or a near-side
-     image hits the camera plane, blows up and clips — the "pop". 72vw keeps a
-     ~20vw clearance (no clip) while staying close enough that the near arc looms
-     large and the far side recedes — so you read it as HALF a ring, not a flat
-     full circle. Lower = more immersive/closer (min ~60vw before it pops on the
-     mouse-tilt); higher = flatter, more of the full ring visible. */
-  position: absolute; inset: 0; height: 100%; perspective: 72vw; overflow: hidden;
+  /* Ring radius 50vw (each image's transform-origin sits 50vw behind it). The whole ring is
+     pushed AWAY from the camera in JS (container translateZ, ORBIT_PUSH in services-effects.js) —
+     that clearance, NOT a huge perspective, is what stops a near image reaching the camera plane
+     and clipping (the old "pop"). Perspective stays punchy (60vw) so the near arc still looms big
+     and the far side recedes: you read HALF a ring you look into, not a flat full circle.
+     Tune the look with the pair: smaller ORBIT_PUSH / smaller perspective = closer & more immersive
+     (watch the near arc vs the camera); larger = calmer & flatter. */
+  position: absolute; inset: 0; height: 100%; perspective: 60vw; overflow: hidden;
+  /* image size: --mr-w drives the GAP (with the slot count in services.astro); --mr-h only sets the
+     height, so the ratio is a free look-choice that keeps the same gap. For width 18vw:
+       16/9 → 10.125vw (default) · 4/3 → 13.5vw · 1/1 → 18vw. */
+  --mr-w: 18vw; --mr-h: 10.125vw;
   /* pointer-events inherited from the panel — the engine enables the active section only */
 }
 .mwg_effect061 .container {
@@ -99,9 +103,10 @@ html.lenis, html.lenis body { height: auto; }
   transform-origin: 50% 50%; width: 100%; will-change: transform;
 }
 .mwg_effect061 .container img {
-  width: 20vw; aspect-ratio: 1; display: block; object-fit: cover;
-  position: absolute; top: calc(50% - 10vw); left: calc(50% - 10vw);
-  transform-origin: 50% 0 50vw; border-radius: 8px;
+  width: var(--mr-w); height: var(--mr-h); display: block; object-fit: cover;
+  position: absolute; left: 50%; top: 50%;
+  margin-left: calc(var(--mr-w) / -2); margin-top: calc(var(--mr-h) / -2);
+  transform-origin: 50% 50% 50vw; border-radius: 8px;
 }
 
 /* ===== EQUIPMENT RENTAL — plate above a draggable one-line fleet marquee ===== */
@@ -170,7 +175,7 @@ html.lenis, html.lenis body { height: auto; }
   }
   .mwg_effect083 .media { width: clamp(104px, 36vw, 185px); }
   .mwg_effect051 .media { width: clamp(96px, 34vw, 165px); }
-  .mwg_effect061 .container img { width: 34vw; top: calc(50% - 17vw); left: calc(50% - 17vw); transform-origin: 50% 0 50vw; }
+  .mwg_effect061 { --mr-w: 26vw; --mr-h: 14.625vw; } /* narrower so 12 slots don't overlap on phones (mobile is a deferred pass) */
   /* deeper scrim so the title + stacked bar stay legible over the moving galleries */
   .svc-panel--realtime::before, .svc-panel--screens::before {
     background:

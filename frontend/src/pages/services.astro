@@ -29,10 +29,11 @@ const services = await getServiceSections();
 const RTC = services[0].images;
 const SCREENS = services[1].images;
 // Mixed-reality orbit: build the ring from however many images the CMS provides, and if that's
-// fewer than a full circle, LOOP them to fill it. At radius 50vw with 20vw-wide images the ring
-// needs ~18 evenly-spaced slots to close with slight overlap (12 left visible gaps); more images
-// than that are all used (denser ring). buildMixed() spaces whatever is rendered at 360/count.
-const RING_SLOTS = 18;
+// fewer than a full circle, LOOP them to fill it. At radius 50vw with 18vw-wide images, 12 evenly-
+// spaced slots (360/12 = 30° apart, image ≈ 20° of arc) close the circle with a clean ~10° gap
+// between neighbours; more source images than that are all used (denser ring, smaller gaps).
+// buildMixed() spaces whatever is rendered at 360/count.
+const RING_SLOTS = 12;
 const mrSrc = services[2].images;
 const MR = mrSrc.length
   ? Array.from({ length: Math.max(RING_SLOTS, mrSrc.length) }, (_, i) => mrSrc[i % mrSrc.length])
