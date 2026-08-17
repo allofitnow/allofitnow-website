@@ -14,15 +14,15 @@ const GL_ATLAS = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/';
 const HOVER_PEAK = 1.5;
 const HOVER_FALL_REACH = 22;
 const HOVER_RING_MAX = 0.42;
-// Field luminance (services hero): the field brightness is gated by a "light" value L in [0,1]
-// — L = max(cursor pool, middle-nav band). Away from all light the field dims toward LUM_FLOOR
-// (0 = it disappears, 1 = no darkening); at a light centre it's full brightness + LUM_BOOST pop
-// and shifts toward pure white. All five are tuning knobs — safe to dial after a visual test.
-const LUM_FLOOR = 0.3;       // residual field brightness away from all light
-const LUM_BOOST = 0.3;       // extra alpha pop right at a light's centre
-const LUM_CURSOR = 1.0;      // cursor-pool strength (uCurAmt when the mouse is over the field)
-const LUM_BAR = 1.0;         // middle-nav band strength (uBarAmt)
-const LUM_BAR_REACH = 0.5;   // band vertical reach as a fraction of the field height
+// Field luminance (services hero): the original field is left exactly as-is (its bottom-bright /
+// top-sparse gradient), and pools of extra light are ADDED on top — one per middle-nav word plus
+// a cursor "flashlight". Light value L in [0,1] = max over all pools of a radial falloff; a cell's
+// brightness is scaled by (1 + LUM_BOOST * L) and shifts toward white. L = 0 ⇒ base field unchanged
+// (never dimmed). All knobs below are safe to dial after a visual test.
+const LUM_BOOST = 1.0;       // additive brightness at a light's centre (alpha ×(1 + this))
+const LUM_CURSOR = 1.0;      // cursor-pool strength
+const LUM_NAV = 0.9;         // per-word middle-nav pool strength
+const LUM_NAV_REACH = 18;    // nav-word pool radius, in cells
 const COPY_GLYPHS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 const SERVICES = [
   { name: 'REAL-TIME CONTENT', subs: ['INTERACTIVE ENVIRONMENTS', 'LIVE GRAPHICS', 'VISUAL EFFECTS'] },
@@ -1292,7 +1292,7 @@ class ServicesController {
         'in vec2 aCorner; in vec2 aCell; in float aGlyph; in float aAlpha; in vec2 aOff; in float aScale;\n' +
         'uniform vec2 uRes; uniform vec2 uCellPx; uniform vec2 uGlyphPx; uniform vec2 uGrid;\n' +
         'uniform vec2 uCursor; uniform float uCurRadius; uniform float uCurAmt;\n' +
-        'uniform float uBarY; uniform float uBarReach; uniform float uBarAmt;\n' +
+        'uniform vec2 uNav[4]; uniform float uNavRadius; uniform float uNavAmt;\n' +
         'out vec2 vUV; out float vA; out float vS; out float vL;\n' +
         'void main(){\n' +
         ' vec2 ctr = aCell * uCellPx + uCellPx * 0.5 + aOff;\n' +
@@ -1302,21 +1302,19 @@ class ServicesController {
         ' vUV = (g + vec2(aCorner.x, aCorner.y)) / uGrid;\n' +
         ' vA = aAlpha;\n' +
         ' vS = aScale;\n' +
-        ' float cl = 0.0;\n' +
-        ' if (uCurAmt > 0.0) { float t = clamp(1.0 - distance(ctr, uCursor) / max(1.0, uCurRadius), 0.0, 1.0); cl = uCurAmt * t * t; }\n' +
-        ' float bl = 0.0;\n' +
-        ' if (uBarAmt > 0.0) { float t = clamp(1.0 - abs(ctr.y - uBarY) / max(1.0, uBarReach), 0.0, 1.0); bl = uBarAmt * t * t; }\n' +
-        ' vL = max(cl, bl);\n' +
+        ' float L = 0.0;\n' +
+        ' if (uCurAmt > 0.0) { float t = clamp(1.0 - distance(ctr, uCursor) / max(1.0, uCurRadius), 0.0, 1.0); L = max(L, uCurAmt * t * t); }\n' +
+        ' if (uNavAmt > 0.0) { for (int j = 0; j < 4; j++) { float t = clamp(1.0 - distance(ctr, uNav[j]) / max(1.0, uNavRadius), 0.0, 1.0); L = max(L, uNavAmt * t * t); } }\n' +
+        ' vL = L;\n' +
         '}';
       const fsrc = '#version 300 es\n' +
         'precision mediump float;\n' +
-        'in vec2 vUV; in float vA; in float vS; in float vL; out vec4 o; uniform sampler2D uTex; uniform float uOpacity; uniform float uPeak; uniform float uFloor; uniform float uBoost;\n' +
+        'in vec2 vUV; in float vA; in float vS; in float vL; out vec4 o; uniform sampler2D uTex; uniform float uOpacity; uniform float uPeak; uniform float uBoost;\n' +
         'void main(){ float a = texture(uTex, vUV).a * vA; if(a < 0.01) discard;' +
         ' float w = pow(clamp((vS - 1.0) / max(0.001, uPeak - 1.0), 0.0, 1.0), 1.6);' +
         ' float lit = clamp(w + vL * 0.6, 0.0, 1.0);' +
         ' vec3 c = mix(vec3(0.851, 0.882, 0.918), vec3(1.0), lit);' +
-        ' float litFactor = uFloor + (1.0 - uFloor) * vL;' +
-        ' o = vec4(c, min(1.0, a * uOpacity * (1.0 + w * 0.4) * litFactor * (1.0 + uBoost * vL))); }';
+        ' o = vec4(c, min(1.0, a * uOpacity * (1.0 + w * 0.4) * (1.0 + uBoost * vL))); }';
       const mk = (type, src) => {
         const sh = gl.createShader(type);
         gl.shaderSource(sh, src);
@@ -1346,10 +1344,9 @@ class ServicesController {
         cursor: gl.getUniformLocation(pr, 'uCursor'),
         curRadius: gl.getUniformLocation(pr, 'uCurRadius'),
         curAmt: gl.getUniformLocation(pr, 'uCurAmt'),
-        barY: gl.getUniformLocation(pr, 'uBarY'),
-        barReach: gl.getUniformLocation(pr, 'uBarReach'),
-        barAmt: gl.getUniformLocation(pr, 'uBarAmt'),
-        lumFloor: gl.getUniformLocation(pr, 'uFloor'),
+        nav: gl.getUniformLocation(pr, 'uNav'),
+        navRadius: gl.getUniformLocation(pr, 'uNavRadius'),
+        navAmt: gl.getUniformLocation(pr, 'uNavAmt'),
         lumBoost: gl.getUniformLocation(pr, 'uBoost')
       };
       this._bCorner = gl.createBuffer();
@@ -1714,28 +1711,33 @@ class ServicesController {
     gl.uniform2f(L.grid, this._atGrid[0], this._atGrid[1]);
     gl.uniform1f(L.opacity, (FIELD_OPACITY) / 100);
     gl.uniform1f(L.peak, HOVER_PEAK);
-    // --- Field luminance: cursor pool (#2) + middle-nav band (#3) ---
-    // Cursor pool centred on the highlighted word, radius = the magnify disc (matches asciiHover).
+    // --- Field luminance: additive pools over the untouched field ---
+    // (#2) Cursor "flashlight" centred on the highlighted word, radius = the magnify disc (matches asciiHover).
     gl.uniform2f(L.cursor, (this._mc + 0.5) * this._cw, (this._mr + 0.5) * this._ch);
     gl.uniform1f(L.curRadius, HOVER_FALL_REACH * this._cw);
     gl.uniform1f(L.curAmt, (this._lumCurA || 0) * LUM_CURSOR);
-    // Middle-nav band: brightest at the bar row, falling off vertically until the field disappears.
-    // Bar centre expressed in the field box's local px space (same space the vertex uses for ctr).
-    const barEl = this.el() && this.el().querySelector('[data-bar]');
-    let barY = 0, barReach = 1, barAmt = 0;
-    if (barEl) {
-      const fr = box.getBoundingClientRect();
-      const brc = barEl.getBoundingClientRect();
-      if (brc.height > 0 && fr.height > 0) {
-        barY = (brc.top + brc.height / 2) - fr.top;
-        barReach = LUM_BAR_REACH * fr.height;
-        barAmt = LUM_BAR;
+    // (#3) One pool per middle-nav word ([data-slot]), centred on its ink, in the field box's local
+    // px space (same space the vertex uses for ctr). Empty/hidden slots are parked off-canvas.
+    const nav = this._navBuf || (this._navBuf = new Float32Array(8));
+    const root = this.el();
+    const slots = root ? root.querySelectorAll('[data-slot]') : [];
+    const fr = box.getBoundingClientRect();
+    for (let j = 0; j < 4; j++) {
+      const sl = slots[j];
+      let px = -99999, py = -99999;
+      if (sl) {
+        const rc = sl.getBoundingClientRect();
+        if (rc.width > 0 && rc.height > 0) {
+          px = (rc.left + rc.right) / 2 - fr.left;
+          py = (rc.top + rc.bottom) / 2 - fr.top;
+        }
       }
+      nav[j * 2] = px;
+      nav[j * 2 + 1] = py;
     }
-    gl.uniform1f(L.barY, barY);
-    gl.uniform1f(L.barReach, barReach);
-    gl.uniform1f(L.barAmt, barAmt);
-    gl.uniform1f(L.lumFloor, LUM_FLOOR);
+    gl.uniform2fv(L.nav, nav);
+    gl.uniform1f(L.navRadius, LUM_NAV_REACH * this._cw);
+    gl.uniform1f(L.navAmt, LUM_NAV);
     gl.uniform1f(L.lumBoost, LUM_BOOST);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this._tex);
