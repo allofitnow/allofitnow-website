@@ -157,6 +157,7 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
 <div class="svc-scrolldist" data-scroll="" style="height:900vh"></div>
 
 <script>
+  import gsap from 'gsap';
   import { mountServices } from '../scripts/services-controller.js';
   import { mountEffects } from '../scripts/services-effects.js';
 
@@ -165,15 +166,38 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
   // so once it has run the preloader can lift with no raw-content behind it.
   mountEffects(ctrl);
 
-  // Project-linked stills: clicking one navigates to its project. Delegated on the stage so it
-  // covers all three galleries (the engine gates pointer-events to the active section, so only the
-  // visible section's stills are clickable). /services is a standalone doc → this is a full nav,
-  // and the project page plays its own preloader. Stills with no project have no data-href.
+  // Project-linked stills: clicking one plays a staggered, snappy transition OUT (not the Work→Project
+  // flight — just a quick exit), then navigates to the project. Delegated on the stage so it covers all
+  // three galleries (the engine gates pointer-events to the active section, so only the visible
+  // section's stills are clickable). /services is a standalone doc → this is a full nav, and the project
+  // page plays its own preloader (which covers the load). Stills with no project have no data-href.
+  let leaving = false;
+  const playExit = (section: Element | null, href: string) => {
+    // Images fade in a stagger — opacity only, so the galleries' GSAP/3D transforms are untouched.
+    const imgs = section ? [...section.querySelectorAll('img')] : [];
+    const field = document.querySelector('[data-ascii]');
+    // Chrome lifts + fades, snappy accelerating ease ("things leave, not drift").
+    const lift = [
+      document.querySelector('[data-title-a]'),
+      document.querySelector('[data-title-b]'),
+      ...document.querySelectorAll('[data-slot]'),
+      section ? section.querySelector('[data-desc]') : null,
+      ...document.querySelectorAll('[data-svc-jump]'),
+    ].filter(Boolean);
+    try { (window as any).__aoinLenis && (window as any).__aoinLenis.stop(); } catch (_) {}
+    if (imgs.length) gsap.to(imgs, { opacity: 0, duration: 0.26, ease: 'power2.in', stagger: { each: 0.035 }, overwrite: 'auto' });
+    if (field) gsap.to(field, { opacity: 0, duration: 0.3, ease: 'power2.in', overwrite: 'auto' });
+    if (lift.length) gsap.to(lift, { y: -36, opacity: 0, duration: 0.4, ease: 'power3.in', stagger: 0.03, overwrite: 'auto' });
+    const ms = Math.min(560, 260 + imgs.length * 35);
+    setTimeout(() => { window.location.href = href; }, ms);
+  };
   document.querySelector('[data-root]')?.addEventListener('click', (e) => {
     const t = e.target as HTMLElement | null;
     const img = t && t.closest ? (t.closest('img[data-href]') as HTMLElement | null) : null;
     const href = img && img.dataset ? img.dataset.href : '';
-    if (href) window.location.href = href;
+    if (!href || leaving) return;
+    leaving = true;
+    playExit(img ? img.closest('[data-svc-panel]') : null, href);
   });
 
   // --- Preloader lift ---------------------------------------------------------
