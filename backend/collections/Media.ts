@@ -6,6 +6,10 @@ const Media: CollectionConfig = {
     staticURL: "/media",
     staticDir: "media",
     mimeTypes: ["image/*", "video/*"],
+    // Auto-convert uploaded IMAGES to WebP via sharp (videos pass through untouched). A photographic
+    // still drops ~80–90% vs PNG at no visible quality loss. Applies to NEW uploads only — existing
+    // media keep their original files until re-uploaded. Requires a Payload restart to take effect.
+    formatOptions: { format: "webp", options: { quality: 82 } },
   },
   access: {
     read: () => true,

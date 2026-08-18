@@ -309,7 +309,7 @@ class ServicesController {
         if (p3 && p3.style.backgroundColor !== 'rgb(0, 0, 0)') { p3.style.transition = 'none'; p3.style.backgroundColor = 'rgb(0, 0, 0)'; }
       }
       
-      if (this.active < 0) { this.tickAscii(performance.now()); if (this._heroSweep !== false) this.sweep(performance.now()); }
+      if (this.active < 0) { if (!this._fieldAsleep) this.tickAscii(performance.now()); if (this._heroSweep !== false) this.sweep(performance.now()); }
       const thresh = 1400;
       const hold = 0;
       const ease = 0.062;
@@ -1163,6 +1163,15 @@ class ServicesController {
       this.sweepOff(); // drop the gradient fill so the slots show their solid color
       if (bar) bar.style.pointerEvents = 'none';
     }
+  }
+
+  // Sleep/wake the WebGL field. Once a section fully covers it (dissolve complete) the effects module
+  // sleeps it, so tickAscii/drawAscii stop — no ~18/s GPU upload+draw while it's invisible. Waking
+  // re-arms the dirty flag so it repaints immediately. Sleep/wake are bracketed around the 0.9s dissolve
+  // (setDissolve in services-effects.js), so the dissolve itself always runs at full framerate.
+  setFieldAsleep(v) {
+    this._fieldAsleep = !!v;
+    if (!v) this._glDirty = true;
   }
 
   buildAscii() {

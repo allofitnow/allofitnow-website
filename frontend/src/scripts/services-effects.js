@@ -160,7 +160,13 @@ export function mountEffects(ctrl) {
   // Field dissolve rides the bar rise: same ~0.9s one-shot, gone in any section, back at the hero.
   const setDissolve = (v) => {
     gsap.killTweensOf(dissState);
-    gsap.to(dissState, { t: v, duration: 0.9, ease: 'aboutEase', onUpdate: () => ctrl.dissolveField && ctrl.dissolveField(dissState.t) });
+    if (v < 1 && ctrl.setFieldAsleep) ctrl.setFieldAsleep(false); // wake BEFORE fading the field back in
+    gsap.to(dissState, {
+      t: v, duration: 0.9, ease: 'aboutEase',
+      onUpdate: () => ctrl.dissolveField && ctrl.dissolveField(dissState.t),
+      // Sleep only once fully dissolved (invisible) — the 0.9s fade itself always draws every frame.
+      onComplete: () => { if (v >= 1 && ctrl.setFieldAsleep) ctrl.setFieldAsleep(true); },
+    });
   };
 
   // Section ENTER: bar scramble + rise, scrim, pointer-events, orbit/equip visibility, dissolve.
@@ -328,7 +334,7 @@ function buildMixed(root) {
   gsap.set(el, { autoAlpha: 0 });
 
   // one ticker writer integrates angular velocity into rotationY (baseline spin + scroll boost)
-  let orbitRot = 0, angVel = ORBIT_BASE, targetVel = ORBIT_BASE;
+  let orbitRot = 0, angVel = ORBIT_BASE, targetVel = ORBIT_BASE, visible = false;
   gsap.ticker.add((t, dt) => {
     // Always ease the boost target back toward baseline. Scroll bumps it UP
     // (setBoost); this pulls it DOWN every frame — so when scrolling stops
@@ -337,6 +343,10 @@ function buildMixed(root) {
     targetVel += (ORBIT_BASE - targetVel) * 0.05;
     angVel += (targetVel - angVel) * 0.08;
     orbitRot += angVel * (dt || 16);
+    // Gate the DOM writes (1 transform + N image opacities) to when the ring is on screen. The cheap
+    // scalar integration above keeps running so the ring resumes exactly where it "would have been";
+    // `visible` flips off only AFTER the 0.35s fade-out completes (see show()), so the fade never freezes.
+    if (!visible) return;
     gsap.set(container, { rotationY: orbitRot });
     // Drift fade: d = an image's distance in front of the camera (vw). As it sweeps to the front
     // (d → 0) it would balloon and clip off the edges, so fade it out over the last band first.
@@ -372,7 +382,11 @@ function buildMixed(root) {
         { scale: 1, ease: 'power3.out', duration: 0.9, stagger: { each: 0.05, from: 'random' }, overwrite: true }
       );
     },
-    show(v) { gsap.to(el, { autoAlpha: v, duration: 0.35, overwrite: 'auto' }); },
+    show(v) {
+      if (v > 0) visible = true; // wake before the fade-in so the ring animates in live
+      // Sleep only once fully faded out — the ring keeps spinning + fading through the whole 0.35s.
+      gsap.to(el, { autoAlpha: v, duration: 0.35, overwrite: 'auto', onComplete: () => { if (v <= 0) visible = false; } });
+    },
   };
 }
 
