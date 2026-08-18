@@ -520,9 +520,12 @@ export class HomeController {
     return sec.getBoundingClientRect().top < window.innerHeight * 0.6;
   }
   private watchFootBar() {
-    const bar = this.ref('footBar');
+    // FootBar is site-wide chrome (rendered by Base, OUTSIDE the home root), so query it globally.
+    const bar = document.querySelector<HTMLElement>('[data-ref="footBar"]');
     if (!bar) return;
-    const inners = this.refs('[data-ref="footBar"] [data-fbi]');
+    const inners = Array.prototype.slice.call(
+      document.querySelectorAll<HTMLElement>('[data-ref="footBar"] [data-fbi]'),
+    ) as HTMLElement[];
     this.footScroll = () => {
       const hw = this.ref('heroWrap');
       const heroEnd = hw ? hw.getBoundingClientRect().bottom : 0;
@@ -609,7 +612,7 @@ export class HomeController {
       mark.style.marginTop = m ? '64px' : '0';
     }
 
-    const fbar = this.ref('footBar');
+    const fbar = document.querySelector<HTMLElement>('[data-ref="footBar"]'); // site-wide chrome (Base), query globally
     if (fbar) {
       // Fixed + full-width, so align it to the capped frame like the nav: pad on
       // normal screens, pad + the ultrawide gutter beyond it.

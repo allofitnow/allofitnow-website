@@ -5,6 +5,7 @@ import { ClientRouter } from 'astro:transitions';
 import Nav from '@/components/chrome/Nav.astro';
 import Cursor from '@/components/chrome/Cursor.astro';
 import HoverCard from '@/components/chrome/HoverCard.astro';
+import FootBar from '@/components/chrome/FootBar.astro';
 import Preloader from '@/components/home/Preloader.astro';
 import { getProjects } from '@/data/projects';
 
@@ -71,6 +72,9 @@ const flightOrder = JSON.stringify(projects.map((p) => p.slug));
     <slot />
     <Cursor />
     <HoverCard />
+    {/* Site-wide thin foot bar (tagline + socials). On the homepage the controller
+        owns its scroll-reactive reveal; interior pages self-reveal (see FootBar). */}
+    <FootBar />
 
     {/* The flyer travels in here; transition:persist keeps the layer (and the
         in-flight artwork) alive across the ClientRouter DOM swap. */}

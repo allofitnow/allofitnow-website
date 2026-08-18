@@ -4,7 +4,6 @@ import SelectedWorkTitle from './SelectedWorkTitle.astro';
 import FilterBar from './FilterBar.astro';
 import ProjectTile from './ProjectTile.astro';
 import ProjectRow from './ProjectRow.astro';
-import FootBar from '@/components/home/FootBar.astro';
 
 const projects = await getProjects();
 
@@ -62,8 +61,6 @@ const {
 
     <a class="back" href="/#about" data-unit data-astro-reload>[&nbsp;&nbsp;BACK&nbsp;&nbsp;]</a>
   </section>
-
-  <FootBar />
 </div>
 
 <script>

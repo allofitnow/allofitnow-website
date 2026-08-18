@@ -17,7 +17,6 @@
  *    still lands on / launches from it.
  */
 import type { Project } from '@/data/projects';
-import FootBar from '@/components/home/FootBar.astro';
 import { renderRichText } from '@/lib/richtext';
 
 interface Props {
@@ -168,8 +167,6 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
       <div class="pp__notesRich" set:html={renderRichText(project.writeup)}></div>
     </div>
   </aside>
-
-  <FootBar />
 </main>
 
 <style>

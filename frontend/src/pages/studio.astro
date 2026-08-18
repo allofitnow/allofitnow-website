@@ -1,0 +1,339 @@
+---
+import Base from '@/layouts/Base.astro';
+import { meta, statement, band, profile, roster } from '@/data/studio';
+
+/* Content comes from @/data/studio. Labels, layout and motion are decisions of
+   this file, not of the data. Nav + FootBar come from Base (site-wide chrome). */
+
+const members = roster();
+
+// Section labels live here, not in the data: they name the page's structure.
+const labels = { about: 'ABOUT', profile: 'PROFILE', team: 'TEAM' };
+
+// Roster grid: 2 | 3 | 4. Rows are derived so names read down, then across.
+const columns = 3;
+const rows = Math.ceil(members.length / columns);
+---
+
+<Base title={meta.title} description={meta.description}>
+  <main class="about" data-reveal-root>
+    <section id="about" class="statement">
+      <div class="label-row" data-reveal>
+        <span class="label">{labels.about}</span>
+        <span class="rule"></span>
+      </div>
+      {statement.map((line) => <div class="line" data-reveal>{line}</div>)}
+    </section>
+
+    <section class="band">
+      {band.map((image) => (
+        <img
+          data-reveal
+          src={image.url}
+          alt={image.alt}
+          width={image.width}
+          height={image.height}
+          loading="lazy"
+          decoding="async"
+        />
+      ))}
+    </section>
+
+    <section class="col">
+      <span class="label" data-reveal>{labels.profile}</span>
+      <div class="profile">
+        {profile.map((para) => <p data-reveal>{para}</p>)}
+      </div>
+    </section>
+
+    <section class="team">
+      <div class="label-row" data-reveal>
+        <span class="label">{labels.team}</span>
+        <span class="rule"></span>
+        <span class="label">({members.length})</span>
+      </div>
+      <div class="roster" style={`--rows: ${rows}; --cols: ${columns};`}>
+        {members.map((member) => {
+          const words = member.title.split(/\s+/);
+          return (
+            <div class="member" data-reveal>
+              <div class="name">{member.name}</div>
+              <div class="title">
+                <span class="words">
+                  {words.map((word, i) => (
+                    <span style={`--in: ${i * 55}ms; --out: ${(words.length - 1 - i) * 30}ms`}>{word}</span>
+                  ))}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+
+  </main>
+</Base>
+
+<style>
+  /* Clear the fixed Nav (top) and the site-wide FootBar (bottom) — Base provides
+     both, and this page scrolls under them. */
+  .about {
+    max-width: var(--content-max);
+    margin: 0 auto;
+    padding: 0 var(--margin-edge) clamp(96px, 12vh, 160px);
+    box-sizing: border-box;
+  }
+
+  /* Section rule sits at 28% — the brand deck's weight, heavier than the
+     --rule hairline the Work list uses. */
+  .label-row {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin-bottom: clamp(32px, 4vw, 56px);
+  }
+  .rule {
+    flex: 1;
+    height: 1px;
+    background: rgba(217, 225, 234, 0.28);
+  }
+  .label {
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 13px;
+    letter-spacing: var(--tracking-overline);
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  .statement {
+    padding-top: clamp(120px, 16vh, 220px);
+    font-family: var(--font-headline);
+    font-weight: var(--weight-headline);
+    font-size: clamp(18px, 2.5vw, 46px);
+    line-height: 1.06;
+    letter-spacing: var(--tracking-headline);
+    color: var(--text-primary);
+  }
+  /* Lines never re-wrap: a copy edit that no longer fits shows itself. */
+  .statement .line {
+    white-space: nowrap;
+  }
+
+  .band {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: clamp(12px, 1.4vw, 22px);
+    padding-top: clamp(56px, 7vw, 104px);
+  }
+  .band img {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 16 / 9;
+    object-fit: cover;
+    display: block;
+    background: rgba(217, 225, 234, 0.06);
+  }
+
+  .col {
+    margin-top: clamp(56px, 7vw, 104px);
+    display: grid;
+    grid-template-columns: minmax(0, 200px) minmax(0, 1fr);
+    gap: clamp(24px, 4vw, 72px);
+    align-items: start;
+  }
+  .col > .label {
+    padding-top: 4px;
+  }
+
+  .profile {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: clamp(24px, 3vw, 56px);
+    max-width: 1180px;
+  }
+  .profile p {
+    margin: 0;
+    font-family: var(--font-body);
+    font-weight: var(--weight-body);
+    font-size: 17px;
+    line-height: var(--leading-body);
+    color: var(--text-primary);
+    text-wrap: pretty;
+  }
+
+  .team {
+    padding-top: clamp(50px, 10vw, 100px);
+    padding-bottom: clamp(80px, 12vw, 160px);
+  }
+  .roster {
+    display: grid;
+    grid-auto-flow: column;
+    grid-template-rows: repeat(var(--rows), auto);
+    grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+    row-gap: clamp(28px, 3vw, 44px);
+    column-gap: clamp(24px, 4vw, 64px);
+  }
+  .member {
+    width: max-content;
+  }
+  .name {
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: clamp(13px, 1.15vw, 17px);
+    letter-spacing: 0.16em;
+    line-height: 1.2;
+    white-space: nowrap;
+    color: var(--text-primary);
+  }
+  /* The title is masked at one line: words wait below the baseline. */
+  .title {
+    overflow: hidden;
+    height: 1.5em;
+    margin-top: 7px;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 12px;
+    letter-spacing: 0.16em;
+    line-height: 1.5;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  .words {
+    display: flex;
+    gap: 0.4em;
+    white-space: nowrap;
+  }
+  .words > span {
+    display: inline-block;
+    transform: translateY(160%);
+    transition: transform 460ms cubic-bezier(0.22, 0.7, 0.2, 1);
+    transition-delay: var(--out, 0ms);
+  }
+  .member:hover .words > span,
+  .member:focus-within .words > span {
+    transform: none;
+    transition-delay: var(--in, 0ms);
+  }
+
+  @media (max-width: 720px) {
+    .about {
+      padding: 0 var(--margin-edge-mobile) clamp(80px, 14vh, 140px);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .words > span {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  import gsap from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+  import { ensureLenis } from '@/lib/smooth-scroll';
+
+  /* Reveal: every block rises out of its own baseline behind a clip. What is
+     already in view cascades on load; everything below waits for the scroll.
+     Motion is code, not content — tune it here. */
+  const STAGGER = 0.022; // seconds between consecutive blocks
+  const DURATION = 0.62; // per-block travel
+  const EASE = 'expo.out'; // hard settle; --ease-brand is the softer alternative
+  const RISE = 45; // percent of its own height a line starts below
+
+  type Target = { node: HTMLElement; plain: boolean; above?: boolean };
+
+  const root = document.querySelector<HTMLElement>('[data-reveal-root]');
+  const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  if (root && !reduce) {
+    gsap.registerPlugin(ScrollTrigger);
+
+    // Lenis drives scroll site-wide (Base boots the shared instance) — ScrollTrigger
+    // has to hear about it, or the on-scroll reveals fire against a stale position.
+    const lenis = ensureLenis();
+    if (lenis) lenis.on('scroll', ScrollTrigger.update);
+
+    root.style.visibility = 'hidden';
+
+    /* Flex/grid blocks cascade child-by-child so a row's items land in
+       sequence; text blocks rise behind their clip; images animate whole. */
+    const collect = (el: HTMLElement, out: Target[]): void => {
+      if (el.tagName === 'IMG') {
+        out.push({ node: el, plain: true });
+        return;
+      }
+      const display = getComputedStyle(el).display;
+      if (display.includes('flex') || display.includes('grid')) {
+        for (const child of Array.from(el.children)) collect(child as HTMLElement, out);
+        return;
+      }
+      if (el.firstChild) out.push({ node: el, plain: false });
+    };
+
+    const show = (): void => {
+      root.style.visibility = 'visible';
+    };
+
+    const targets: Target[] = [];
+    for (const el of Array.from(root.querySelectorAll<HTMLElement>('[data-reveal]'))) {
+      collect(el, targets);
+    }
+
+    const from = (t: Target) =>
+      t.plain ? { y: 22, opacity: 0 } : { yPercent: RISE, clipPath: 'inset(100% 0% -15% 0%)' };
+    const to = (t: Target) =>
+      t.plain
+        ? { y: 0, opacity: 1, duration: DURATION * 0.8 }
+        : {
+            yPercent: 0,
+            clipPath: 'inset(0% 0% -15% 0%)',
+            duration: DURATION,
+            clearProps: 'clipPath',
+          };
+
+    const play = (): void => {
+      // Measure before anything is offset.
+      const fold = window.innerHeight * 0.92;
+      for (const t of targets) t.above = t.node.getBoundingClientRect().top < fold;
+
+      const tl = gsap.timeline({ defaults: { ease: EASE }, onStart: show });
+      let i = 0;
+      const seen = new Map<Element | null, number>();
+
+      for (const t of targets) {
+        if (t.above) {
+          tl.fromTo(t.node, from(t), to(t), i++ * STAGGER);
+          continue;
+        }
+        const key = t.node.parentElement;
+        const n = seen.get(key) ?? 0;
+        seen.set(key, n + 1);
+        gsap.fromTo(t.node, from(t), {
+          ...to(t),
+          ease: EASE,
+          delay: Math.min(n * STAGGER, 0.4),
+          scrollTrigger: { trigger: t.node, start: 'top 90%', once: true },
+        });
+      }
+      show();
+
+      window.addEventListener('beforeprint', () => {
+        tl.progress(1);
+        for (const t of targets) {
+          gsap.set(t.node, t.plain ? { y: 0, opacity: 1 } : { yPercent: 0, clearProps: 'clipPath' });
+        }
+      });
+    };
+
+    /* Fonts first, so lines are measured at their real height. Never leave the
+       page hidden if that promise stalls. */
+    const bail = setTimeout(show, 2500);
+    (document.fonts?.ready ?? Promise.resolve()).then(() => {
+      clearTimeout(bail);
+      play();
+    });
+  }
+</script>

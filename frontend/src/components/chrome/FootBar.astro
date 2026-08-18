@@ -88,8 +88,9 @@ import { tagline, social } from '@/data/home';
 
 <script>
   // On the home page the controller owns the foot bar (scroll-reactive reveal +
-  // frame alignment). Interior pages (work / project) have no such controller, so
-  // it reveals and frames itself there. Mirrors home.controller applyResponsive.
+  // frame alignment). Interior pages (studio / work / project) have no such
+  // controller, so it reveals and frames itself there. Mirrors home.controller
+  // applyResponsive.
   (function () {
     const place = () => {
       const bar = document.querySelector<HTMLElement>('[data-ref="footBar"]');
