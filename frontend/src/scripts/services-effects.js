@@ -25,7 +25,7 @@ const ABOUT_EASE = 'cubic-bezier(0.05,0.89,0,0.99)';
 
 // Timeline / section tuning (progress 0..1).
 const RTC = { start: 0.06, travel: 0.16, stag: 0.016 };  // fly-across: fast + staggered
-const SCR = { start: 0.36, travel: 0.17, stag: 0.012 };  // rise bottom→top (tighter vertical spacing)
+const SCR = { start: 0.36, travel: 0.17, stag: 0.007 };  // rise bottom→top — tight stagger so a curated sequence reads as one connected group
 const MIX = [0.60, 0.86];             // orbit section (scroll drives ring speed)
 const B = [0.06, 0.34, 0.60, 0.86];   // section ENTER — bar scramble + rise + field dissolve
 const R = [0.08, 0.36, 0.62, 0.88];   // text REVEAL — as soon as the first images enter view (just past B)

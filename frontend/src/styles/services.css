@@ -99,7 +99,7 @@ html.lenis, html.lenis body { height: auto; }
 /* ===== SCREENS PRODUCTION — mwg_051 (columns rise bottom→top, scrubbed) ===== */
 .svc-panel--screens .mwg_effect051 { position: absolute; inset: 0; overflow: hidden; }
 .mwg_effect051 .media {
-  position: absolute; left: 0; top: 0; width: clamp(180px, 22vw, 360px); aspect-ratio: 16 / 9;
+  position: absolute; left: 0; top: 0; width: clamp(230px, 28vw, 460px); aspect-ratio: 16 / 9;
   display: block; object-fit: cover; border-radius: 8px; will-change: transform;
 }
 
