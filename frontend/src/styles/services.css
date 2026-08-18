@@ -70,7 +70,9 @@ html.lenis, html.lenis body { height: auto; }
 
 /* ===== Per-service description ===== */
 .svc-desc {
-  position: absolute; left: 48px; bottom: 48px; z-index: 12; margin: 0;
+  position: absolute; left: 48px; bottom: 44px; z-index: 12; margin: 0;
+  /* bottom:44 (not 48) so the last line's BASELINE lands on the bottom-right nav's baseline —
+     the description's 1.45 line-height otherwise lifts its baseline ~4px above the 12px mono nav. */
   max-width: 34ch; font-family: var(--font-headline); font-weight: 400;
   font-size: clamp(13px, 1.35vw, 17px); line-height: 1.45; color: rgba(217, 225, 234, 0.86);
   pointer-events: none;
@@ -167,7 +169,7 @@ html.lenis, html.lenis body { height: auto; }
 }
 .equip-marquee.is-grabbing .equip-item { cursor: grabbing; }
 .equip-item.is-active { color: rgb(217, 225, 234); }
-.svc-panel--equip .svc-desc { max-width: 62ch; bottom: 56px; }
+.svc-panel--equip .svc-desc { max-width: 62ch; bottom: 44px; }
 
 /* ===== Persistent bottom-right service nav ===== */
 .svc-nav {
