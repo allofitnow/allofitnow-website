@@ -134,7 +134,8 @@ html.lenis, html.lenis body { height: auto; }
   /* pointer-events inherited from the panel — enabled only when Equipment is the active section */
 }
 .equip-plate { position: relative; flex: 1 1 auto; display: grid; place-items: center; min-height: 0; min-width: 0; }
-.equip-plate img { max-width: 68%; max-height: 100%; object-fit: contain; display: block; transition: opacity 0.22s ease; will-change: transform, opacity; }
+/* img + video share the one centred grid cell so they overlay; setPlate cross-fades opacity between them */
+.equip-plate img, .equip-plate video { grid-area: 1 / 1; max-width: 68%; max-height: 100%; object-fit: contain; display: block; transition: opacity 0.22s ease; will-change: transform, opacity; }
 /* placeholder plate — shown for fleet items with no plate asset yet (pending the CMS) */
 .equip-plate-ph {
   position: absolute; inset: 14% 20%; display: grid; place-items: center; text-align: center;
@@ -201,7 +202,7 @@ html.lenis, html.lenis body { height: auto; }
       linear-gradient(to top, rgba(0, 0, 0, 0.86) 0%, rgba(0, 0, 0, 0) 30%);
   }
   .svc-panel--equip .equip { top: 22vh; left: 20px; right: 20px; bottom: 130px; gap: 18px; }
-  .equip-plate img { max-width: 82%; max-height: 30vh; }
+  .equip-plate img, .equip-plate video { max-width: 82%; max-height: 30vh; }
   .equip-marquee { height: 46px; }
   .equip-item { font-size: clamp(14px, 5vw, 22px); }
   .svc-panel--equip .svc-desc { bottom: 54px; }

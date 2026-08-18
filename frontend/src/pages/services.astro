@@ -90,6 +90,10 @@ const SVC_NAV = [
 // `equipment` collection later). Ordered left→right; one item is flagged `center`.
 const equipment = await getEquipment();
 const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
+// A fleet plate can be a video (mimeType video/*, e.g. the GX3 render). isVideoSrc drives whether the
+// initial plate paints the <img> or the <video>; initEquipment swaps between them on selection.
+const isVideoSrc = (u: string) => /\.(webm|mp4|m4v|mov)(\?|$)/i.test(u || '');
+const equipCenterVid = isVideoSrc(equipCenter.image);
 ---
 <!doctype html>
 <html lang="en">
@@ -167,7 +171,8 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
     <section class="svc-panel svc-panel--equip" data-svc-panel="" data-i="3" id="equipment-rental">
       <div class="equip" data-fx="equip">
         <div class="equip-plate" data-equip-plate>
-          <img data-equip-img src={equipCenter.image} alt="" />
+          <img data-equip-img src={equipCenterVid ? undefined : equipCenter.image} alt="" style={equipCenterVid ? 'opacity:0' : undefined} />
+          <video data-equip-vid src={equipCenterVid ? equipCenter.image : undefined} autoplay muted loop playsinline preload="metadata" style={equipCenterVid ? undefined : 'opacity:0'}></video>
           <div class="equip-plate-ph" data-equip-ph aria-hidden="true"></div>
         </div>
         <div class="equip-marquee" data-equip-marquee aria-label="Drag to browse equipment">

@@ -388,6 +388,7 @@ function initEquipment(root) {
   const track = scope.querySelector('[data-equip-track]');
   const rows = [...scope.querySelectorAll('[data-equip-row]')];
   const img = scope.querySelector('[data-equip-img]');
+  const vid = scope.querySelector('[data-equip-vid]');   // plate can be a video (e.g. GX3 render)
   const plate = scope.querySelector('[data-equip-plate]');
   const ph = scope.querySelector('[data-equip-ph]');
   const copy = scope.querySelector('[data-equip-copy]');
@@ -409,13 +410,27 @@ function initEquipment(root) {
   };
   // Paint the plate for a row: real items show their image; placeholder items show a
   // labelled placeholder box (the data has no plate asset yet — pending the CMS).
+  const isVideoSrc = (s) => /\.(webm|mp4|m4v|mov)(\?|$)/i.test(s || '');
   const setPlate = (r) => {
     const isPh = r.dataset.placeholder === 'true';
     if (plate) plate.classList.toggle('is-placeholder', isPh);
     if (ph) ph.textContent = isPh ? r.textContent : '';
-    if (!img) return;
-    if (isPh) { img.removeAttribute('src'); img.style.opacity = '0'; }
-    else { img.src = r.dataset.img; img.style.opacity = '1'; }
+    const src = r.dataset.img || '';
+    const isVid = !isPh && isVideoSrc(src);
+    if (isPh) {
+      if (img) { img.removeAttribute('src'); img.style.opacity = '0'; }
+      if (vid) { vid.pause && vid.pause(); vid.style.opacity = '0'; }
+    } else if (isVid) {
+      if (img) img.style.opacity = '0';
+      if (vid) {
+        if (vid.getAttribute('src') !== src) vid.src = src;
+        vid.style.opacity = '1';
+        vid.play && vid.play().catch(() => {});
+      }
+    } else {
+      if (vid) { vid.pause && vid.pause(); vid.style.opacity = '0'; }
+      if (img) { img.src = src; img.style.opacity = '1'; }
+    }
   };
   const swap = (i, immediate) => {
     if (i === activeIdx) return;
@@ -424,6 +439,7 @@ function initEquipment(root) {
     if (copy) copy.textContent = rows[i].dataset.tip;
     if (immediate) { setPlate(rows[i]); return; }
     if (img) img.style.opacity = '0';
+    if (vid) vid.style.opacity = '0';
     clearTimeout(imgT);
     imgT = setTimeout(() => setPlate(rows[i]), 150);
   };
