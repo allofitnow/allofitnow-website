@@ -200,7 +200,7 @@ const Projects: CollectionConfig = {
     {
       name: "order",
       type: "number",
-      required: true,
+      required: false,
       admin: {
         position: "sidebar",
         description: "Manual sort nudge — now only breaks ties within a year (default sort is newest-first).",
