@@ -1119,7 +1119,7 @@ export class HomeController {
     (track.style as CSSStyleDeclaration & { webkitUserSelect?: string }).webkitUserSelect = 'none';
     track.style.touchAction = 'pan-y';
     this.noDrag = (e: Event) => e.preventDefault();
-    track.querySelectorAll('img').forEach((i) => (i.draggable = false));
+    track.querySelectorAll('img, video').forEach((i) => ((i as HTMLElement).draggable = false));
     track.addEventListener('dragstart', this.noDrag);
     track.addEventListener('pointerdown', (e) => {
       e.preventDefault();

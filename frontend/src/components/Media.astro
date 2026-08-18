@@ -1,0 +1,23 @@
+---
+/* Media.astro — one media slot that renders an <img> OR a <video> from a single `src`, auto-detected
+   by the file extension (.webm/.mp4/.mov/.m4v ⇒ video). Any image or video added in Payload drops
+   into the same slot with no per-site wiring — swap `<img …/>` for `<Media …/>` once and future
+   media just works. Video plays as a silent looping "moving still" (autoplay + muted + loop +
+   playsinline). Every extra prop (class, style, data-*, loading, width, height, draggable…) passes
+   straight through to the rendered element. */
+interface Props {
+  src: string;
+  alt?: string;
+  /** Force the media kind; otherwise inferred from the src extension. */
+  video?: boolean;
+  class?: string;
+  [key: string]: any;
+}
+const { src, alt = '', video, class: className, ...rest } = Astro.props;
+const isVideo = video ?? /\.(webm|mp4|m4v|mov)(\?|$)/i.test(src || '');
+---
+{isVideo ? (
+  <video src={src} class={className} autoplay muted loop playsinline preload="metadata" {...rest}></video>
+) : (
+  <img src={src} alt={alt} class={className} {...rest} />
+)}

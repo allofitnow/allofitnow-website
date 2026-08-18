@@ -1,6 +1,7 @@
 ---
 import { about } from '@/data/home';
 import { getHomeMarquee } from '@/data/projects';
+import Media from '@/components/Media.astro';
 
 // Curated homepage marquee: featured projects in featured-order, falling back to
 // all projects (chronological) until any are marked featured in the CMS.
@@ -48,7 +49,7 @@ const projects = await getHomeMarquee();
                 data-tour={p.tour}
                 data-caps={p.capabilities.join('|')}
               >
-                <img src={p.image} alt={p.title} draggable="false" loading="lazy" />
+                <Media src={p.image} alt={p.title} draggable="false" loading="lazy" />
               </a>
             ))
           }
@@ -69,7 +70,7 @@ const projects = await getHomeMarquee();
                   aria-hidden="true"
                   tabindex="-1"
                 >
-                  <img src={p.image} alt="" draggable="false" loading="lazy" />
+                  <Media src={p.image} alt="" draggable="false" loading="lazy" />
                 </a>
               ))
             }
@@ -221,7 +222,8 @@ const projects = await getHomeMarquee();
     border-radius: var(--radius-tile);
     background: rgba(217, 225, 234, 0.05); /* neutral fill until the still loads */
   }
-  .slide img {
+  .slide img,
+  .slide video {
     position: absolute;
     inset: 0;
     width: 100%;
