@@ -19,15 +19,17 @@ export function initProjectPage(root: HTMLElement) {
   const q = <T extends HTMLElement>(sel: string) => root.querySelector<T>(sel);
 
   const frame = q('[data-pp-frame]')!;
+  // The toggle is now the ProjectBar's PROJECT INFO button ([data-pp-toggle]).
+  // Its label is a CSS ride (PROJECT INFO <-> CLOSE), so the old text-swap target
+  // is optional — guard the write below.
   const toggle = q('[data-pp-toggle]')!;
-  const toggleLabel = q('[data-pp-toggle-label]')!;
+  const toggleLabel = q('[data-pp-toggle-label]');
   const titleRow = q('[data-pp-title-row]')!;
   const titleSpan = q('[data-pp-title]')!;
   const h1 = titleSpan.parentElement as HTMLElement; // .pp__title
   const hero = q('[data-pp-hero]')!;
   const aside = q('[data-pp-aside]')!;
   const notes = q('[data-pp-notes]')!;
-  const navLinks = Array.from(root.querySelectorAll<HTMLElement>('[data-pp-next-link]'));
 
   if (!frame || !toggle || !titleRow || !hero || !aside) return;
 
@@ -174,7 +176,7 @@ export function initProjectPage(root: HTMLElement) {
     root.style.setProperty('--panel-delay', expanded ? '180ms' : '0ms');
     toggle.setAttribute('aria-expanded', String(expanded));
     aside.setAttribute('aria-hidden', String(!expanded));
-    toggleLabel.textContent = expanded ? 'CLOSE' : 'FULL WRITE-UP';
+    if (toggleLabel) toggleLabel.textContent = expanded ? 'CLOSE' : 'FULL WRITE-UP';
     if (!reduced()) {
       splitNotes();
       playNotes(expanded);
@@ -220,51 +222,6 @@ export function initProjectPage(root: HTMLElement) {
     },
     { passive: true },
   );
-
-  /* --------------------------------------- prev / next project plates (§6) */
-  // Each link (PREV, NEXT) owns its own lines and close-timer so the reveal
-  // runs independently — only one is ever hovered at a time.
-  navLinks.forEach((link) => {
-    const lines = Array.from(link.querySelectorAll<HTMLElement>('[data-pp-next-line]'));
-    let closeTimer = 0;
-    const plate = (open: boolean) => {
-      if (open) {
-        clearTimeout(closeTimer);
-        link.dataset.open = 'true';
-        lines.forEach((el, i) => {
-          el.getAnimations().forEach((a) => a.cancel());
-          el.animate(
-            [
-              { transform: 'translateY(110%)', letterSpacing: '-0.02em' },
-              { transform: 'translateY(0%)', letterSpacing: '0.08em' },
-            ],
-            { duration: 420, delay: 140 + i * 90, easing: EASE_REVEAL, fill: 'both' },
-          );
-        });
-      } else {
-        // 60ms hold prevents flicker when the pointer crosses the plate seam.
-        closeTimer = window.setTimeout(() => {
-          link.dataset.open = 'false';
-          lines.forEach((el, i) => {
-            el.getAnimations().forEach((a) => a.cancel());
-            el.animate(
-              [
-                { transform: 'translateY(0%)', letterSpacing: '0.08em' },
-                { transform: 'translateY(110%)', letterSpacing: '-0.02em' },
-              ],
-              { duration: 500, delay: (1 - i) * Math.round(500 / 6), easing: EASE_REVEAL, fill: 'both' },
-            );
-          });
-        }, 60);
-      }
-    };
-    if (!reduced()) {
-      link.addEventListener('mouseenter', () => plate(true));
-      link.addEventListener('mouseleave', () => plate(false));
-      link.addEventListener('focus', () => plate(true));
-      link.addEventListener('blur', () => plate(false));
-    }
-  });
 
   /* --------------------------------------------------------- scroll / resize */
   const onScroll = () => track();

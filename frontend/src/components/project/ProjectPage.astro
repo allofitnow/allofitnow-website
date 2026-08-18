@@ -18,6 +18,7 @@
  */
 import type { Project } from '@/data/projects';
 import Media from '@/components/Media.astro';
+import ProjectBar from '@/components/work/ProjectBar.astro';
 import { renderRichText } from '@/lib/richtext';
 
 interface Props {
@@ -35,13 +36,8 @@ const metaCols: { label: string; values: string[] }[] = [
   { label: 'SERVICES', values: project.services },
 ];
 
-// Prev / next projects — passed as props from the page (wrap-around computed
-// there). Rendered as a two-up row: PREV pinned to the far left, NEXT to the
-// right edge (see .pp__next).
-// Only NEXT now (PREV retired). `prev` stays in Props but is unused.
-const nav = [
-  { label: 'NEXT', kind: 'next', p: next },
-];
+// Prev / next projects — the ProjectBar's NEXT cluster links to `next`; `prev`
+// stays in Props (page still computes wrap-around) but is unused here now.
 
 // Gallery arrangements — how many image slots each layout preset fills.
 // Extra images past the layout's slot count are ignored (never break the grid).
@@ -125,40 +121,14 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
         ))}
       </section>
 
-      <section class="pp__next" data-pp-next>
-        {nav.map((n) => (
-          <a
-            class={`pp__nextLink pp__nextLink--${n.kind}`}
-            href={`/work/${n.p.slug}`}
-            data-pp-next-link
-            data-open="false"
-          >
-            <span>{n.label}</span>
-            <span class="pp__nextPlate" data-pp-next-plate>
-              <span class="pp__nextPlateInner">
-                <span class="pp__nextMask"><span class="pp__nextLine" data-pp-next-line="0">{n.p.title}</span></span>
-                <span class="pp__nextMask"><span class="pp__nextLine" data-pp-next-line="1">{n.p.tour}</span></span>
-              </span>
-            </span>
-            <span>PROJECT</span>
-          </a>
-        ))}
-      </section>
-
-      <div class="pp__allwork">
-        <a href="/work">[&nbsp;&nbsp;ALL WORK&nbsp;&nbsp;]</a>
-      </div>
     </div>
   </div>
 
-  {/* ---- Fixed chrome (outside the container-type frame; aligned to it by JS) ---- */}
-  <button
-    type="button"
-    class="pp__toggle"
-    data-pp-toggle
-    aria-expanded="false"
-    aria-controls="pp-writeup"
-  ><span data-pp-toggle-label>FULL WRITE-UP</span></button>
+  {/* ---- Fixed chrome (outside the container-type frame; aligned to it by JS) ----
+       The ProjectBar carries the write-up toggle (PROJECT INFO, [data-pp-toggle]),
+       ALL WORK (the tile) and NEXT — replacing the old fixed toggle + the foot's
+       prev/next + all-work block. project-page.ts still owns the open state. */}
+  <ProjectBar next={{ href: `/work/${next.slug}`, title: next.title, tour: next.tour }} />
 
   <aside class="pp__aside" id="pp-writeup" data-pp-aside aria-hidden="true">
     <div class="pp__notes" data-pp-notes>
@@ -501,118 +471,9 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     border-bottom: 1px solid rgba(217, 225, 234, 0.28);
   }
 
-  /* ---- prev / next projects ---- */
-  /* Stacked as two centred rows at every breakpoint — PREV over NEXT. Each row
-     owns a full line, so each plate opens freely along its own row on hover. */
-  .pp__next {
-    margin-top: 96px;
-    border-top: 2px solid var(--aoin-cool-white-45);
-    padding: 12vh 0 14vh;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 8vh;
-  }
-  .pp__nextLink {
-    display: flex;
-    width: max-content;
-    max-width: 100%;
-    align-items: center;
-    font-family: var(--font-headline);
-    font-weight: var(--weight-headline);
-    font-size: clamp(40px, 9cqw, 150px);
-    line-height: 1;
-    letter-spacing: 0.01em;
-    white-space: nowrap;
-    color: var(--aoin-cool-white);
-  }
-  .pp__nextPlate {
-    display: inline-flex;
-    justify-content: center;
-    overflow: hidden;
-    max-width: 0;
-    margin-inline: 1.6cqw;
-    transition:
-      max-width 420ms cubic-bezier(0.16, 1, 0.3, 1),
-      margin-inline 420ms cubic-bezier(0.16, 1, 0.3, 1);
-  }
-  .pp__nextLink[data-open='true'] .pp__nextPlate {
-    max-width: 30cqw;
-    margin-inline: 2.2cqw;
-  }
-  .pp__nextPlateInner {
-    display: flex;
-    flex-direction: column;
-    /* Stretch both lines to the width of the widest of the two strings, so the
-       title and tour read as one clean block instead of two staggered boxes. */
-    align-items: stretch;
-    gap: 0.18em;
-    font-family: var(--font-mono);
-    font-weight: var(--weight-mono);
-    /* Caption under the big PREV/NEXT type. */
-    font-size: clamp(13px, 2.2cqw, 34px);
-    letter-spacing: 0.08em;
-    line-height: 1.35;
-    white-space: nowrap;
-  }
-  .pp__nextMask {
-    overflow: hidden;
-    display: block;
-  }
-  .pp__nextLine {
-    display: block;
-    background: var(--aoin-cool-white);
-    color: #000;
-    padding: 0.22em 0.55em;
-    text-align: center;
-    transform: translateY(110%); /* JS raises it on plate open */
-  }
-
-  /* ---- all work ---- */
-  .pp__allwork {
-    margin-top: 44px;
-    font-family: var(--font-mono);
-    font-weight: var(--weight-mono);
-    font-size: 12px;
-    letter-spacing: 0.28em;
-  }
-  /* With the write-up open, the fixed notes panel overlays the right column and
-     the compressed left column shortens — which pulls the full-width prev/next
-     type up under the panel. Hide the nav while reading; it returns on close. */
-  [data-expanded='true'] .pp__next,
-  [data-expanded='true'] .pp__allwork {
-    display: none;
-  }
-
-  /* ============================ fixed chrome ============================ */
-  .pp__toggle {
-    position: fixed;
-    top: var(--pp-title-top, 92px);
-    right: var(--pp-edge);
-    z-index: 30;
-    background: #000;
-    border: 1px solid rgba(217, 225, 234, 0.28);
-    color: var(--aoin-cool-white);
-    border-radius: 6px;
-    font-family: var(--font-headline);
-    font-weight: var(--weight-headline);
-    font-size: 15px;
-    letter-spacing: 0.06em;
-    padding: 9px 18px;
-    cursor: pointer;
-    animation: pp-blink 3.2s ease-in-out infinite;
-  }
-  [data-expanded='true'] .pp__toggle {
-    animation: none;
-  }
-  .pp__toggle:hover {
-    border-color: var(--aoin-cool-white);
-  }
-  @keyframes pp-blink {
-    0%, 100% { opacity: 1; }
-    50% { opacity: 0.45; }
-  }
-
+  /* ============================ fixed chrome (write-up aside) ============================
+     The action controls (write-up toggle, all-work, next) now live in the
+     ProjectBar; only the write-up panel remains as fixed chrome here. */
   .pp__aside {
     position: fixed;
     top: var(--pp-aside-top, 148px);
@@ -720,8 +581,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
 
   /* ============================ reduced motion ============================ */
   @media (prefers-reduced-motion: reduce) {
-    .pp *,
-    .pp .pp__toggle {
+    .pp * {
       transition: none !important;
       animation: none !important;
     }
@@ -845,16 +705,6 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     .pp__credit {
       grid-column: span 6;
     }
-    /* Two-row stack carries over from the base rule — just tighten the spacing
-       and type for the narrow frame. */
-    .pp__next {
-      gap: 5vh;
-      padding: 8vh 0 6vh;
-    }
-    .pp__nextLink {
-      font-size: clamp(28px, 10vw, 56px);
-    }
-
     /* Page 1 (the project content) slides off-left when the write-up opens —
        a clean linear screen-slide, like paging between two app screens. */
     .pp__frame {
@@ -930,11 +780,6 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     }
     .pp__notesRich > p:first-of-type {
       font-size: 18px;
-    }
-
-    /* The swipe cues replace the bottom toggle button on mobile. */
-    .pp__toggle {
-      display: none;
     }
   }
 </style>

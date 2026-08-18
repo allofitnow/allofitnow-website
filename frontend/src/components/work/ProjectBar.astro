@@ -1,0 +1,395 @@
+---
+/**
+ * ProjectBar — fixed bottom-centre action bar for the project page.
+ * Replaces the old fixed top-right .pp__toggle AND the .pp__next / .pp__allwork
+ * block at the foot of the page. Three clusters, 8px gaps, one hairline each:
+ *
+ *   [ 2x2 tile ]   [ PROJECT INFO |sidebar| ]   [ -> ]
+ *     all work        opens the aside          next project
+ *
+ * - The tile is the Work page's data-view="large" icon, verbatim: four 1px
+ *   squares, 3px gap, 16px box, 35% until hover.
+ * - PROJECT INFO is the primary. It carries the sidebar mark (18x18 rect with the
+ *   divider at x=15) because the panel opens off its right edge; the divider
+ *   moves to x=9 and the label rides up to CLOSE when open. The plate is measured
+ *   to whichever label is showing, so it contracts on open.
+ * - NEXT is icon-only at rest; on hover the label wipes out of the left edge and
+ *   pushes the arrow right, inside a pinned 44px slot so the bar never re-centres.
+ * - Tooltips are cool-white plates with black mono type, wiping open (no fade,
+ *   no centre-scale) from the edge nearest their button.
+ *
+ * State: project-page.ts is the single owner of the write-up open/closed boolean
+ * (data-expanded on [data-pp]). PROJECT INFO carries [data-pp-toggle] so that
+ * module toggles it; this component's script only REACTS — it mirrors the state
+ * onto the bar (ride label + divider) and measures label widths.
+ *
+ * Requires the --bar-* tokens (see tokens-additions.css).
+ */
+import DotGlyph from '../chrome/DotGlyph.astro';
+
+interface Props {
+  /** Where the tile goes. */
+  workHref?: string;
+  /** Next project in the roster — the two lines the deleted .pp__next plate showed. */
+  next: { href: string; title: string; tour?: string };
+  /** id of the write-up <aside> this toggles. */
+  panelId?: string;
+  /**
+   * Selector for the element that carries data-expanded (the project page root).
+   * Confirm the hook against project-page.ts before shipping.
+   */
+  rootSelector?: string;
+  position?: 'centre' | 'right';
+  /** Which register the NEXT arrow uses. Denim -> by default. */
+  iconRegister?: 'typographic' | 'dotted';
+  labels?: { work?: string; info?: string; close?: string; next?: string };
+}
+
+const {
+  workHref = '/work',
+  next,
+  panelId = 'pp-writeup',
+  rootSelector = '[data-pp]',
+  position = 'centre',
+  iconRegister = 'typographic',
+  labels = {},
+} = Astro.props as Props;
+
+const L = {
+  work: labels.work ?? 'ALL WORK',
+  info: labels.info ?? 'PROJECT INFO',
+  close: labels.close ?? 'CLOSE',
+  next: labels.next ?? 'NEXT PROJECT',
+};
+---
+
+<div class="pbar" data-pbar data-position={position} data-root={rootSelector} data-panel={panelId}>
+  <div class="pbar__row">
+
+    <!-- 1 / all work -->
+    <div class="pbar__slot">
+      <div class="pbar__cluster">
+        <a class="pbar__icon" href={workHref} aria-label={L.work} data-pbar-hot="work">
+          <span class="pbar__tile" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        </a>
+      </div>
+      <div class="pbar__tip pbar__tip--left" role="tooltip">
+        <span class="pbar__plate">{L.work}</span>
+      </div>
+    </div>
+
+    <!-- 2 / project info (primary) -->
+    <button
+      class="pbar__info"
+      type="button"
+      aria-expanded="false"
+      aria-controls={panelId}
+      data-pbar-hot="info"
+      data-pp-toggle
+    >
+      <span class="pbar__ride">
+        <span class="pbar__ride-a" data-pbar-label-a>{L.info}</span>
+        <span class="pbar__ride-b" data-pbar-label-b>{L.close}</span>
+      </span>
+      <span class="pbar__mark">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+             stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+          <line data-pbar-divider x1="15" y1="3" x2="15" y2="21"></line>
+        </svg>
+      </span>
+    </button>
+
+    <!-- 3 / next project -->
+    <div class="pbar__slot pbar__slot--next">
+      <div class="pbar__cluster pbar__cluster--next">
+        <a
+          class="pbar__next"
+          href={next.href}
+          aria-label={`Next project — ${next.title}`}
+          data-pbar-hot="next"
+        >
+          <span class="pbar__next-label"><span data-pbar-label-next>{L.next}</span></span>
+          <span class="pbar__next-mark">
+            {iconRegister === 'dotted'
+              ? <DotGlyph glyph="arrow-right" size={16} color="rgb(217,225,234)" />
+              : <span class="pbar__type-arrow">&#8594;</span>}
+          </span>
+        </a>
+      </div>
+      <div class="pbar__tip pbar__tip--next" role="tooltip">
+        <span class="pbar__plate">{next.title}</span>
+        {next.tour && <span class="pbar__plate">{next.tour}</span>}
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<style>
+  .pbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--bar-bottom, 56px);
+    z-index: 30;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .pbar[data-position='right'] {
+    justify-content: flex-end;
+    padding-right: 2.5%;
+  }
+  .pbar__row {
+    display: inline-flex;
+    align-items: stretch;
+    gap: var(--bar-gap, 8px);
+    pointer-events: auto;
+  }
+
+  /* ---- shells ------------------------------------------------------------ */
+  .pbar__cluster,
+  .pbar__info {
+    background: var(--bar-fill, rgba(0, 0, 0, 0.72));
+    backdrop-filter: blur(14px);
+    border: var(--bar-stroke-w, 1px) solid
+      rgba(217, 225, 234, var(--bar-stroke-o, 0.28));
+    border-radius: var(--bar-radius, 8px);
+    overflow: hidden;
+  }
+  .pbar__slot { position: relative; display: inline-flex; align-items: stretch; }
+  /* The next cluster is absolute inside a pinned 44px slot so its label can grow
+     to the right without re-centring the bar. */
+  .pbar__slot--next { width: 44px; min-height: 40px; }
+  .pbar__cluster--next { position: absolute; left: 0; top: 0; display: inline-flex; }
+
+  /* ---- 2x2 tile (work page's large-view icon) ---------------------------- */
+  .pbar__icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    min-height: 40px;
+    box-sizing: border-box;
+    color: rgba(217, 225, 234, 0.35);
+    transition:
+      background var(--bar-fill-ms, 420ms) linear,
+      color var(--bar-fill-ms, 420ms) linear;
+  }
+  .pbar__icon:hover,
+  .pbar__icon:focus-visible {
+    background: rgba(217, 225, 234, 0.07);
+    color: var(--aoin-cool-white, rgb(217, 225, 234));
+  }
+  .pbar__tile {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    grid-template-rows: repeat(2, 1fr);
+    gap: 3px;
+    width: 16px;
+    height: 16px;
+  }
+  .pbar__tile i { display: block; border: 1px solid currentColor; }
+
+  /* ---- project info ------------------------------------------------------ */
+  .pbar__info {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 40px;
+    white-space: nowrap;
+    box-sizing: border-box;
+    padding-left: 16px;
+    padding-right: 14px;
+    color: var(--aoin-cool-white, rgb(217, 225, 234));
+    font-family: var(--font-denim, 'Denim INK WD'), sans-serif;
+    font-weight: 500;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: padding-right var(--bar-glyph-ms, 560ms) var(--bar-ease);
+  }
+  .pbar__info:hover { padding-right: 20px; }
+  .pbar__info:hover .pbar__mark { transform: translateX(6px); }
+  .pbar__mark { display: block; transition: transform var(--bar-glyph-ms, 560ms) var(--bar-ease); }
+  .pbar__mark svg { display: block; }
+
+  /* label ride: two stacked lines in a 1.4em window, width measured in script */
+  .pbar__ride {
+    display: block;
+    overflow: hidden;
+    height: 1.4em;
+    width: var(--pbar-label-w, max-content);
+    transition: width var(--bar-label-ms, 640ms) var(--bar-ease);
+  }
+  .pbar__ride-a,
+  .pbar__ride-b {
+    display: block;
+    width: max-content;
+    line-height: 1.4;
+    white-space: nowrap;
+    transform: translateY(0);
+    transition: transform var(--bar-label-ms, 640ms) var(--bar-ease);
+  }
+  [data-pbar][data-expanded] .pbar__ride-a,
+  [data-pbar][data-expanded] .pbar__ride-b { transform: translateY(-100%); }
+
+  /* ---- next -------------------------------------------------------------- */
+  .pbar__next {
+    display: inline-flex;
+    align-items: center;
+    min-height: 40px;
+    box-sizing: border-box;
+    color: var(--aoin-cool-white, rgb(217, 225, 234));
+    transition: background var(--bar-fill-ms, 420ms) linear;
+  }
+  .pbar__next:hover,
+  .pbar__next:focus-visible { background: rgba(217, 225, 234, 0.07); }
+  .pbar__next-label {
+    display: block;
+    overflow: hidden;
+    max-width: 0;
+    transition: max-width var(--bar-label-ms, 640ms) var(--bar-ease);
+  }
+  .pbar__next:hover .pbar__next-label,
+  .pbar__next:focus-visible .pbar__next-label { max-width: 160px; }
+  .pbar__next-label > span {
+    display: block;
+    width: max-content;
+    white-space: nowrap;
+    padding-left: 16px;
+    font-family: var(--font-denim, 'Denim INK WD'), sans-serif;
+    font-weight: 500;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+  }
+  .pbar__next-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 44px;
+    flex: 0 0 auto;
+    transition: transform var(--bar-glyph-ms, 560ms) var(--bar-ease);
+  }
+  .pbar__next:hover .pbar__next-mark { transform: translateX(4px); }
+  .pbar__type-arrow {
+    display: block;
+    font-family: var(--font-denim, 'Denim INK WD'), sans-serif;
+    font-weight: 500;
+    font-size: 18px;
+    line-height: 1;
+  }
+
+  /* ---- tooltips ---------------------------------------------------------- */
+  .pbar__tip {
+    position: absolute;
+    bottom: calc(100% + 6px);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    pointer-events: none;
+    font-family: var(--font-mono, 'SN Ja Mono'), monospace;
+    font-weight: 300;
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    line-height: 1;
+    color: rgb(0, 0, 0);
+    overflow: hidden;
+    max-width: 0;
+    transition: max-width var(--bar-tip-ms, 520ms) var(--bar-ease);
+  }
+  /* tile: hangs off the LEFT edge, wipes right to left */
+  .pbar__tip--left { right: calc(100% - 12px); align-items: flex-end; }
+  /* next: hangs off the button's expanded right edge (measured), wipes right to left */
+  .pbar__tip--next { left: 0; width: var(--pbar-next-box, 44px); align-items: flex-end; }
+  .pbar__slot:hover .pbar__tip,
+  .pbar__slot:focus-within .pbar__tip { max-width: 240px; }
+  .pbar__plate {
+    white-space: nowrap;
+    padding: 6px 9px;
+    background: var(--aoin-cool-white, rgb(217, 225, 234));
+    border-radius: var(--bar-radius, 8px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pbar * { transition-duration: 1ms !important; }
+  }
+</style>
+
+<script>
+  // Pure reactor: project-page.ts owns data-expanded on [data-pp] (its
+  // setExpanded is bound to our [data-pp-toggle] button). We only mirror that
+  // state onto the bar — ride label + divider — and keep the measured widths
+  // fresh. Re-inits per ClientRouter navigation (the bar's `next` is per-page,
+  // so it can't persist); one resize/page-load listener, rebound observer.
+  (function () {
+    type Refs = {
+      el: HTMLElement;
+      root: HTMLElement | null;
+      a: HTMLElement | null;
+      b: HTMLElement | null;
+      nextLabel: HTMLElement | null;
+      divider: SVGLineElement | null;
+    };
+    let cur: Refs | null = null;
+    let mo: MutationObserver | null = null;
+    const isExpanded = () => !!cur && !!cur.root && cur.root.getAttribute('data-expanded') === 'true';
+
+    // The plate sizes to whichever label is showing, so it contracts to CLOSE.
+    // The next tooltip box is the button's EXPANDED width (label + 44px arrow
+    // slot) so both plates hang off that same right edge.
+    function measure() {
+      if (!cur) return;
+      const expanded = isExpanded();
+      if (cur.a && cur.b) {
+        const wA = Math.ceil(cur.a.getBoundingClientRect().width);
+        const wB = Math.ceil(cur.b.getBoundingClientRect().width);
+        if (wA && wB) cur.el.style.setProperty('--pbar-label-w', (expanded ? wB : wA) + 'px');
+      }
+      if (cur.nextLabel) {
+        const w = Math.ceil(cur.nextLabel.getBoundingClientRect().width) + 44;
+        cur.el.style.setProperty('--pbar-next-box', w + 'px');
+      }
+    }
+
+    function sync() {
+      if (!cur) return;
+      const expanded = isExpanded();
+      cur.el.toggleAttribute('data-expanded', expanded);
+      // Lucide panel-right -> panel-left: same rect, divider swaps side.
+      if (cur.divider) {
+        const x = expanded ? '9' : '15';
+        cur.divider.setAttribute('x1', x);
+        cur.divider.setAttribute('x2', x);
+      }
+      measure();
+    }
+
+    function init() {
+      const el = document.querySelector<HTMLElement>('[data-pbar]');
+      if (!el) { cur = null; return; }
+      const root = document.querySelector<HTMLElement>(el.dataset.root || '[data-pp]');
+      cur = {
+        el,
+        root,
+        a: el.querySelector<HTMLElement>('[data-pbar-label-a]'),
+        b: el.querySelector<HTMLElement>('[data-pbar-label-b]'),
+        nextLabel: el.querySelector<HTMLElement>('[data-pbar-label-next]'),
+        divider: el.querySelector<SVGLineElement>('[data-pbar-divider]'),
+      };
+      if (mo) mo.disconnect();
+      if (root) {
+        mo = new MutationObserver(sync);
+        mo.observe(root, { attributes: true, attributeFilter: ['data-expanded'] });
+      }
+      measure();
+      if (document.fonts && document.fonts.ready) document.fonts.ready.then(measure);
+      sync();
+    }
+
+    window.addEventListener('resize', measure, { passive: true });
+    init();
+    document.addEventListener('astro:page-load', init);
+  })();
+</script>
