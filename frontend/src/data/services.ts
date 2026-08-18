@@ -21,6 +21,9 @@ export interface GalleryItem {
    *  Undefined → falls into the first open slot in list order. Only meaningful for the checklist
    *  sections (RTC, Screens); Mixed Reality ignores it. */
   slot?: number;
+  /** True when the media is a video (mimeType video/*) — rendered as an autoplay-muted-loop
+   *  <video> instead of an <img>. Set by the CMS mapper; seed stills are always images. */
+  video?: boolean;
 }
 
 export interface ServiceSection {

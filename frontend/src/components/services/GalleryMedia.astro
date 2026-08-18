@@ -1,0 +1,45 @@
+---
+/* One gallery still — an <img>, or a silently-looping <video> when the CMS media is a video
+   (mimeType video/*). Both carry the `.media` class + the same data-* so the scrub effects
+   (buildRealtime/buildScreens select `.media`), the click-to-project nav, and the hovercard
+   treat them identically. Video plays as a moving still: autoplay + muted + loop + playsinline. */
+import type { GalleryItem } from '../../data/services';
+
+interface Props {
+  item: GalleryItem;
+  /** CSS aspect-ratio string (e.g. '16 / 9'). */
+  ar: string;
+}
+const { item, ar } = Astro.props;
+const { src, href, slug, title, tour, caps, video } = item;
+---
+{video ? (
+  <video
+    class="media"
+    style={`aspect-ratio:${ar}`}
+    src={src}
+    autoplay
+    muted
+    loop
+    playsinline
+    preload="metadata"
+    data-href={href}
+    data-slug={slug}
+    data-title={title}
+    data-tour={tour}
+    data-caps={caps}
+  ></video>
+) : (
+  <img
+    class="media"
+    style={`aspect-ratio:${ar}`}
+    src={src}
+    alt=""
+    loading="lazy"
+    data-href={href}
+    data-slug={slug}
+    data-title={title}
+    data-tour={tour}
+    data-caps={caps}
+  />
+)}

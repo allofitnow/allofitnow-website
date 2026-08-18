@@ -19,6 +19,7 @@ import Preloader from '../components/home/Preloader.astro';
 import PageTitle from '../components/services/PageTitle.astro';
 import CapabilityBar from '../components/services/CapabilityBar.astro';
 import AsciiField from '../components/services/AsciiField.astro';
+import GalleryMedia from '../components/services/GalleryMedia.astro';
 import { getServiceSections, getServiceGalleries, type GalleryItem } from '../data/services';
 import { getEquipment } from '../data/equipment';
 
@@ -130,9 +131,9 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
         <div class="container">
           {CHECKLIST
             ? rtcSlots.map((g, i) => g
-                ? <img class="media" style={`aspect-ratio:${pickAR(i)}`} src={g.src} alt="" loading="lazy" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />
+                ? <GalleryMedia item={g} ar={pickAR(i)} />
                 : <div class="media previz-card" style={`aspect-ratio:${pickAR(i)}`}>{pad(i + 1)}</div>)
-            : RTC.map((g, i) => <img class="media" style={`aspect-ratio:${pickAR(i)}`} src={g.src} alt="" loading="lazy" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
+            : RTC.map((g, i) => <GalleryMedia item={g} ar={pickAR(i)} />)}
         </div>
       </div>
       <p class="svc-desc svc-desc--overlay" data-desc="">{services[0].desc}</p>
@@ -143,9 +144,9 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
       <div class="mwg_effect051" data-fx="051">
         {CHECKLIST
           ? screensSlots.map((g, i) => g
-              ? <img class="media" style={`aspect-ratio:${pickAR(i + 100)}`} src={g.src} alt="" loading="lazy" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />
+              ? <GalleryMedia item={g} ar={pickAR(i + 100)} />
               : <div class="media previz-card" style={`aspect-ratio:${pickAR(i + 100)}`}>{pad(i + 1)}</div>)
-          : SCREENS.map((g, i) => <img class="media" style={`aspect-ratio:${pickAR(i)}`} src={g.src} alt="" loading="lazy" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
+          : SCREENS.map((g, i) => <GalleryMedia item={g} ar={pickAR(i)} />)}
       </div>
       <p class="svc-desc svc-desc--overlay" data-desc="">{services[1].desc}</p>
     </section>
@@ -226,7 +227,7 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
   let leaving = false;
   const playExit = (section: Element | null, href: string) => {
     // Images fade in a stagger — opacity only, so the galleries' GSAP/3D transforms are untouched.
-    const imgs = section ? [...section.querySelectorAll('img')] : [];
+    const imgs = section ? [...section.querySelectorAll('img, video')] : [];
     const field = document.querySelector('[data-ascii]');
     // Chrome lifts + fades, snappy accelerating ease ("things leave, not drift").
     const lift = [
@@ -247,11 +248,11 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
   };
   document.querySelector('[data-root]')?.addEventListener('click', (e) => {
     const t = e.target as HTMLElement | null;
-    const img = t && t.closest ? (t.closest('img[data-href]') as HTMLElement | null) : null;
-    const href = img && img.dataset ? img.dataset.href : '';
+    const el = t && t.closest ? (t.closest('img[data-href], video[data-href]') as HTMLElement | null) : null;
+    const href = el && el.dataset ? el.dataset.href : '';
     if (!href || leaving) return;
     leaving = true;
-    playExit(img ? img.closest('[data-svc-panel]') : null, href);
+    playExit(el ? el.closest('[data-svc-panel]') : null, href);
   });
 
   // --- Preloader lift ---------------------------------------------------------

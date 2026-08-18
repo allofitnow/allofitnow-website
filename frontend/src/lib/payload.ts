@@ -160,12 +160,18 @@ export async function getEquipmentDocs(): Promise<Equipment[]> {
 export function mapPayloadServiceSection(row: any): ServiceSection {
   const items = (row.gallery ?? []).map((it: any) => {
     const proj = it && it.project && typeof it.project === 'object' ? it.project : null;
+    // The media object that supplies the still: the item's own image, else the project's key image.
+    const media = it && it.image && typeof it.image === 'object' ? it.image
+      : proj && proj.image && typeof proj.image === 'object' ? proj.image : null;
     const src = it && it.image ? mediaUrl(it.image) : proj ? mediaUrl(proj.image) : '';
     const href = proj && proj.slug ? `/work/${proj.slug}` : undefined;
     // Project data for the hovercard — mirrors the home marquee (title / tour / capabilities).
     const caps = proj && Array.isArray(proj.capabilities) ? proj.capabilities.join('|') : undefined;
     const slot = typeof it?.slot === 'number' ? it.slot : undefined;
-    return { src, href, slug: proj?.slug, title: proj?.title, tour: proj?.tour, caps, slot };
+    // Video vs image — from the media's mimeType, with a filename-extension fallback.
+    const mime = media && typeof media.mimeType === 'string' ? media.mimeType : '';
+    const video = /^video\//i.test(mime) || /\.(webm|mp4|m4v|mov)(\?|$)/i.test(src);
+    return { src, href, slug: proj?.slug, title: proj?.title, tour: proj?.tour, caps, slot, video };
   }).filter((g: any) => g.src !== '');
   return { slug: row.slug, desc: row.desc ?? '', images: items };
 }

@@ -145,7 +145,7 @@ function init() {
     // scrubs on a held pointer).
     if (!canHover() || flighting() || e.buttons) return hide();
     // Work grid tiles, home bleed slides, AND /services project-linked stills.
-    const t = (e.target as Element)?.closest?.('.tile[data-slug], .slide[data-slug], img[data-slug][data-href]');
+    const t = (e.target as Element)?.closest?.('.tile[data-slug], .slide[data-slug], img[data-slug][data-href], video[data-slug][data-href]');
     if (!t) return hide();
     show(t);
   });
