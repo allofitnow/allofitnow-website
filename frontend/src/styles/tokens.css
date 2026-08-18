@@ -204,6 +204,18 @@
 }
 
 /* ---- Base element defaults ---- */
+/* Hide native scrollbars site-wide — scrolling still works (Lenis + wheel/touch/
+   keys); this only removes the chrome bar (incl. the one that popped over the
+   contact modal). Applies to the page and every inner scroller (modal textarea,
+   write-up panel, …). */
+html {
+  scrollbar-width: none;      /* Firefox */
+  -ms-overflow-style: none;   /* legacy Edge */
+}
+*::-webkit-scrollbar {        /* Chrome / Safari / Edge */
+  width: 0;
+  height: 0;
+}
 html,
 body {
   margin: 0;

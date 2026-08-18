@@ -24,6 +24,10 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; background: #000; color: rgb(217, 225, 234); }
+/* Hide native scrollbars (scroll still works — Lenis drives it); matches the
+   rest of the site and kills the bar that popped over the contact modal. */
+html { scrollbar-width: none; -ms-overflow-style: none; }
+*::-webkit-scrollbar { width: 0; height: 0; }
 a { color: rgb(217, 225, 234); text-decoration: none; }
 a:hover { color: rgba(217, 225, 234, 0.45); }
 
