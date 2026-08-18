@@ -50,6 +50,11 @@ const SERVICES = (() => {
   }
 })();
 
+// Flat word pool for the field's hover-scramble reveal: the 4 service names PLUS their sub-services,
+// so hovering the ASCII field can spell any capability, not just the top-level names. Derived from the
+// same CMS-fed SERVICES above (12 subs + 4 names = 16 words; subs naturally surface more often).
+const SVC_WORDS = SERVICES.flatMap((s) => [s.name, ...(Array.isArray(s.subs) ? s.subs : [])]);
+
 class ServicesController {
   active = -1;
   acc = 0;
@@ -1466,7 +1471,7 @@ class ServicesController {
       if (rr < 0 || rr >= rows) continue;
       let hs = Math.imul(rr + 1, 374761393) ^ Math.imul(Math.floor(c / 6) + 1, 668265263) ^ Math.imul(band + 1, 2246822519);
       hs = (hs ^ (hs >>> 13)) >>> 0;
-      const word = SERVICES[hs % 4].name;
+      const word = SVC_WORDS[hs % SVC_WORDS.length];
       void 0;
       const st = Math.max(0, Math.min(cols - word.length, c - Math.floor(word.length / 2)));
       const fade = 1 - (Math.abs(dr) / (span + 1)) * 0.22;
