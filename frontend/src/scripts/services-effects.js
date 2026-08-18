@@ -20,15 +20,17 @@ let mounted = false;
 // velocity never spikes the ring's spin. Cleared when the jump settles.
 let progScroll = false;
 const SLUGS = ['real-time-content', 'screens-production', 'mixed-reality', 'equipment-rental'];
-const ANCHOR = { 'real-time-content': 0.16, 'screens-production': 0.48, 'mixed-reality': 0.74, 'equipment-rental': 0.94 };
+// Deep-link / center-button jump targets — land at the TOP of each section (just past its B[] enter
+// threshold) so the first images aren't already gone. Was mid-section (0.16/0.48/0.74/0.94).
+const ANCHOR = { 'real-time-content': 0.08, 'screens-production': 0.33, 'mixed-reality': 0.52, 'equipment-rental': 0.88 };
 const ABOUT_EASE = 'cubic-bezier(0.05,0.89,0,0.99)';
 
 // Timeline / section tuning (progress 0..1).
 const RTC = { start: 0.06, travel: 0.16, stag: 0.013 };  // fly-across: fast + staggered (slightly grouped)
 const SCR = { start: 0.31, travel: 0.17, stag: 0.010 };  // rise bottom→top — starts earlier so it OVERLAPS RTC's tail (no dead zone)
-const MIX = [0.55, 0.86];             // orbit section (starts earlier so it overlaps Screens' tail)
-const B = [0.06, 0.31, 0.55, 0.86];   // section ENTER — bar scramble + rise + field dissolve (overlapped hand-offs)
-const R = [0.08, 0.36, 0.58, 0.88];   // text REVEAL — as soon as the first images enter view (just past B)
+const MIX = [0.50, 0.86];             // orbit section (pulled 0.55→0.50 — assembles while Screens' tail still clears, no dead gap)
+const B = [0.06, 0.31, 0.50, 0.86];   // section ENTER — bar scramble + rise + field dissolve (Mixed pulled earlier to overlap Screens' exit)
+const R = [0.08, 0.36, 0.52, 0.88];   // text REVEAL — as soon as the first images enter view (just past B; Mixed follows its earlier B[2])
 const HYST = 0.012;                   // tighter dead-band → crisper hand-offs
 // depth layers for parallax (back → front): different reach (speed) + scale
 const LAYERS = [
