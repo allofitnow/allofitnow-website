@@ -181,7 +181,12 @@ export function mountEffects(ctrl) {
       pan.classList.toggle('is-lit', (i === s) && (i === 0 || i === 1));
       pan.style.pointerEvents = i === s ? 'auto' : 'none';
     });
-    if (!(prev === -2 && s === -1)) ctrl.setActiveService && ctrl.setActiveService(s);
+    // A bottom-right nav jump locks the title/bar to the destination so they don't
+    // flip through the sections the scroll passes on the way (cleared when it settles).
+    if (!(prev === -2 && s === -1)) {
+      const svcIdx = (ctrl && ctrl._svcLock != null) ? ctrl._svcLock : s;
+      ctrl.setActiveService && ctrl.setActiveService(svcIdx);
+    }
     if (bar) bar.style.top = s < 0 ? '52vh' : activeTop() + 'px'; // hero: mid-viewport; section: risen tight under the title
     navRows.forEach((r) => r.classList.toggle('is-active', +r.dataset.i === s));
     if (hint) hint.classList.toggle('is-hidden', s >= 0);
@@ -248,7 +253,7 @@ export function mountEffects(ctrl) {
   driveReveal(0);
 
   ScrollTrigger.refresh();
-  initNav(lenis, st);
+  initNav(ctrl, lenis, st);
 
   // Lock scroll while the on-load intro plays (unless we're deep-linking straight in).
   const hasDeepLink = location.hash && SLUGS.includes(location.hash.replace(/^#/, ''));
@@ -523,15 +528,20 @@ function initEquipment(root) {
 }
 
 /* ---- Service nav + deep links (homepage → a section; intro labels → scroll) ----- */
-function initNav(lenis, st) {
+function initNav(ctrl, lenis, st) {
   if (typeof window !== 'undefined') { window.__aoinLenis = lenis; window.__aoinST = st; }
   const targetFor = (slug) => st.start + (ANCHOR[slug] || 0) * (st.end - st.start);
-  const jump = (slug, immediate) => {
+  const jump = (slug, immediate, eager) => {
     // Flag the jump so the orbit ignores its velocity spike, and clear the flag
     // once the scroll settles (onComplete for the eased jump; next frame for an
     // immediate one, which fires no onComplete).
     progScroll = true;
-    const clear = () => { progScroll = false; };
+    // Eager (bottom-right nav click): scramble the title + bar to the destination
+    // NOW and hold them there (ctrl._svcLock) while the scroll travels — so the
+    // morph reads as a response to the click, not a late flip at the boundary.
+    const idx = SLUGS.indexOf(slug);
+    if (eager && idx >= 0 && ctrl && ctrl.setActiveService) { ctrl._svcLock = idx; ctrl.setActiveService(idx); }
+    const clear = () => { progScroll = false; if (ctrl) ctrl._svcLock = null; };
     lenis.scrollTo(targetFor(slug), immediate ? { immediate: true, onComplete: clear } : { duration: 1.1, onComplete: clear });
     if (immediate) requestAnimationFrame(clear);
     clearTimeout(jump._t);
@@ -539,7 +549,7 @@ function initNav(lenis, st) {
   };
 
   document.querySelectorAll('[data-svc-jump]').forEach((b) => {
-    b.addEventListener('click', () => jump(SLUGS[+b.dataset.i]));
+    b.addEventListener('click', () => jump(SLUGS[+b.dataset.i], false, true));
   });
   window.addEventListener('services:scrollto', (e) => {
     const slug = e && e.detail && e.detail.slug;

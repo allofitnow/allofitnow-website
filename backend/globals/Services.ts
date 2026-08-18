@@ -32,7 +32,7 @@ const Services: GlobalConfig = {
           labels: { singular: "Sub-service", plural: "Sub-services" },
           admin: {
             description:
-              "Sub-service names for this section (e.g. INTERACTIVE ENVIRONMENTS, LIVE GRAPHICS, VISUAL EFFECTS). The scrambling capability bar under the title shows the first three; they also feed the top nav. ALL CAPS. Leave empty to fall back to the built-in defaults.",
+              "Sub-service names for this section (e.g. INTERACTIVE ENVIRONMENTS, LIVE GRAPHICS, VISUAL EFFECTS, GENERATIVE SYSTEMS). The scrambling capability bar under the title shows the first FOUR (the title itself scrambles to the category name); they also feed the top nav. ALL CAPS. Leave empty to fall back to the built-in defaults.",
           },
           fields: [{ name: "label", type: "text", required: true, admin: { description: "One sub-service, all caps." } }],
         },

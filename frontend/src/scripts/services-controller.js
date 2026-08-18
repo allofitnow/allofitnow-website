@@ -436,7 +436,9 @@ class ServicesController {
     el.__svcTarget = to;
     el.__target = to;
     el.style.overflow = 'visible';
-    this.scramble(el, to);
+    // A touch longer than the bar's 620ms — the big title reads smoother morphing
+    // over ~820ms, and it's usually triggered early (on a nav click) so it has room.
+    this.scramble(el, to, { dur: 820 });
   }
 
   // Scroll-driven field dissolve: t=0 (full field) → 1 (fully gone), reversible. Whole
