@@ -393,17 +393,31 @@ class ServicesController {
   setActiveService(i) {
     const root = this.el();
     if (!root) return;
+
+    // Title morphs with the section: hero = STUDIO / CAPABILITIES; in a section it
+    // scrambles to that category's two words. That lifts the category name OUT of
+    // the bar, freeing slot 0 — so the bar now shows FOUR subcategories, not the
+    // old name + three.
+    const ta = root.querySelector('[data-title-a]');
+    const tb = root.querySelector('[data-title-b]');
+    let wa = 'STUDIO', wb = 'CAPABILITIES';
+    if (i >= 0 && SERVICES[i]) {
+      const parts = String(SERVICES[i].name || '').split(' ');
+      wa = parts[0] || '';
+      wb = parts.slice(1).join(' ');
+    }
+    this._setTitle(ta, wa);
+    this._setTitle(tb, wb);
+
     const slots = root.querySelectorAll('[data-slot]');
     slots.forEach((s, k) => {
       let target, bright;
       if (i < 0 || i == null) {
-        target = SERVICES[k] ? SERVICES[k].name : '';
+        target = SERVICES[k] ? SERVICES[k].name : ''; // hero: the four service names (the picker)
         bright = false;
       } else {
-        const svc = SERVICES[i];
-        target = k === 0 ? svc.name : (svc.subs[k - 1] || '');
-        // Risen under the title: the service name AND its subcategories are all
-        // full cool-white (the dim 0.45 is only the resting hero state below).
+        // In a section every slot is a subcategory (the name now lives in the title).
+        target = (SERVICES[i].subs && SERVICES[i].subs[k]) || '';
         bright = true;
       }
       s.style.color = bright ? 'rgb(217,225,234)' : 'rgba(217,225,234,0.45)';
@@ -412,6 +426,17 @@ class ServicesController {
       s.__target = target;
       this.scramble(s, target);
     });
+  }
+
+  // Scramble a title half to `to` (STUDIO/CAPABILITIES <-> a category word), guarded
+  // so scroll updates don't re-scramble unchanged text. Releases the intro clip —
+  // playIntro wraps the title in an inner span but only unwraps the slots.
+  _setTitle(el, to) {
+    if (!el || el.__svcTarget === to) return;
+    el.__svcTarget = to;
+    el.__target = to;
+    el.style.overflow = 'visible';
+    this.scramble(el, to);
   }
 
   // Scroll-driven field dissolve: t=0 (full field) → 1 (fully gone), reversible. Whole
@@ -654,7 +679,15 @@ class ServicesController {
       });
       return;
     }
-    const cands = slots.map((s, i) => (i === 0 ? SERVICES.map((x) => x.name) : SERVICES.map((x) => x.subs[i - 1])));
+    // Each slot must fit its hero label (service k's name) AND every in-section
+    // label it can show (subcategory k across all services), so the bar never
+    // reflows between the hero picker and a section's four subs.
+    const cands = slots.map((s, k) => {
+      const list = [];
+      if (SERVICES[k] && SERVICES[k].name) list.push(SERVICES[k].name);
+      SERVICES.forEach((x) => { const v = x.subs && x.subs[k]; if (v) list.push(v); });
+      return list.length ? list : [''];
+    });
     let fs = 22.5;
     let ls = (22) / 100;
     const lsFloor = 0.08;
