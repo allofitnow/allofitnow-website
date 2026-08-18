@@ -1,0 +1,184 @@
+---
+/**
+ * ServicesBar — fixed bottom-centre CTA for the services page.
+ *
+ *   [ CREATE WITHOUT THE LIMITS OF RENDER TIME | ↗ ]
+ *
+ * - One cluster, bisected by the same hairline: cool-white label on the dark
+ *   blurred shell, then a cool-white arrow cell (black mark) at the right.
+ * - On hover the arrow advances 4px and a black band travels left to right
+ *   through the label via background-clip:text — the capability-bar sweep from
+ *   the live page, reused to pull the eye toward the arrow. No fill change, no
+ *   grey, nothing else moves.
+ * - The label scrambles into the next headline when the selected service
+ *   changes. The services scroll controller dispatches 'aoin:service-change'
+ *   with { index }: -1 = hero (the bar hides), 0..3 = a service section (the bar
+ *   rises in and scrambles to that section's line, from `ctas`). setLabel()/show()
+ *   are also exposed on window.aoinServicesBar.
+ * - The arrow opens the site-wide contact modal ([data-inquiry-open]); href is
+ *   the no-JS fallback.
+ *
+ * Requires the --bar-* tokens (fallbacks cover the standalone /services doc,
+ * which doesn't load tokens.css) and lib/scramble.ts.
+ */
+import DotGlyph from '../chrome/DotGlyph.astro';
+
+interface Props {
+  href?: string;
+  /** Copy for the currently selected service (the first line at rest). */
+  label: string;
+  /** Per-section CTA copy, index-aligned to the 4 services. */
+  ctas?: string[];
+  iconRegister?: 'dotted' | 'typographic';
+}
+
+const { href = '#contact', label, ctas = [], iconRegister = 'dotted' } = Astro.props as Props;
+---
+
+<div class="sbar" data-sbar data-ctas={JSON.stringify(ctas)}>
+  <div class="sbar__cluster">
+    <a class="sbar__cta" href={href} data-inquiry-open>
+      <span class="sbar__label" data-sbar-label>{label}</span>
+      <span class="sbar__mark">
+        {iconRegister === 'dotted'
+          ? <DotGlyph glyph="arrow-up-right" size={16} color="rgb(0,0,0)" />
+          : <span class="sbar__type-arrow">&#8599;</span>}
+      </span>
+    </a>
+  </div>
+</div>
+
+<style>
+  .sbar {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: var(--bar-bottom, 52px);
+    z-index: 40;
+    display: flex;
+    justify-content: center;
+    pointer-events: none;
+    /* Hidden on the hero; rises in once a service section is active. */
+    opacity: 0;
+    transform: translateY(12px);
+    transition:
+      opacity var(--bar-label-ms, 640ms) var(--bar-ease),
+      transform var(--bar-label-ms, 640ms) var(--bar-ease);
+  }
+  .sbar[data-show] {
+    opacity: 1;
+    transform: none;
+  }
+  /* Not clickable while hidden. */
+  .sbar:not([data-show]) .sbar__cluster {
+    pointer-events: none;
+  }
+  .sbar__cluster {
+    display: inline-flex;
+    align-items: stretch;
+    pointer-events: auto;
+    background: var(--bar-fill, rgba(0, 0, 0, 0.72));
+    backdrop-filter: blur(14px);
+    border: var(--bar-stroke-w, 1px) solid rgba(217, 225, 234, var(--bar-stroke-o, 0.28));
+    border-radius: var(--bar-radius, 4px);
+    overflow: hidden;
+  }
+  .sbar__cta {
+    display: inline-flex;
+    align-items: stretch;
+    min-height: 40px;
+    white-space: nowrap;
+    box-sizing: border-box;
+    color: var(--aoin-cool-white, rgb(217, 225, 234));
+    font-family: var(--font-denim, 'Denim INK WD'), sans-serif;
+    font-weight: 500;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+  }
+
+  /* Label. At rest: flat cool white. On hover the gradient takes over the fill
+     and one band runs through it, looping while the pointer stays. */
+  .sbar__label {
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    background-image: linear-gradient(
+      90deg,
+      rgb(217, 225, 234) 0%,
+      rgba(0, 0, 0, 0.42) 22%,
+      rgb(217, 225, 234) 45%,
+      rgba(0, 0, 0, 0.22) 68%,
+      rgb(217, 225, 234) 100%
+    );
+    background-size: 220% 100%;
+    background-repeat: repeat-x;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: var(--aoin-cool-white, rgb(217, 225, 234));
+  }
+  .sbar__cta:hover .sbar__label,
+  .sbar__cta:focus-visible .sbar__label {
+    -webkit-text-fill-color: transparent;
+    animation: sbar-sweep var(--cta-sweep-period, 1500ms) linear infinite;
+  }
+  @keyframes sbar-sweep {
+    from { background-position: 100% 0; }
+    to { background-position: -60% 0; }
+  }
+
+  /* Arrow bisection — cool-white cell, black mark, same hairline as the shell. */
+  .sbar__mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    flex: 0 0 auto;
+    background: var(--aoin-cool-white, rgb(217, 225, 234));
+    color: rgb(0, 0, 0);
+    border-left: var(--bar-stroke-w, 1px) solid rgba(217, 225, 234, var(--bar-stroke-o, 0.28));
+    transition: transform var(--bar-glyph-ms, 560ms) var(--bar-ease);
+  }
+  .sbar__cta:hover .sbar__mark,
+  .sbar__cta:focus-visible .sbar__mark { transform: translateX(4px); }
+  .sbar__type-arrow { display: block; font-size: 18px; line-height: 1; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .sbar { transition-duration: 1ms; }
+    .sbar__cta:hover .sbar__label { animation: none; -webkit-text-fill-color: rgb(217, 225, 234); }
+    .sbar__mark { transition-duration: 1ms; }
+  }
+</style>
+
+<script>
+  import { scramble } from '../../lib/scramble';
+
+  const bar = document.querySelector<HTMLElement>('[data-sbar]');
+  const label = bar?.querySelector<HTMLElement>('[data-sbar-label]');
+
+  if (bar && label) {
+    let ctas: string[] = [];
+    try { ctas = JSON.parse(bar.dataset.ctas || '[]'); } catch (_) {}
+
+    const show = (v: boolean) => bar.toggleAttribute('data-show', v);
+    const setLabel = (text: string) => scramble(label!, text);
+
+    // Public handle, mirroring window.aoinCursor in Cursor.astro.
+    (window as any).aoinServicesBar = { setLabel, show };
+
+    // Driven by the services scroll controller (services-effects.js driveSection):
+    //   { index: -1 } hero  → hide
+    //   { index: 0..3 }     → rise in + scramble to that section's line (from `ctas`,
+    //                         or an explicit { cta } override)
+    document.addEventListener('aoin:service-change', function (e) {
+      const d = (e as CustomEvent).detail || {};
+      if (typeof d.index === 'number') {
+        if (d.index < 0) { show(false); return; }
+        show(true);
+        const cta = typeof d.cta === 'string' ? d.cta : ctas[d.index];
+        if (cta) setLabel(cta);
+      } else if (typeof d.cta === 'string') {
+        setLabel(d.cta); // label-only form still supported
+      }
+    });
+  }
+</script>

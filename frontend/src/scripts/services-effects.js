@@ -185,6 +185,10 @@ export function mountEffects(ctrl) {
     if (bar) bar.style.top = s < 0 ? '52vh' : activeTop() + 'px'; // hero: mid-viewport; section: risen tight under the title
     navRows.forEach((r) => r.classList.toggle('is-active', +r.dataset.i === s));
     if (hint) hint.classList.toggle('is-hidden', s >= 0);
+    // Bottom-centre CTA (ServicesBar): -1 hero hides it; 0..3 rises it in and
+    // scrambles to that section's line. Edge-triggered (driveSection only runs
+    // on a section change), so no per-frame churn.
+    document.dispatchEvent(new CustomEvent('aoin:service-change', { detail: { index: s } }));
     orbit.show(s === 2 ? 1 : 0);
     if (s === 2 && prev !== 2) orbit.assemble();
     if (equipEl) gsap.to(equipEl, { autoAlpha: s === 3 ? 1 : 0, duration: 0.4, overwrite: 'auto' });

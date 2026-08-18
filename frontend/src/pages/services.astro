@@ -20,6 +20,8 @@ import PageTitle from '../components/services/PageTitle.astro';
 import CapabilityBar from '../components/services/CapabilityBar.astro';
 import AsciiField from '../components/services/AsciiField.astro';
 import GalleryMedia from '../components/services/GalleryMedia.astro';
+import ServicesBar from '../components/services/ServicesBar.astro';
+import InquiryModal from '../components/chrome/InquiryModal.astro';
 import { getServiceSections, getServiceGalleries, type GalleryItem } from '../data/services';
 import { getEquipment } from '../data/equipment';
 
@@ -84,6 +86,16 @@ const SVC_NAV = [
   { i: 1, label: 'SCREENS PRODUCTION' },
   { i: 2, label: 'MIXED REALITY' },
   { i: 3, label: 'EQUIPMENT RENTAL' },
+];
+
+// Bottom-centre CTA copy, one line per service (client-supplied, verbatim),
+// index-aligned to SVC_NAV. The ServicesBar scrambles to the active line as the
+// scroll controller enters each section; the arrow opens the contact modal.
+const SVC_CTA = [
+  'CREATE WITHOUT THE LIMITS OF RENDER TIME',
+  'STREAMLINE YOUR MOST COMPLEX VIDEO PIPELINES',
+  'PUSH YOUR SHOW BEYOND PHYSICAL BOUNDARIES',
+  'DEPLOY THE SYSTEM YOUR PRODUCTION DEMANDS',
 ];
 
 // Sub-service taxonomy for the capability-bar scramble + field labels: fixed section names (SVC_NAV)
@@ -216,6 +228,13 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
 
   <div data-hint="" class="svc-scrollhint" style="position:absolute;left:48px;bottom:16px;z-index:40;font-family:'SN Ja Mono',ui-monospace,Menlo,monospace;font-weight:300;font-size:10px;letter-spacing:.3em;color:rgba(217,225,234,0.45)">SCROLL TO EXPLORE</div>
 </div>
+
+{/* Bottom-centre CTA — hidden on the hero, rises in per service with that
+    section's line (driveSection dispatches aoin:service-change), arrow opens
+    the contact modal. Modal mounted here too since /services is a standalone
+    doc (outside Base, so it doesn't inherit Base's InquiryModal). */}
+<ServicesBar label={SVC_CTA[0]} ctas={SVC_CTA} href="#contact" />
+<InquiryModal />
 
 <!-- scroll distance for the whole scrubbed narrative (intro → 4 sections) -->
 <div class="svc-scrolldist" data-scroll="" style="height:900vh"></div>
