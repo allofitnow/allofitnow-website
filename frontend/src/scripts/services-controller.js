@@ -4,7 +4,7 @@
 // @ts-nocheck
 
 // Baked from the design's final tweak values — do not re-expose as props.
-const FIELD_OPACITY = 71;          // ascii field alpha, %
+const FIELD_OPACITY = 60;          // ascii field alpha, % (dimmed so the flashlight pools + nav text read clearer)
 const FIELD_TOP_BRIGHTNESS = 66;   // ascii field brightness at the top of the ramp, %
 const NAV_BRIGHTNESS = 91;         // capability-label base fill, %
 const SWEEP_SPEED = 50;            // gradient sweep speed, % of the 2500ms base pass

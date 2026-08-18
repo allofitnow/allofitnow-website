@@ -37,8 +37,8 @@ const LAYERS = [
   { reach: 1.42, scale: 1.22, z: 3 },   // largest — 1.12 → 1.22 to stay the depth hero above the raised 2nd
 ];
 
-const ORBIT_BASE = 0.025;             // deg/ms baseline spin (slower idle rotation)
-const ORBIT_MAX = 0.40;               // deg/ms cap when scrolling hard
+const ORBIT_BASE = 0.015;             // deg/ms baseline spin (slower idle rotation)
+const ORBIT_MAX = 0.16;               // deg/ms cap when scrolling hard (lowered — scroll no longer whips the ring)
 const DEG2RAD = Math.PI / 180;
 // Geometry follows the madewithgsap effect-061 tutorial (services.css): perspective 50vw, image
 // translateZ(-50vw), transform-origin 50% 0 50vw — the camera sits at the ring's front edge, so an
@@ -349,7 +349,7 @@ function buildMixed(root) {
   // mouse/touch tilt (rotationX — a different prop, no conflict with the spin)
   const clampX = gsap.utils.clamp(0, 1);
   const rotX = gsap.quickTo(container, 'rotationX', { duration: 1, ease: 'power2' });
-  const tilt = (cx) => rotX((clampX(cx / window.innerWidth) * 2 - 1) * 10);
+  const tilt = (cx) => rotX((clampX(cx / window.innerWidth) * 2 - 1) * 4);  // ±4° (was ±10°) — less vertigo
   el.addEventListener('mousemove', (e) => tilt(e.clientX));
   el.addEventListener('touchmove', (e) => { if (e.touches && e.touches[0]) tilt(e.touches[0].clientX); }, { passive: true });
 
@@ -359,7 +359,7 @@ function buildMixed(root) {
       // ticker eases it back down. vel arrives as 0 during programmatic jumps,
       // so a deep-link never bumps the spin.
       if (p >= MIX[0] && p <= MIX[1]) {
-        const v = Math.min(ORBIT_BASE + Math.abs(vel) * 0.00006, ORBIT_MAX);
+        const v = Math.min(ORBIT_BASE + Math.abs(vel) * 0.00003, ORBIT_MAX);
         if (v > targetVel) targetVel = v;
       }
     },
