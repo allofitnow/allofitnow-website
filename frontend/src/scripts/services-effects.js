@@ -20,9 +20,9 @@ let mounted = false;
 // velocity never spikes the ring's spin. Cleared when the jump settles.
 let progScroll = false;
 const SLUGS = ['real-time-content', 'screens-production', 'mixed-reality', 'equipment-rental'];
-// Deep-link / center-button jump targets — land at the TOP of each section (just past its B[] enter
-// threshold) so the first images aren't already gone. Was mid-section (0.16/0.48/0.74/0.94).
-const ANCHOR = { 'real-time-content': 0.08, 'screens-production': 0.33, 'mixed-reality': 0.52, 'equipment-rental': 0.88 };
+// Deep-link / center-button jump targets — land a little INTO each section (past its B[] enter
+// threshold, first images already partly in view) — between top-of-section and the old mid feel.
+const ANCHOR = { 'real-time-content': 0.11, 'screens-production': 0.36, 'mixed-reality': 0.55, 'equipment-rental': 0.90 };
 const ABOUT_EASE = 'cubic-bezier(0.05,0.89,0,0.99)';
 
 // Timeline / section tuning (progress 0..1).
