@@ -34,6 +34,8 @@ const Projects: CollectionConfig = {
   admin: {
     useAsTitle: "title",
     defaultColumns: ["title", "year", "order"],
+    // "Preview" button → the real project page (rebuilt on save).
+    preview: (doc: any) => (doc?.slug ? `http://192.168.30.245/work/${doc.slug}` : null),
   },
   access: {
     read: () => true,
@@ -144,10 +146,12 @@ const Projects: CollectionConfig = {
         },
         {
           name: "images",
-          type: "relationship",
-          relationTo: "media",
-          hasMany: true,
-          admin: { description: "Add several images at once; drag to reorder. Extras beyond the layout's slot count are ignored." },
+          type: "array",
+          labels: { singular: "Image", plural: "Images" },
+          admin: { description: "Fill the layout's slots in order — each shows a thumbnail; drag to reorder. Extras beyond the slot count are ignored." },
+          fields: [
+            { name: "image", type: "upload", relationTo: "media" },
+          ],
         },
       ],
     },

@@ -16,6 +16,12 @@ export default buildConfig({
   admin: {
     user: Users.slug,
     bundler: webpackBundler(),
+    // In-editor pane showing the real project page (Projects only). It reflects
+    // the last build; a save triggers the auto-rebuild, then refresh the pane.
+    livePreview: {
+      url: ({ data }: { data: any }) => `http://192.168.30.245/work/${data?.slug || ""}`,
+      collections: ["projects"],
+    },
   },
   collections: [Users, Media, Projects, ServiceCategories, Equipment],
   globals: [Homepage, Settings, Services],
