@@ -70,7 +70,7 @@ html.lenis, html.lenis body { height: auto; }
 
 /* ===== Per-service description ===== */
 .svc-desc {
-  position: absolute; left: 48px; bottom: 92px; z-index: 12; margin: 0;
+  position: absolute; left: 48px; bottom: 48px; z-index: 12; margin: 0;
   max-width: 34ch; font-family: var(--font-headline); font-weight: 400;
   font-size: clamp(13px, 1.35vw, 17px); line-height: 1.45; color: rgba(217, 225, 234, 0.86);
   pointer-events: none;
@@ -99,7 +99,7 @@ html.lenis, html.lenis body { height: auto; }
 /* ===== SCREENS PRODUCTION — mwg_051 (columns rise bottom→top, scrubbed) ===== */
 .svc-panel--screens .mwg_effect051 { position: absolute; inset: 0; overflow: hidden; }
 .mwg_effect051 .media {
-  position: absolute; left: 0; top: 0; width: clamp(180px, 22vw, 360px); aspect-ratio: 16 / 9;
+  position: absolute; left: 0; top: 0; width: clamp(220px, 27vw, 450px); aspect-ratio: 16 / 9;
   display: block; object-fit: cover; border-radius: 8px; will-change: transform;
 }
 
@@ -171,7 +171,7 @@ html.lenis, html.lenis body { height: auto; }
 
 /* ===== Persistent bottom-right service nav ===== */
 .svc-nav {
-  position: absolute; right: 48px; bottom: 44px; z-index: 35;
+  position: absolute; right: 48px; bottom: 48px; z-index: 35;
   display: flex; flex-direction: column; align-items: flex-end; gap: 9px;
 }
 .svc-nav-row {

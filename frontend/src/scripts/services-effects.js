@@ -25,10 +25,10 @@ const ABOUT_EASE = 'cubic-bezier(0.05,0.89,0,0.99)';
 
 // Timeline / section tuning (progress 0..1).
 const RTC = { start: 0.06, travel: 0.16, stag: 0.013 };  // fly-across: fast + staggered (slightly grouped)
-const SCR = { start: 0.36, travel: 0.17, stag: 0.010 };  // rise bottom→top — slightly tighter than default so a run reads as connected, parallax intact
-const MIX = [0.60, 0.86];             // orbit section (scroll drives ring speed)
-const B = [0.06, 0.34, 0.60, 0.86];   // section ENTER — bar scramble + rise + field dissolve
-const R = [0.08, 0.36, 0.62, 0.88];   // text REVEAL — as soon as the first images enter view (just past B)
+const SCR = { start: 0.31, travel: 0.17, stag: 0.010 };  // rise bottom→top — starts earlier so it OVERLAPS RTC's tail (no dead zone)
+const MIX = [0.55, 0.86];             // orbit section (starts earlier so it overlaps Screens' tail)
+const B = [0.06, 0.31, 0.55, 0.86];   // section ENTER — bar scramble + rise + field dissolve (overlapped hand-offs)
+const R = [0.08, 0.36, 0.58, 0.88];   // text REVEAL — as soon as the first images enter view (just past B)
 const HYST = 0.012;                   // tighter dead-band → crisper hand-offs
 // depth layers for parallax (back → front): different reach (speed) + scale
 const LAYERS = [
@@ -37,8 +37,8 @@ const LAYERS = [
   { reach: 1.42, scale: 1.22, z: 3 },   // largest — 1.12 → 1.22 to stay the depth hero above the raised 2nd
 ];
 
-const ORBIT_BASE = 0.05;              // deg/ms baseline spin
-const ORBIT_MAX = 0.55;               // deg/ms cap when scrolling hard
+const ORBIT_BASE = 0.025;             // deg/ms baseline spin (slower idle rotation)
+const ORBIT_MAX = 0.40;               // deg/ms cap when scrolling hard
 const DEG2RAD = Math.PI / 180;
 // Geometry follows the madewithgsap effect-061 tutorial (services.css): perspective 50vw, image
 // translateZ(-50vw), transform-origin 50% 0 50vw — the camera sits at the ring's front edge, so an
@@ -278,29 +278,35 @@ function buildRealtime(root, master) {
   });
 }
 
-/* ---- SCREENS PRODUCTION — mwg_051 (scrubbed bottom→top, spread + parallax) ------- */
+/* ---- SCREENS PRODUCTION — mwg_051 (scrubbed bottom→top, parallax spread, stills may bleed off-edge) --- */
 function buildScreens(root, master) {
   const el = root.querySelector('.mwg_effect051');
   if (!el) return;
   const medias = [...el.querySelectorAll('.media')];
   const n = medias.length;
+  if (!n) return;
   const mob = window.innerWidth < 768;
-  // Columns are distributed CENTRED across the width so the composition never clusters to one side
-  // (the old lane/(n-1) under-normalised → left-biased, empty right half on ultrawide). Use the unique
-  // lane set as the columns and the MEASURED image width (it's clamped in px, so on ultrawide it's a
-  // small % — centring must account for that) to keep equal gutters left and right. Per-layer reach +
-  // scale (LAYERS) keep the organic parallax spread — stills at different depths cross at their own pace.
+  // Organic parallax spread kept: stills tile into `nc` lanes (the (i*3)%n shuffle), each lane a depth
+  // layer (reach + scale). On desktop the lanes sit at a FIXED centre-to-centre PITCH that clears the
+  // widest layer + a gap, so nothing overlaps horizontally even as the stills grow — the trade (per the
+  // brief) is that the outer lanes BLEED off the viewport edges instead of packing in, so the horizontal
+  // distance is preserved. Phones keep the old on-screen packing (mobile is a deferred pass).
   const uniq = [...new Set(medias.map((_, i) => (i * 3) % n))].sort((a, b) => a - b);
   const nc = uniq.length;
   const sampleW = medias[0] ? medias[0].getBoundingClientRect().width : window.innerWidth * 0.22;
-  const imgPct = (sampleW / window.innerWidth) * 100;      // actual image width as % of viewport
-  const MARGIN = mob ? 4 : 6;                               // % gutter from the viewport edge to the outer image
-  const travel = Math.max(0, 100 - 2 * MARGIN - imgPct);   // left-edge range so images span MARGIN..(100-MARGIN)
+  const imgPct = (sampleW / window.innerWidth) * 100;       // image width as % of viewport
+  const maxScale = Math.max(...LAYERS.map((l) => l.scale)); // widest depth layer
+  const GAP = mob ? 1 : 1.5;                                // gap between adjacent lane footprints (%)
+  const pitch = imgPct * maxScale + GAP;                    // lane centre-to-centre spacing ⇒ no h-overlap
+  const mid = (nc - 1) / 2;                                 // centre the lane group; wider-than-100% ⇒ bleed
+  const MARGIN = 4;
+  const packTravel = Math.max(0, 100 - 2 * MARGIN - imgPct);
   medias.forEach((m, i) => {
     const L = LAYERS[i % LAYERS.length];
-    const col = uniq.indexOf((i * 3) % n);                  // 0..nc-1 (which centred column)
-    const t = nc > 1 ? col / (nc - 1) : 0.5;
-    const left = MARGIN + t * travel;
+    const col = uniq.indexOf((i * 3) % n);
+    const left = mob
+      ? MARGIN + (nc > 1 ? col / (nc - 1) : 0.5) * packTravel   // phones: keep everything on-screen
+      : 50 + (col - mid) * pitch - imgPct / 2;                  // desktop: fixed pitch, outer lanes bleed off-edge
     const scale = mob ? L.scale * 0.78 : L.scale;
     const fromY = () => window.innerHeight * L.reach + 120;
     const toY = () => -window.innerHeight * L.reach - 120;
