@@ -159,7 +159,9 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
     <section class="svc-panel svc-panel--mixed" data-svc-panel="" data-i="2" id="mixed-reality">
       <div class="mwg_effect061" data-fx="061">
         <div class="container">
-          {MR.map((g) => <img src={g.src} alt="" loading="lazy" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
+          {MR.map((g) => g.video
+            ? <video src={g.src} autoplay muted loop playsinline preload="metadata" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps}></video>
+            : <img src={g.src} alt="" loading="lazy" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
         </div>
       </div>
       <p class="svc-desc svc-desc--overlay" data-desc="">{services[2].desc}</p>

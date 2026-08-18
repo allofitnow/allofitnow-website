@@ -251,10 +251,19 @@ const rows = Math.ceil(members.length / columns);
   if (root && !reduce) {
     gsap.registerPlugin(ScrollTrigger);
 
+    // Land at the top on a fresh load — the reveal cascade + fold measurement assume
+    // scroll 0 (a browser can otherwise restore a carried scroll position).
+    if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
+
     // Lenis drives scroll site-wide (Base boots the shared instance) — ScrollTrigger
     // has to hear about it, or the on-scroll reveals fire against a stale position.
     const lenis = ensureLenis();
-    if (lenis) lenis.on('scroll', ScrollTrigger.update);
+    if (lenis) {
+      lenis.scrollTo(0, { immediate: true });
+      lenis.on('scroll', ScrollTrigger.update);
+    } else {
+      window.scrollTo(0, 0);
+    }
 
     root.style.visibility = 'hidden';
 

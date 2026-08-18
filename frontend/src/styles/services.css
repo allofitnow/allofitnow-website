@@ -52,7 +52,8 @@ html.lenis, html.lenis body { height: auto; }
 /* Stills linked to a project are clickable (delegated nav in services.astro). */
 .mwg_effect083 .media[data-href],
 .mwg_effect051 .media[data-href],
-.mwg_effect061 .container img[data-href] { cursor: pointer; }
+.mwg_effect061 .container img[data-href],
+.mwg_effect061 .container video[data-href] { cursor: pointer; }
 
 /* Previz storyboard cards — flat numbered placeholders standing in for real stills so we can plan
    story + placement. Temporary (PREVIZ flag in services.astro); aspect is set inline per card.
@@ -121,7 +122,8 @@ html.lenis, html.lenis body { height: auto; }
   position: relative; height: 100%; transform-style: preserve-3d;
   transform-origin: 50% 50%; width: 100%; will-change: transform;
 }
-.mwg_effect061 .container img {
+.mwg_effect061 .container img,
+.mwg_effect061 .container video {
   width: var(--mr-w); height: var(--mr-h); display: block; object-fit: cover;
   position: absolute; top: calc(50% - var(--mr-h) / 2); left: calc(50% - var(--mr-w) / 2);
   transform-origin: 50% 0 50vw; border-radius: 8px;

@@ -320,7 +320,7 @@ function buildMixed(root) {
   const el = root.querySelector('.mwg_effect061');
   if (!el) return { setBoost() {}, assemble() {}, show() {} };
   const container = el.querySelector('.container');
-  const medias = [...el.querySelectorAll('img')];
+  const medias = [...el.querySelectorAll('img, video')];  // orbit slots can be video (webm) too
   const angle = 360 / medias.length;
   // Ring centred at the container origin (no push-back). The camera is inside the ring — see the
   // ORBIT_* constants. Each image sits at translateZ(-50vw) rotated to its slot.
