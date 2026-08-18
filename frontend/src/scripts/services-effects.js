@@ -278,32 +278,36 @@ function buildRealtime(root, master) {
   });
 }
 
-/* ---- SCREENS PRODUCTION — mwg_051 (scrubbed bottom→top, spread + parallax) ------- */
+/* ---- SCREENS PRODUCTION — mwg_051 (scrubbed bottom→top; a connected, NON-OVERLAPPING sequence) --- */
 function buildScreens(root, master) {
   const el = root.querySelector('.mwg_effect051');
   if (!el) return;
   const medias = [...el.querySelectorAll('.media')];
   const n = medias.length;
+  if (!n) return;
   const mob = window.innerWidth < 768;
-  // Columns are distributed CENTRED across the width so the composition never clusters to one side
-  // (the old lane/(n-1) under-normalised → left-biased, empty right half on ultrawide). Use the unique
-  // lane set as the columns and the MEASURED image width (it's clamped in px, so on ultrawide it's a
-  // small % — centring must account for that) to keep equal gutters left and right.
-  const uniq = [...new Set(medias.map((_, i) => (i * 3) % n))].sort((a, b) => a - b);
-  const nc = uniq.length;
-  const sampleW = medias[0] ? medias[0].getBoundingClientRect().width : window.innerWidth * 0.22;
-  const imgPct = (sampleW / window.innerWidth) * 100;      // actual image width as % of viewport
-  const MARGIN = mob ? 4 : 6;                               // % gutter from the viewport edge to the outer image
-  const travel = Math.max(0, 100 - 2 * MARGIN - imgPct);   // left-edge range so images span MARGIN..(100-MARGIN)
+  // Screens reads as a CURATED SEQUENCE, not a parallax scatter: uniform size + rise speed so a run of
+  // stills stays visually connected. They tile ROUND-ROBIN across a fixed number of NON-OVERLAPPING
+  // columns — consecutive stills step across adjacent columns (a tight diagonal you can read), while
+  // same-column stills are `nc` apart in the stagger so they clear each other vertically. The column
+  // count is however many the MEASURED image width + a gap allow (px-clamped width ⇒ ultrawide simply
+  // fits more), and the column pitch ≥ width+gap guarantees stills never sit on top of each other.
+  const sampleW = medias[0].getBoundingClientRect().width;
+  const imgPct = (sampleW / window.innerWidth) * 100;       // uniform image width as % of viewport
+  const MARGIN = mob ? 4 : 6;                               // edge gutter (%)
+  const GAP = 1.5;                                          // min horizontal gap between columns (%)
+  const avail = 100 - 2 * MARGIN;
+  const pitch = imgPct + GAP;                               // column pitch ≥ width+gap ⇒ no h-overlap
+  const nc = Math.max(1, Math.min(n, Math.floor((avail + GAP) / pitch)));
+  const groupW = (nc - 1) * pitch + imgPct;                 // full width of the centred column group
+  const groupLeft = (100 - groupW) / 2;
+  const REACH = mob ? 1.0 : 1.15;                           // uniform rise distance / speed
+  const scale = mob ? 0.82 : 1.0;                           // uniform size — bigness comes from the base width
+  const fromY = () => window.innerHeight * REACH + 120;
+  const toY = () => -window.innerHeight * REACH - 120;
   medias.forEach((m, i) => {
-    const L = LAYERS[i % LAYERS.length];
-    const col = uniq.indexOf((i * 3) % n);                  // 0..nc-1 (which centred column)
-    const t = nc > 1 ? col / (nc - 1) : 0.5;
-    const left = MARGIN + t * travel;
-    const scale = mob ? L.scale * 0.78 : L.scale;
-    const fromY = () => window.innerHeight * L.reach + 120;
-    const toY = () => -window.innerHeight * L.reach - 120;
-    gsap.set(m, { left: left.toFixed(2) + '%', zIndex: L.z, scale, y: fromY });
+    const left = groupLeft + (i % nc) * pitch;
+    gsap.set(m, { left: left.toFixed(2) + '%', zIndex: 1 + (i % 3), scale, y: fromY });
     master.fromTo(m, { y: fromY }, { y: toY, ease: 'none', duration: SCR.travel }, SCR.start + i * SCR.stag);
   });
 }
