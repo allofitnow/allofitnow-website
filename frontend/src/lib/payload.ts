@@ -30,9 +30,11 @@ function formatCollaborator(c: unknown): string {
 export function mapPayloadProject(doc: any): Project {
   const gallery = (doc.gallery ?? []).map((row: any) => ({
     layout: row?.layout ?? 'full',
-    // `images` is now a hasMany upload → an array of populated media objects.
+    // Each row's images are an array of { image: media }. Tolerate the older
+    // hasMany-relationship shape (bare media objects) too, so a build mid-migration
+    // never blanks a gallery: use `it.image` when present, else `it` itself.
     images: (row?.images ?? [])
-      .map((m: any) => mediaUrl(m))
+      .map((it: any) => mediaUrl(it?.image ?? it))
       .filter((url: string) => url !== ''),
   }));
 
