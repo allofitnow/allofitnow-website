@@ -175,7 +175,7 @@
 
   /* contact modal */
   --modal-scrim: 0.34;        /* ::backdrop black */
-  --modal-tint: 0.42;         /* panel glass tint */
+  --modal-tint: 0.58;         /* panel glass tint — darker = cool-white type reads clearer */
   --modal-blur: 28px;
   --modal-radius: 6px;
   --modal-track-ms: 480ms;    /* tab plate travel + resize */
