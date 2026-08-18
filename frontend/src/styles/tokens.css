@@ -152,6 +152,38 @@
   --work-pad-top: 24svh;
 }
 
+/* ---- Button system (bars + contact modal) ----
+   Named handles shared by ProjectBar, ServicesBar and InquiryModal so the two
+   bars and the modal run on one set of values. Every value already exists in the
+   build; this only names it. See components/{work,services,chrome}. */
+:root {
+  /* geometry */
+  --bar-radius: 8px;          /* project bar; 4px on services; 10px = .pp__g tile */
+  --bar-gap: 8px;
+  --bar-bottom: 56px;         /* clears the 24px FootBar */
+  --bar-stroke-w: 1px;
+  --bar-stroke-o: 0.28;       /* services runs 1.75px / 0.08 */
+  --bar-fill: rgba(0, 0, 0, 0.72);
+
+  /* motion — one curve, four durations */
+  --bar-ease: cubic-bezier(0.4, 0.8, 0.2, 1);   /* 'glide' */
+  --bar-tip-ms: 520ms;        /* tooltip wipe */
+  --bar-label-ms: 640ms;      /* label wipe + PROJECT INFO / CLOSE ride */
+  --bar-glyph-ms: 560ms;      /* arrow advance, plate stretch */
+  --bar-fill-ms: 420ms;       /* hover fills, tile 35% -> 100% */
+  --cta-sweep-period: 1500ms; /* services band, one pass per period while hovered */
+
+  /* contact modal */
+  --modal-scrim: 0.34;        /* ::backdrop black */
+  --modal-tint: 0.42;         /* panel glass tint */
+  --modal-blur: 28px;
+  --modal-radius: 6px;
+  --modal-track-ms: 480ms;    /* tab plate travel + resize */
+
+  /* the bars/modal address the brand body face by name */
+  --font-denim: var(--font-body);
+}
+
 /* ---- Raw Figma Variables (first mode = :root default) ----
    Kept for parity with the export. FLOAT tokens are unitless. */
 :root {

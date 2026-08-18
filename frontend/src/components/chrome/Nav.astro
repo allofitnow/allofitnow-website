@@ -1,5 +1,10 @@
 ---
-import { nav, location, tagline } from '@/data/home';
+import { nav, location, tagline, type NavLink } from '@/data/home';
+
+// One link → its attributes: modal links open the contact dialog (delegated in
+// InquiryModal), /work links soft-nav for the flight, everything else full-loads.
+const linkAttrs = (l: NavLink) =>
+  l.modal ? { 'data-inquiry-open': true } : l.href.startsWith('/work') ? {} : { 'data-astro-reload': true };
 ---
 
 <nav class="aoin-nav" data-aoin-nav aria-label="Primary" transition:persist="aoin-nav">
@@ -9,13 +14,13 @@ import { nav, location, tagline } from '@/data/home';
 
   <div class="aoin-nav__col aoin-nav__col--links">
     {nav.slice(0, 2).map((l) => (
-      <div class="aoin-nav__row"><a href={l.href} {...(l.href.startsWith('/work') ? {} : { 'data-astro-reload': true })}>{l.label}</a></div>
+      <div class="aoin-nav__row"><a href={l.href} {...linkAttrs(l)}>{l.label}</a></div>
     ))}
   </div>
 
   <div class="aoin-nav__col aoin-nav__col--links2">
     {nav.slice(2, 4).map((l) => (
-      <div class="aoin-nav__row"><a href={l.href} {...(l.href.startsWith('/work') ? {} : { 'data-astro-reload': true })}>{l.label}</a></div>
+      <div class="aoin-nav__row"><a href={l.href} {...linkAttrs(l)}>{l.label}</a></div>
     ))}
   </div>
 
@@ -31,7 +36,7 @@ import { nav, location, tagline } from '@/data/home';
 
 <div class="aoin-menu" id="aoin-menu" data-aoin-menu transition:persist="aoin-menu">
   <div class="aoin-menu__links">
-    {nav.map((l) => (<a href={l.href} {...(l.href.startsWith('/work') ? {} : { 'data-astro-reload': true })}>{l.label}</a>))}
+    {nav.map((l) => (<a href={l.href} {...linkAttrs(l)}>{l.label}</a>))}
   </div>
   <div class="aoin-menu__meta">
     <div>{tagline}</div>

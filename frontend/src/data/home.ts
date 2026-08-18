@@ -4,6 +4,9 @@
 export interface NavLink {
   label: string;
   href: string;
+  /** Opens the site-wide contact modal instead of navigating. `href` is the
+   *  no-JS fallback target (the footer's #contact anchor). */
+  modal?: boolean;
 }
 
 export interface ServiceItem {
@@ -31,7 +34,7 @@ export const nav: NavLink[] = [
   { label: 'WORK', href: '/work' },
   { label: 'SERVICES', href: '/services' },
   { label: 'STUDIO', href: '/studio' },
-  { label: 'CONTACT', href: '#contact' },
+  { label: 'CONTACT', href: '#contact', modal: true },
 ];
 
 export const social: SocialLink[] = [
@@ -124,7 +127,7 @@ export const footer = {
   ] as NavLink[],
   navSecondary: [
     { label: 'STUDIO', href: '/studio' },
-    { label: 'CONTACT', href: '#contact' },
+    { label: 'CONTACT', href: '#contact', modal: true },
   ] as NavLink[],
   social: [
     ...social,

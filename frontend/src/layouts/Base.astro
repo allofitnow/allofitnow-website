@@ -6,6 +6,7 @@ import Nav from '@/components/chrome/Nav.astro';
 import Cursor from '@/components/chrome/Cursor.astro';
 import HoverCard from '@/components/chrome/HoverCard.astro';
 import FootBar from '@/components/chrome/FootBar.astro';
+import InquiryModal from '@/components/chrome/InquiryModal.astro';
 import Preloader from '@/components/home/Preloader.astro';
 import { getProjects } from '@/data/projects';
 
@@ -75,6 +76,11 @@ const flightOrder = JSON.stringify(projects.map((p) => p.slug));
     {/* Site-wide thin foot bar (tagline + socials). On the homepage the controller
         owns its scroll-reactive reveal; interior pages self-reveal (see FootBar). */}
     <FootBar />
+
+    {/* Site-wide contact modal. Persisted across soft-navs so its one <dialog>
+        (and its bound listeners) survive; opened by any [data-inquiry-open]
+        trigger (nav/footer CONTACT, project bar, services CTA) via delegation. */}
+    <InquiryModal transition:persist="aoin-inquiry" />
 
     {/* The flyer travels in here; transition:persist keeps the layer (and the
         in-flight artwork) alive across the ClientRouter DOM swap. */}

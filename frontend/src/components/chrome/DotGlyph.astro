@@ -1,0 +1,74 @@
+---
+/**
+ * DotGlyph — the EXPRESSIVE icon register: every mark is a dot grid on a 2-unit
+ * pitch, so the arrows read as the same family as the brand's dotted type.
+ * Rendered at build time (no client JS). The DESCRIPTIVE register is live Denim /
+ * Ja Mono glyphs (→ ← ↗ × + « »), used under 16px and in dense chrome.
+ *
+ * Never render a dotted mark below 16px — the pitch collapses into mush.
+ */
+type GlyphName =
+  | 'arrow-right' | 'arrow-left' | 'arrow-up-right' | 'arrow-down'
+  | 'plus' | 'close' | 'chevron-down' | 'chevron-right' | 'dots'
+  | 'panel-right' | 'panel-left';
+
+interface Props {
+  glyph?: GlyphName;
+  /** Width in px. Height follows the grid ratio. */
+  size?: number;
+  color?: string;
+  /** Dot radius in grid units (pitch is 2). */
+  dotRadius?: number;
+  class?: string;
+}
+
+const P: Record<GlyphName, { c: number; r: number; d: [number, number][] }> = {
+  'arrow-right': { c: 7, r: 5, d: [[0,2],[1,2],[2,2],[3,2],[4,2],[5,2],[6,2],[4,0],[5,1],[5,3],[4,4]] },
+  'arrow-left': { c: 7, r: 5, d: [[0,2],[1,2],[2,2],[3,2],[4,2],[5,2],[6,2],[2,0],[1,1],[1,3],[2,4]] },
+  // Head-heavy diagonal: 3 across the top, 2 down the right, one inner, 2-dot stem.
+  'arrow-up-right': { c: 4, r: 4, d: [[1,0],[2,0],[3,0],[3,1],[3,2],[2,1],[1,2],[0,3]] },
+  'arrow-down': { c: 5, r: 7, d: [[2,0],[2,1],[2,2],[2,3],[2,4],[2,5],[2,6],[0,4],[1,5],[3,5],[4,4]] },
+  plus: { c: 5, r: 5, d: [[0,2],[1,2],[2,2],[3,2],[4,2],[2,0],[2,1],[2,3],[2,4]] },
+  close: { c: 5, r: 5, d: [[0,0],[1,1],[2,2],[3,3],[4,4],[4,0],[3,1],[1,3],[0,4]] },
+  'chevron-down': { c: 5, r: 4, d: [[0,1],[1,2],[2,3],[3,2],[4,1]] },
+  'chevron-right': { c: 4, r: 5, d: [[1,0],[2,1],[3,2],[2,3],[1,4]] },
+  dots: { c: 5, r: 1, d: [[0,0],[2,0],[4,0]] },
+  // An arrow aimed at a dotted wall — "a panel slides in from that edge".
+  'panel-right': { c: 6, r: 5, d: [[5,0],[5,1],[5,2],[5,3],[5,4],[0,2],[1,2],[2,2],[3,2],[2,1],[2,3]] },
+  'panel-left': { c: 6, r: 5, d: [[0,0],[0,1],[0,2],[0,3],[0,4],[2,2],[3,2],[4,2],[5,2],[3,1],[3,3]] },
+};
+
+const {
+  glyph = 'arrow-right',
+  size = 18,
+  color = 'currentColor',
+  dotRadius = 0.68,
+  class: className,
+} = Astro.props as Props;
+
+const pat = P[glyph] ?? P['arrow-right'];
+const vw = pat.c * 2;
+const vh = pat.r * 2;
+const height = Math.round((size * vh) / vw);
+---
+
+<svg
+  class={className}
+  width={size}
+  height={height}
+  viewBox={`0 0 ${vw} ${vh}`}
+  fill="none"
+  aria-hidden="true"
+>
+  {pat.d.map(([c, r]) => (
+    <circle cx={c * 2 + 1} cy={r * 2 + 1} r={dotRadius} fill={color} />
+  ))}
+</svg>
+
+<style>
+  svg {
+    display: block;
+    overflow: visible;
+    flex: 0 0 auto;
+  }
+</style>

@@ -1,0 +1,527 @@
+---
+/**
+ * InquiryModal — the contact modal, rebuilt on the button system.
+ *
+ *   ┌──────────────────────────────────────────────┐
+ *   │ CONTACT                                  [×] │
+ *   ├──────────────────────────────────────────────┤
+ *   │ ( GENERAL  RENTALS  CAREERS )  TO INFO@…     │
+ *   │ SUBJECT ______________________________       │
+ *   │ BODY    ______________________________       │
+ *   ├──────────────────────────────────────────────┤
+ *   │ ESC TO CLOSE            [ SEND INQUIRY | → ] │
+ *   └──────────────────────────────────────────────┘
+ *
+ * Built as a native <dialog>: showModal() gives ESC, focus trap, inert page and
+ * ::backdrop for free. Open it from anything carrying [data-inquiry-open].
+ *
+ * What it takes from the bar system:
+ * - the shell IS the surface — glass tint + blur, ONE hairline, no outline box.
+ *   Structure comes from seams (header / body / footer rules), not borders
+ *   around every part.
+ * - tabs are the segmented cluster: a recessed track with a single cool-white
+ *   plate that travels and resizes between segments (measured from layout).
+ * - SEND INQUIRY is the primary in three states — dormant while the body is
+ *   empty, lit once there is something to send, and fully inverted on hover
+ *   (plate + black type + the band, arrow advancing 4px).
+ * - the TO address scrambles on tab change, same routine as the services CTA.
+ *
+ * Requires the --bar-* / --modal-* tokens (tokens-additions.css) and
+ * lib/scramble.ts.
+ */
+import DotGlyph from './DotGlyph.astro';
+
+interface Tab {
+  label: string;
+  email: string;
+}
+interface Props {
+  tabs?: Tab[];
+  /** Prefixed to the mail subject, e.g. "AOIN". */
+  subjectPrefix?: string;
+  subjectPlaceholder?: string;
+}
+
+const {
+  tabs = [
+    { label: 'GENERAL', email: 'info@allofitnow.com' },
+    { label: 'RENTALS', email: 'rentals@allofitnow.com' },
+    { label: 'CAREERS', email: 'careers@allofitnow.com' },
+  ],
+  subjectPrefix = '',
+  subjectPlaceholder = 'ARENA TOUR — REAL-TIME CONTENT',
+} = Astro.props as Props;
+
+const emails = tabs.map((t) => t.email);
+---
+
+<dialog
+  class="im"
+  data-inquiry
+  data-emails={JSON.stringify(emails)}
+  data-subject-prefix={subjectPrefix}
+  aria-label="Contact"
+>
+  <div class="im__panel">
+    <header class="im__bar">
+      <span class="im__eyebrow">CONTACT</span>
+      <button type="button" class="im__close" data-inquiry-close aria-label="Close">
+        <DotGlyph glyph="close" size={14} color="currentColor" />
+      </button>
+    </header>
+
+    <div class="im__body">
+      <div class="im__row">
+        <div class="im__track" role="tablist" data-im-track>
+          <span class="im__thumb" data-im-thumb aria-hidden="true"></span>
+          {
+            tabs.map((t, i) => (
+              <button
+                type="button"
+                role="tab"
+                class="im__tab"
+                data-im-tab={i}
+                aria-selected={i === 0 ? 'true' : 'false'}
+              >
+                {t.label}
+              </button>
+            ))
+          }
+        </div>
+        <p class="im__to">
+          <span class="im__to-key">TO</span>
+          <span class="im__to-val" data-im-to>{emails[0].toUpperCase()}</span>
+        </p>
+      </div>
+
+      <label class="im__field">
+        <span class="im__label">SUBJECT</span>
+        <input type="text" data-im-subject spellcheck="false" placeholder={subjectPlaceholder} />
+      </label>
+
+      <label class="im__field">
+        <span class="im__label">BODY</span>
+        <textarea data-im-message spellcheck="false" rows="5"></textarea>
+      </label>
+    </div>
+
+    <footer class="im__bar im__bar--foot">
+      <span class="im__hint">ESC TO CLOSE</span>
+      <button type="button" class="im__send" data-im-send>
+        <span class="im__send-label">SEND INQUIRY</span>
+        <span class="im__send-mark">
+          <DotGlyph glyph="arrow-right" size={16} color="currentColor" />
+        </span>
+      </button>
+    </footer>
+  </div>
+</dialog>
+
+<style>
+  /* ── shell ─────────────────────────────────────────────────────────────── */
+  .im {
+    padding: 0;
+    border: 0;
+    background: none;
+    max-width: none;
+    max-height: none;
+    width: min(840px, calc(100vw - 24px));
+    color: var(--aoin-cool-white, rgb(217, 225, 234));
+  }
+  .im::backdrop {
+    background: rgba(0, 0, 0, var(--modal-scrim, 0.34));
+    animation: im-scrim 220ms linear both;
+  }
+  .im[open] { display: block; }
+
+  /* The panel is the material: tinted glass, one hairline, a lit top edge.
+     No second border, no shadow — structure comes from the seams below. */
+  .im__panel {
+    background: rgba(0, 0, 0, var(--modal-tint, 0.42));
+    backdrop-filter: blur(var(--modal-blur, 28px)) saturate(140%);
+    -webkit-backdrop-filter: blur(var(--modal-blur, 28px)) saturate(140%);
+    border: var(--bar-stroke-w, 1px) solid rgba(217, 225, 234, var(--bar-stroke-o, 0.16));
+    border-radius: var(--modal-radius, 6px);
+    box-shadow: inset 0 1px 0 rgba(217, 225, 234, 0.12);
+    overflow: hidden;
+    animation: im-panel 460ms var(--bar-ease, cubic-bezier(0.4, 0.8, 0.2, 1)) both;
+  }
+
+  /* ── header / footer rules ─────────────────────────────────────────────── */
+  .im__bar {
+    display: flex;
+    align-items: stretch;
+    justify-content: space-between;
+    border-bottom: var(--bar-stroke-w, 1px) solid rgba(217, 225, 234, var(--bar-stroke-o, 0.16));
+  }
+  .im__bar--foot {
+    align-items: center;
+    gap: 24px;
+    padding: 14px 16px 14px 18px;
+    border-bottom: 0;
+    border-top: var(--bar-stroke-w, 1px) solid rgba(217, 225, 234, var(--bar-stroke-o, 0.16));
+  }
+  .im__eyebrow,
+  .im__hint,
+  .im__label,
+  .im__to {
+    font-family: var(--font-mono, 'SN Ja Mono'), monospace;
+    font-weight: 300;
+    margin: 0;
+  }
+  .im__eyebrow {
+    display: flex;
+    align-items: center;
+    padding-left: 18px;
+    font-size: 11px;
+    letter-spacing: 0.3em;
+  }
+  .im__hint {
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    color: rgba(217, 225, 234, 0.45);
+  }
+
+  /* Close: an icon cell seamed to the header, not a mono word.
+     Hover resolves to the same primary as SEND — plate, black mark. */
+  .im__close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 46px;
+    height: 46px;
+    flex: 0 0 auto;
+    padding: 0;
+    background: none;
+    border: 0;
+    border-left: var(--bar-stroke-w, 1px) solid rgba(217, 225, 234, var(--bar-stroke-o, 0.16));
+    color: rgba(217, 225, 234, 0.45);
+    cursor: pointer;
+    transition:
+      background var(--bar-fill-ms, 220ms) linear,
+      color var(--bar-fill-ms, 220ms) linear;
+  }
+  .im__close:hover,
+  .im__close:focus-visible {
+    background: var(--aoin-cool-white, rgb(217, 225, 234));
+    color: rgb(0, 0, 0);
+  }
+
+  /* ── body ──────────────────────────────────────────────────────────────── */
+  .im__body {
+    padding: 26px 28px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 26px;
+  }
+  .im__row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+
+  /* Tabs — recessed track, one travelling plate. Width and offset are measured
+     from layout and written to --im-thumb-w / --im-thumb-x, so the plate resizes
+     as it slides (GENERAL and CAREERS are different widths). */
+  .im__track {
+    position: relative;
+    display: inline-flex;
+    align-items: stretch;
+    padding: 3px;
+    background: rgba(217, 225, 234, 0.06);
+    border: var(--bar-stroke-w, 1px) solid rgba(217, 225, 234, var(--bar-stroke-o, 0.16));
+    border-radius: var(--modal-radius, 6px);
+  }
+  .im__thumb {
+    position: absolute;
+    left: 3px;
+    top: 3px;
+    bottom: 3px;
+    width: var(--im-thumb-w, 0px);
+    transform: translateX(var(--im-thumb-x, 0px));
+    background: var(--aoin-cool-white, rgb(217, 225, 234));
+    border-radius: calc(var(--modal-radius, 6px) - 2px);
+    opacity: 0;
+    transition:
+      transform var(--modal-track-ms, 480ms) var(--bar-ease, cubic-bezier(0.4, 0.8, 0.2, 1)),
+      width var(--modal-track-ms, 480ms) var(--bar-ease, cubic-bezier(0.4, 0.8, 0.2, 1)),
+      opacity 200ms linear;
+  }
+  .im__track[data-ready] .im__thumb { opacity: 1; }
+  .im__tab {
+    position: relative;
+    z-index: 1;
+    min-height: 32px;
+    padding: 0 18px;
+    white-space: nowrap;
+    background: none;
+    border: 0;
+    color: rgba(217, 225, 234, 0.45);
+    font-family: var(--font-denim, 'Denim INK WD'), sans-serif;
+    font-weight: 500;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    cursor: pointer;
+    transition: color 220ms linear;
+  }
+  .im__tab[aria-selected='true'] { color: rgb(0, 0, 0); }
+
+  .im__to {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    font-size: 11px;
+    letter-spacing: 0.2em;
+    white-space: nowrap;
+  }
+  .im__to-key { color: rgba(217, 225, 234, 0.45); }
+
+  /* Fields — underline only, hairline going to full cool white on focus. */
+  .im__field {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .im__label {
+    font-size: 10px;
+    letter-spacing: 0.3em;
+    color: rgba(217, 225, 234, 0.45);
+  }
+  .im__field input,
+  .im__field textarea {
+    width: 100%;
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0 0 12px;
+    background: transparent;
+    border: 0;
+    border-bottom: var(--bar-stroke-w, 1px) solid rgba(217, 225, 234, var(--bar-stroke-o, 0.16));
+    color: var(--aoin-cool-white, rgb(217, 225, 234));
+    caret-color: var(--aoin-cool-white, rgb(217, 225, 234));
+    font-family: var(--font-denim, 'Denim INK WD'), sans-serif;
+    font-weight: 400;
+    font-size: 20px;
+    line-height: 1.35;
+    transition: border-color var(--bar-fill-ms, 420ms) linear;
+  }
+  .im__field textarea {
+    min-height: 168px;
+    resize: none;
+  }
+  .im__field input:focus,
+  .im__field textarea:focus {
+    outline: none;
+    border-bottom-color: var(--aoin-cool-white, rgb(217, 225, 234));
+  }
+  .im__field ::placeholder { color: rgba(217, 225, 234, 0.28); }
+
+  /* ── SEND INQUIRY — the primary, in three states ───────────────────────── */
+  .im__send {
+    display: inline-flex;
+    align-items: stretch;
+    min-height: 40px;
+    padding: 0;
+    white-space: nowrap;
+    box-sizing: border-box;
+    background: transparent;
+    border: var(--bar-stroke-w, 1px) solid rgba(217, 225, 234, 0.12);
+    border-radius: var(--modal-radius, 6px);
+    overflow: hidden;
+    cursor: not-allowed;
+    font-family: var(--font-denim, 'Denim INK WD'), sans-serif;
+    font-weight: 500;
+    font-size: 13px;
+    letter-spacing: 0.06em;
+    transition:
+      background var(--bar-fill-ms, 220ms) linear,
+      border-color var(--bar-fill-ms, 220ms) linear;
+  }
+  .im__send-label {
+    display: flex;
+    align-items: center;
+    padding: 0 18px;
+    /* The band lives here in both directions: dark stops for cool-white type at
+       rest, light stops once the button inverts. Swapped on hover below. */
+    background-image: linear-gradient(
+      90deg,
+      rgb(0, 0, 0) 0%,
+      rgba(0, 0, 0, 0.34) 22%,
+      rgb(0, 0, 0) 45%,
+      rgba(0, 0, 0, 0.5) 68%,
+      rgb(0, 0, 0) 100%
+    );
+    background-size: 220% 100%;
+    background-repeat: repeat-x;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: rgba(217, 225, 234, 0.35);
+  }
+  .im__send-mark {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 40px;
+    flex: 0 0 auto;
+    background: transparent;
+    color: rgba(217, 225, 234, 0.35);
+    border-left: var(--bar-stroke-w, 1px) solid rgba(217, 225, 234, 0.12);
+    transition:
+      background var(--bar-fill-ms, 220ms) linear,
+      border-color var(--bar-fill-ms, 220ms) linear,
+      transform var(--bar-glyph-ms, 560ms) var(--bar-ease, cubic-bezier(0.4, 0.8, 0.2, 1));
+  }
+
+  /* live — the body has something in it */
+  .im__send[data-live] {
+    border-color: rgba(217, 225, 234, var(--bar-stroke-o, 0.16));
+    cursor: pointer;
+  }
+  .im__send[data-live] .im__send-label {
+    -webkit-text-fill-color: var(--aoin-cool-white, rgb(217, 225, 234));
+  }
+  .im__send[data-live] .im__send-mark {
+    background: var(--aoin-cool-white, rgb(217, 225, 234));
+    color: rgb(0, 0, 0);
+    border-left-color: rgba(217, 225, 234, var(--bar-stroke-o, 0.16));
+  }
+
+  /* hover — the whole button becomes the plate and the type inverts */
+  .im__send[data-live]:hover,
+  .im__send[data-live]:focus-visible {
+    background: var(--aoin-cool-white, rgb(217, 225, 234));
+    border-color: var(--aoin-cool-white, rgb(217, 225, 234));
+  }
+  .im__send[data-live]:hover .im__send-label,
+  .im__send[data-live]:focus-visible .im__send-label {
+    -webkit-text-fill-color: transparent;
+    animation: im-sweep var(--cta-sweep-period, 1500ms) linear infinite;
+  }
+  .im__send[data-live]:hover .im__send-mark,
+  .im__send[data-live]:focus-visible .im__send-mark {
+    border-left-color: rgba(0, 0, 0, 0.25);
+    transform: translateX(4px);
+  }
+
+  @keyframes im-sweep {
+    from { background-position: 100% 0; }
+    to { background-position: -60% 0; }
+  }
+  @keyframes im-scrim {
+    from { opacity: 0; }
+    to { opacity: 1; }
+  }
+  @keyframes im-panel {
+    from { opacity: 0; transform: translateY(10px) scale(0.985); }
+    to { opacity: 1; transform: none; }
+  }
+
+  /* ── mobile: the panel meets the bottom edge ───────────────────────────── */
+  @media (max-width: 560px) {
+    .im {
+      width: calc(100vw - 24px);
+      margin-block: auto 12px;
+    }
+    .im__body { padding: 18px 16px; gap: 20px; }
+    .im__eyebrow { padding-left: 16px; font-size: 10px; }
+    .im__close { width: 44px; height: 44px; }
+    .im__row { flex-direction: column; align-items: flex-start; gap: 12px; }
+    .im__tab { font-size: 12px; padding: 0 12px; }
+    .im__to { font-size: 10px; letter-spacing: 0.16em; }
+    .im__field input,
+    .im__field textarea { font-size: 17px; padding-bottom: 10px; }
+    .im__field textarea { min-height: 140px; }
+    .im__bar--foot { padding: 12px 12px 12px 16px; gap: 12px; }
+    .im__hint { font-size: 9px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .im__panel,
+    .im::backdrop { animation: none; }
+    .im__thumb,
+    .im__send,
+    .im__send-mark,
+    .im__close { transition-duration: 1ms; }
+    .im__send[data-live]:hover .im__send-label { animation: none; }
+  }
+</style>
+
+<script>
+  import { scramble } from '../../lib/scramble';
+
+  const dlg = document.querySelector<HTMLDialogElement>('[data-inquiry]');
+  // The dialog is transition:persist'd, so it (and these listeners) outlive a
+  // ClientRouter swap — bind exactly once, guarded in case the module re-runs.
+  if (dlg && !dlg.dataset.bound) {
+    dlg.dataset.bound = '1';
+    const emails: string[] = JSON.parse(dlg.dataset.emails || '[]');
+    const prefix = (dlg.dataset.subjectPrefix || '').trim();
+    const track = dlg.querySelector<HTMLElement>('[data-im-track]')!;
+    const thumb = dlg.querySelector<HTMLElement>('[data-im-thumb]')!;
+    const tabs = Array.from(dlg.querySelectorAll<HTMLButtonElement>('[data-im-tab]'));
+    const to = dlg.querySelector<HTMLElement>('[data-im-to]')!;
+    const subject = dlg.querySelector<HTMLInputElement>('[data-im-subject]')!;
+    const message = dlg.querySelector<HTMLTextAreaElement>('[data-im-message]')!;
+    const send = dlg.querySelector<HTMLButtonElement>('[data-im-send]')!;
+    let active = 0;
+
+    /* Park the plate on the active tab, read out of layout so it resizes as it
+       travels. Re-measured after fonts land and on resize. */
+    function place() {
+      const el = tabs[active];
+      if (!el) return;
+      thumb.style.setProperty('--im-thumb-w', el.offsetWidth + 'px');
+      thumb.style.setProperty('--im-thumb-x', el.offsetLeft - 3 + 'px');
+      track.setAttribute('data-ready', '');
+    }
+
+    function pick(i: number) {
+      if (i === active) return;
+      active = i;
+      tabs.forEach((t, n) => t.setAttribute('aria-selected', n === i ? 'true' : 'false'));
+      place();
+      scramble(to, (emails[i] || '').toUpperCase());
+    }
+
+    tabs.forEach((t, i) => t.addEventListener('click', () => pick(i)));
+
+    // The primary lights up only when there is something to send.
+    message.addEventListener('input', () => {
+      if (message.value.trim()) send.setAttribute('data-live', '');
+      else send.removeAttribute('data-live');
+    });
+
+    send.addEventListener('click', () => {
+      const body = message.value;
+      if (!body.trim()) return;
+      const typed = subject.value.trim();
+      const label = tabs[active]?.textContent?.trim() || 'GENERAL';
+      const subj = (prefix ? prefix + ' — ' : '') + (typed || label + ' INQUIRY');
+      window.location.href =
+        'mailto:' + emails[active] +
+        '?subject=' + encodeURIComponent(subj) +
+        '&body=' + encodeURIComponent(body);
+    });
+
+    // Open from anything carrying [data-inquiry-open] — delegated at the document
+    // so triggers rendered by any page (nav/footer CONTACT, project bar, services
+    // CTA) and those added after a soft-nav all work without re-binding.
+    document.addEventListener('click', (e) => {
+      const t = e.target as Element | null;
+      if (!t || !t.closest('[data-inquiry-open]')) return;
+      e.preventDefault();
+      dlg.showModal();
+      place();
+    });
+    dlg.querySelectorAll('[data-inquiry-close]').forEach((el) =>
+      el.addEventListener('click', () => dlg.close())
+    );
+    dlg.addEventListener('click', (e) => {
+      if (e.target === dlg) dlg.close(); // ::backdrop clicks land on the dialog
+    });
+
+    window.addEventListener('resize', place);
+    if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
+    place();
+  }
+</script>

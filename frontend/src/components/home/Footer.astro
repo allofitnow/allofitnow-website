@@ -1,7 +1,11 @@
 ---
-import { footer } from '@/data/home';
+import { footer, type NavLink } from '@/data/home';
 
 // helper: render an array of strings separated by <br/>
+// One link → its attributes: modal links open the contact dialog (delegated in
+// InquiryModal), /work links soft-nav for the flight, everything else full-loads.
+const linkAttrs = (l: NavLink) =>
+  l.modal ? { 'data-inquiry-open': true } : l.href.startsWith('/work') ? {} : { 'data-astro-reload': true };
 ---
 
 <section class="footer" data-ref="footer" data-nav-hide id="contact" data-screen-label="Footer">
@@ -25,12 +29,12 @@ import { footer } from '@/data/home';
       <div class="navgrid">
         <div data-fr="1" class="mask">
           <div data-fi="1">
-            {footer.navPrimary.map((l, i) => (<>{i > 0 && <br />}<a href={l.href} {...(l.href.startsWith('/work') ? {} : { 'data-astro-reload': true })}>{l.label}</a></>))}
+            {footer.navPrimary.map((l, i) => (<>{i > 0 && <br />}<a href={l.href} {...linkAttrs(l)}>{l.label}</a></>))}
           </div>
         </div>
         <div data-fr="1" class="mask">
           <div data-fi="1">
-            {footer.navSecondary.map((l, i) => (<>{i > 0 && <br />}<a href={l.href} {...(l.href.startsWith('/work') ? {} : { 'data-astro-reload': true })}>{l.label}</a></>))}
+            {footer.navSecondary.map((l, i) => (<>{i > 0 && <br />}<a href={l.href} {...linkAttrs(l)}>{l.label}</a></>))}
           </div>
         </div>
       </div>
