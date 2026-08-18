@@ -1325,10 +1325,17 @@ class ServicesController {
         'in vec2 aCorner; in vec2 aCell; in float aGlyph; in float aAlpha; in vec2 aOff; in float aScale;\n' +
         'uniform vec2 uRes; uniform vec2 uCellPx; uniform vec2 uGlyphPx; uniform vec2 uGrid;\n' +
         'uniform vec2 uCursor; uniform float uCurRadius; uniform float uCurAmt;\n' +
-        'uniform vec2 uNav[4]; uniform float uNavRadius; uniform float uNavAmt;\n' +
-        'out vec2 vUV; out float vA; out float vS; out float vL;\n' +
+        'uniform vec2 uNav[4]; uniform float uNavRadius; uniform float uNavAmt; uniform float uTime;\n' +
+        'out vec2 vUV; out float vA; out float vS; out float vL; out float vN;\n' +
+        // Large, slow fractal noise (fBm) drifting over the field — computed in the vertex shader so
+        // the math runs highp (no mediump drift over long sessions). One value per cell (from its centre).
+        'float h21(vec2 p){ p=fract(p*vec2(123.34,456.21)); p+=dot(p,p+45.32); return fract(p.x*p.y); }\n' +
+        'float vn(vec2 p){ vec2 i=floor(p),f=fract(p),u=f*f*(3.0-2.0*f);\n' +
+        ' return mix(mix(h21(i),h21(i+vec2(1.0,0.0)),u.x),mix(h21(i+vec2(0.0,1.0)),h21(i+vec2(1.0,1.0)),u.x),u.y); }\n' +
+        'float fbm(vec2 p){ float s=0.0,a=0.5; for(int k=0;k<3;k++){ s+=a*vn(p); p*=2.03; a*=0.5; } return s/0.875; }\n' +
         'void main(){\n' +
         ' vec2 ctr = aCell * uCellPx + uCellPx * 0.5 + aOff;\n' +
+        ' vN = fbm(ctr * 0.0022 + vec2(uTime * 0.03, uTime * 0.018));\n' +
         ' vec2 pos = ctr + (aCorner - 0.5) * uGlyphPx * aScale;\n' +
         ' gl_Position = vec4(pos.x / uRes.x * 2.0 - 1.0, 1.0 - pos.y / uRes.y * 2.0, 0.0, 1.0);\n' +
         ' vec2 g = vec2(mod(aGlyph, uGrid.x), floor(aGlyph / uGrid.x));\n' +
@@ -1342,12 +1349,14 @@ class ServicesController {
         '}';
       const fsrc = '#version 300 es\n' +
         'precision mediump float;\n' +
-        'in vec2 vUV; in float vA; in float vS; in float vL; out vec4 o; uniform sampler2D uTex; uniform float uOpacity; uniform float uPeak; uniform float uBoost;\n' +
+        'in vec2 vUV; in float vA; in float vS; in float vL; in float vN; out vec4 o; uniform sampler2D uTex; uniform float uOpacity; uniform float uPeak; uniform float uBoost;\n' +
         'void main(){ float a = texture(uTex, vUV).a * vA; if(a < 0.01) discard;' +
         ' float w = pow(clamp((vS - 1.0) / max(0.001, uPeak - 1.0), 0.0, 1.0), 1.6);' +
         ' float lit = clamp(w + vL * 0.6, 0.0, 1.0);' +
         ' vec3 c = mix(vec3(0.851, 0.882, 0.918), vec3(1.0), lit);' +
-        ' o = vec4(c, min(1.0, a * uOpacity * (1.0 + w * 0.4) * (1.0 + uBoost * vL))); }';
+        // Field breathes: dark cells (vL≈0) get the ±20% slow-noise swing; lit cells (flashlight/nav) stay steady.
+        ' float nf = mix(mix(0.80, 1.20, vN), 1.0, clamp(vL, 0.0, 1.0));' +
+        ' o = vec4(c, min(1.0, a * uOpacity * (1.0 + w * 0.4) * (1.0 + uBoost * vL) * nf)); }';
       const mk = (type, src) => {
         const sh = gl.createShader(type);
         gl.shaderSource(sh, src);
@@ -1380,7 +1389,8 @@ class ServicesController {
         nav: gl.getUniformLocation(pr, 'uNav'),
         navRadius: gl.getUniformLocation(pr, 'uNavRadius'),
         navAmt: gl.getUniformLocation(pr, 'uNavAmt'),
-        lumBoost: gl.getUniformLocation(pr, 'uBoost')
+        lumBoost: gl.getUniformLocation(pr, 'uBoost'),
+        time: gl.getUniformLocation(pr, 'uTime')
       };
       this._bCorner = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, this._bCorner);
@@ -1743,6 +1753,7 @@ class ServicesController {
     gl.uniform2f(L.glyphPx, this._glyphPx, this._glyphPx);
     gl.uniform2f(L.grid, this._atGrid[0], this._atGrid[1]);
     gl.uniform1f(L.opacity, (FIELD_OPACITY) / 100);
+    gl.uniform1f(L.time, performance.now() / 1000); // drives the slow fractal-noise drift over the field
     gl.uniform1f(L.peak, HOVER_PEAK);
     // --- Field luminance: additive pools over the untouched field ---
     // (#2) Cursor "flashlight" centred on the highlighted word, radius = the magnify disc (matches asciiHover).
