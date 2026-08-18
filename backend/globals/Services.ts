@@ -1,5 +1,6 @@
 import { GlobalConfig } from "payload/types";
 import { notifyPublish } from "../hooks/publish";
+import ProjectThumbPicker from "../components/ProjectThumbPicker";
 
 // The /services page content — the four sections' bottom-left copy and gallery images.
 // A singleton (global): the page structure is fixed; only the copy/images are editable.
@@ -67,7 +68,10 @@ const Services: GlobalConfig = {
               name: "project",
               type: "relationship",
               relationTo: "projects",
-              admin: { description: "Link this still to a project (click → its project page). Leave empty for a static still." },
+              admin: {
+                description: "Link this still to a project — click its thumbnail (again to clear). Leave empty for a static still.",
+                components: { Field: ProjectThumbPicker },
+              },
             },
           ],
         },
