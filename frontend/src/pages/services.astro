@@ -86,6 +86,11 @@ const SVC_NAV = [
   { i: 3, label: 'EQUIPMENT RENTAL' },
 ];
 
+// Sub-service taxonomy for the capability-bar scramble + field labels: fixed section names (SVC_NAV)
+// paired with CMS-editable subs (the data layer merges CMS over the seed defaults). Emitted as a JSON
+// island the controller reads; its inline SERVICES array is the fallback if the island is absent.
+const svcTaxonomy = SVC_NAV.map((n, i) => ({ name: n.label, subs: services[i]?.subs ?? [] }));
+
 // Equipment fleet — Payload-ready: a typed async accessor (local seed today, a Payload
 // `equipment` collection later). Ordered left→right; one item is flagged `center`.
 const equipment = await getEquipment();
@@ -214,6 +219,9 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
 
 <!-- scroll distance for the whole scrubbed narrative (intro → 4 sections) -->
 <div class="svc-scrolldist" data-scroll="" style="height:900vh"></div>
+
+<!-- Sub-service taxonomy (fixed names + CMS subs) the controller reads for the capability-bar scramble -->
+<script id="svc-taxonomy" type="application/json" is:inline set:html={JSON.stringify(svcTaxonomy)}></script>
 
 <script>
   import gsap from 'gsap';

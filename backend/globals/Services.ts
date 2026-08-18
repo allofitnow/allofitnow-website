@@ -27,6 +27,16 @@ const Services: GlobalConfig = {
         { name: "slug", type: "text", required: true, admin: { description: "Section id / anchor (e.g. real-time-content)." } },
         { name: "desc", type: "textarea", admin: { description: "Bottom-left body copy shown when the section is active." } },
         {
+          name: "subs",
+          type: "array",
+          labels: { singular: "Sub-service", plural: "Sub-services" },
+          admin: {
+            description:
+              "Sub-service names for this section (e.g. INTERACTIVE ENVIRONMENTS, LIVE GRAPHICS, VISUAL EFFECTS). The scrambling capability bar under the title shows the first three; they also feed the top nav. ALL CAPS. Leave empty to fall back to the built-in defaults.",
+          },
+          fields: [{ name: "label", type: "text", required: true, admin: { description: "One sub-service, all caps." } }],
+        },
+        {
           // Each gallery item is a still that can optionally LINK to a project (click → /work/<slug>).
           // Nested single *relationships* are fine in an array (unlike a nested hasMany *upload*, which
           // crashes ts-node on boot — that's why the old flat `images` used a media relationship).

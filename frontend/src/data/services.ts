@@ -34,6 +34,9 @@ export interface ServiceSection {
   /** Gallery stills, in scrub order. Each may link to a project (click → /work/<slug>).
    *  Empty for Equipment — its "gallery" is the fleet marquee (see data/equipment.ts). */
   images: GalleryItem[];
+  /** Sub-service names — the scrambling capability bar shows the first 3; the nav shows all.
+   *  CMS-editable per section (`services` global); empty CMS → the seed defaults below. All caps. */
+  subs: string[];
 }
 
 // Gallery stills currently ship from the frontend /public bundle; the CMS migration will
@@ -48,21 +51,25 @@ const mrImages = Array.from({ length: 6 }, (_, i) => still(`/img/services/mr/${p
 const SEED: ServiceSection[] = [
   {
     slug: 'real-time-content',
+    subs: ['INTERACTIVE ENVIRONMENTS', 'LIVE GRAPHICS', 'VISUAL EFFECTS'],
     desc: 'We use Unreal Engine and Notch to develop Interactive Environments, Live Graphics, and bespoke visual effects for use in fast paced production environments.',
     images: rtcImages,
   },
   {
     slug: 'screens-production',
+    subs: ['SCREENS PRODUCING', 'TECHNICAL DIRECTION', 'MEDIA SERVER PROGRAMMING'],
     desc: 'We offer a comprehensive range of Screens producing, technical direction, and media server programming solutions that ensure your event runs smoothly and leaves a lasting impression on your audience.',
     images: screensImages,
   },
   {
     slug: 'mixed-reality',
+    subs: ['AUGMENTED REALITY', 'VIRTUAL REALITY', 'PROJECTION MAPPING'],
     desc: 'We create Mixed Reality experiences that merge the physical and digital worlds — Augmented Reality, Virtual Reality, and Projection Mapping, each tailored to captivate your audience.',
     images: mrImages,
   },
   {
     slug: 'equipment-rental',
+    subs: ['DISGUISE SERVERS', 'RENDER NODES', 'CUSTOM RACK BUILDS'],
     desc: 'All of it Now provides a comprehensive range of equipment rentals for your production. As a long-time Disguise solutions partner and workflow specialist, AOIN has disguise servers available in many configurations.',
     images: [],
   },
@@ -80,6 +87,7 @@ export async function getServiceSections(): Promise<ServiceSection[]> {
       slug: seed.slug,
       desc: c.desc || seed.desc,
       images: c.images.length ? c.images : seed.images,
+      subs: c.subs && c.subs.length ? c.subs : seed.subs,
     };
   });
 }

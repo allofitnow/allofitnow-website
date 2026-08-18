@@ -24,12 +24,31 @@ const LUM_CURSOR = 1.0;      // cursor-pool strength
 const LUM_NAV = 1.0;         // per-word middle-nav pool strength
 const LUM_NAV_REACH = 30;    // nav-word pool radius, in cells (wider = the nav flashlight spreads further)
 const COPY_GLYPHS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-const SERVICES = [
-  { name: 'REAL-TIME CONTENT', subs: ['INTERACTIVE ENVIRONMENTS', 'LIVE GRAPHICS', 'VISUAL EFFECTS'] },
-  { name: 'SCREENS PRODUCTION', subs: ['SCREENS PRODUCING', 'TECHNICAL DIRECTION', 'MEDIA SERVER PROGRAMMING'] },
-  { name: 'MIXED REALITY', subs: ['AUGMENTED REALITY', 'VIRTUAL REALITY', 'PROJECTION MAPPING'] },
-  { name: 'EQUIPMENT RENTAL', subs: ['DISGUISE SERVERS', 'RENDER NODES', 'CUSTOM RACK BUILDS'] }
-];
+// Service taxonomy (name + subcategories) for the capability bar + field scramble. Read from the
+// #svc-taxonomy JSON island emitted by services.astro (CMS-editable via the `services` global); the
+// inline FALLBACK below stands in when the island is absent or malformed (e.g. dev with no CMS).
+const SERVICES = (() => {
+  const FALLBACK = [
+    { name: 'REAL-TIME CONTENT', subs: ['INTERACTIVE ENVIRONMENTS', 'LIVE GRAPHICS', 'VISUAL EFFECTS'] },
+    { name: 'SCREENS PRODUCTION', subs: ['SCREENS PRODUCING', 'TECHNICAL DIRECTION', 'MEDIA SERVER PROGRAMMING'] },
+    { name: 'MIXED REALITY', subs: ['AUGMENTED REALITY', 'VIRTUAL REALITY', 'PROJECTION MAPPING'] },
+    { name: 'EQUIPMENT RENTAL', subs: ['DISGUISE SERVERS', 'RENDER NODES', 'CUSTOM RACK BUILDS'] }
+  ];
+  try {
+    const el = typeof document !== 'undefined' && document.getElementById('svc-taxonomy');
+    if (!el || !el.textContent) return FALLBACK;
+    const parsed = JSON.parse(el.textContent);
+    if (!Array.isArray(parsed) || parsed.length !== FALLBACK.length) return FALLBACK;
+    // Merge per index so a blank CMS section never wipes a label: CMS value when present, else fallback.
+    return FALLBACK.map((f, i) => {
+      const p = parsed[i] || {};
+      const subs = Array.isArray(p.subs) && p.subs.length ? p.subs : f.subs;
+      return { name: (typeof p.name === 'string' && p.name.trim()) || f.name, subs };
+    });
+  } catch (e) {
+    return FALLBACK;
+  }
+})();
 
 class ServicesController {
   active = -1;

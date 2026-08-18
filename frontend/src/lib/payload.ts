@@ -173,7 +173,11 @@ export function mapPayloadServiceSection(row: any): ServiceSection {
     const video = /^video\//i.test(mime) || /\.(webm|mp4|m4v|mov)(\?|$)/i.test(src);
     return { src, href, slug: proj?.slug, title: proj?.title, tour: proj?.tour, caps, slot, video };
   }).filter((g: any) => g.src !== '');
-  return { slug: row.slug, desc: row.desc ?? '', images: items };
+  // Sub-service labels (array of { label }) — trimmed + de-blanked. Empty → the seed defaults win downstream.
+  const subs = Array.isArray(row.subs)
+    ? row.subs.map((s: any) => (s && typeof s.label === 'string' ? s.label.trim() : '')).filter(Boolean)
+    : [];
+  return { slug: row.slug, desc: row.desc ?? '', images: items, subs };
 }
 
 /** Fetch the /services page sections from the `services` global. `[]` if unreachable/empty.
