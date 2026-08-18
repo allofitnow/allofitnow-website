@@ -19,5 +19,5 @@ const isVideo = video ?? /\.(webm|mp4|m4v|mov)(\?|$)/i.test(src || '');
 {isVideo ? (
   <video src={src} class={className} autoplay muted loop playsinline preload="metadata" {...rest}></video>
 ) : (
-  <img src={src} alt={alt} class={className} {...rest} />
+  <img src={src} alt={alt} class={className} decoding="async" {...rest} />
 )}
