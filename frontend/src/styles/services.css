@@ -253,12 +253,19 @@ html.lenis, html.lenis body { height: auto; }
   /* Fixed px top (just below the ~240-254px marquee across 375-430w phones) instead of a vh
      % — a vh top wastes ~75px on tall viewports, starving the plate. Fixed top maximizes the
      plate's flex area on every height, so the render fills far more of the frame. */
-  /* bottom:150 lifts the fleet marquee ABOVE the body text (svc-desc at bottom:104) so the two
-     never overlap when the active item has a tip; order is plate → fleet marquee → body → CTA. */
-  .svc-panel--equip .equip { top: 262px; left: 20px; right: 20px; bottom: 150px; gap: 16px; }
-  /* Fill the (now much larger) plate cell rather than cap in vh — a vh cap larger than the
-     cell silently overrides the base max-height:100% and overflows into the fleet + CTA. */
-  .equip-plate img, .equip-plate video { max-width: 96%; max-height: 100%; } /* was a TINY 26vh */
+  /* bottom:150 keeps the fleet marquee above the body copy (svc-desc bottom:104). The render row
+     is TOP-aligned in the plate cell (align-content:start) so a short render sits right under the
+     marquee instead of floating to the cell's middle (the "gap super high up"). Explicit vh cap so
+     it can't overflow the cell (max-height:100% doesn't cap a content-sized grid row). */
+  .svc-panel--equip .equip { top: 244px; left: 20px; right: 20px; bottom: 150px; gap: 14px; }
+  /* align-content:start TOP-aligns the render under the marquee (a centred render floated to the
+     cell's middle, leaving the void). max-height:100% can't cap a grid row taller than its cell,
+     so cap explicitly to the cell height: viewport − title/marquee top (244) − marquee/body/CTA
+     stack (150) − fleet marquee (46) − gap (14) − a hair. */
+  .svc-panel--equip .equip-plate { align-content: start; }
+  /* object-position:top so a short/landscape render (object-fit:contain) hugs the TOP of its box
+     instead of centring inside it — otherwise the box is top-aligned but the image still floats low. */
+  .equip-plate img, .equip-plate video { max-width: 96%; max-height: calc(100svh - 456px); object-position: center top; } /* was a TINY 26vh */
   .equip-marquee { height: 46px; }
   .equip-item { font-size: clamp(14px, 5vw, 22px); }
   .svc-panel--equip .svc-desc { bottom: 104px; }
