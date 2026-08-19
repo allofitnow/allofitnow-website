@@ -262,10 +262,11 @@ html.lenis, html.lenis body { height: auto; }
      cell's middle, leaving the void). max-height:100% can't cap a grid row taller than its cell,
      so cap explicitly to the cell height: viewport − title/marquee top (244) − marquee/body/CTA
      stack (150) − fleet marquee (46) − gap (14) − a hair. */
-  .svc-panel--equip .equip-plate { align-content: start; }
-  /* object-position:top so a short/landscape render (object-fit:contain) hugs the TOP of its box
-     instead of centring inside it — otherwise the box is top-aligned but the image still floats low. */
-  .equip-plate img, .equip-plate video { max-width: 96%; max-height: calc(100svh - 456px); object-position: center top; } /* was a TINY 26vh */
+  .svc-panel--equip .equip-plate { align-content: start; overflow: hidden; }
+  /* The render's box is height-capped to the cell, and the clips carry a lot of dead space around
+     the subject — so zoom in (~2.2×) and clip the overflow. That enlarges the actual server/case
+     and pushes the padding off-frame, without the box growing into the marquee/body below. */
+  .equip-plate img, .equip-plate video { max-width: 96%; max-height: calc(100svh - 456px); transform: scale(2.2); transform-origin: center; } /* was a TINY 26vh */
   .equip-marquee { height: 46px; }
   .equip-item { font-size: clamp(14px, 5vw, 22px); }
   .svc-panel--equip .svc-desc { bottom: 104px; }
