@@ -176,9 +176,11 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
     <section class="svc-panel svc-panel--mixed" data-svc-panel="" data-i="2" id="mixed-reality">
       <div class="mwg_effect061" data-fx="061">
         <div class="container">
+          {/* Deferred like GalleryMedia — the orbit's 10 slots would otherwise autoplay
+              10 large videos at load. The engine loads + plays them only when Mixed is active. */}
           {MR.map((g) => g.video
-            ? <video src={g.src} autoplay muted loop playsinline preload="metadata" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps}></video>
-            : <img src={g.src} alt="" loading="lazy" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
+            ? <video data-lazymedia data-lazysrc={g.src} muted loop playsinline preload="none" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps}></video>
+            : <img data-lazymedia data-lazysrc={g.src} alt="" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
         </div>
       </div>
       <p class="svc-desc svc-desc--overlay" data-desc="">{services[2].desc}</p>

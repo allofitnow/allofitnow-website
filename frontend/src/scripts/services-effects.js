@@ -143,6 +143,28 @@ export function mountEffects(ctrl) {
   };
   const descOf = (i) => panels[i] && panels[i].querySelector('[data-desc]');
   const equipEl = panels[3] && panels[3].querySelector('.equip');
+
+  // --- Deferred media: gallery stills carry their URL in data-lazysrc (not src), so
+  // nothing loads until its section is reached. Without this all 4 sections' videos
+  // autoplay at page load (~276MB). We stream the ACTIVE section, PRELOAD the next one
+  // (so it's buffered on arrival), and PAUSE the rest — never unloading, so a fetched
+  // clip is reused instead of re-downloaded.
+  const sectionMedia = panels.map((pan) => [...pan.querySelectorAll('[data-lazymedia]')]);
+  const loadMedia = (el) => {
+    if (el && !el.getAttribute('src') && el.dataset.lazysrc) {
+      el.setAttribute('src', el.dataset.lazysrc);
+      if (el.tagName === 'VIDEO') { try { el.load(); } catch (_) {} }
+    }
+  };
+  const playMedia = (el) => { loadMedia(el); if (el.tagName === 'VIDEO') { try { const p = el.play(); if (p) p.catch(() => {}); } catch (_) {} } };
+  const pauseMedia = (el) => { if (el.tagName === 'VIDEO') { try { el.pause(); } catch (_) {} } };
+  const setSectionMedia = (s) => {
+    sectionMedia.forEach((els, i) => {
+      if (i === s) els.forEach(playMedia);              // active: load + play
+      else if (i === s + 1 && s >= 0) els.forEach(loadMedia); // next: preload once we're actually in a section
+      else els.forEach(pauseMedia);                     // others: pause (stay loaded once fetched)
+    });
+  };
   const revealDesc = (i) => { if (i === 3) showFade(descOf(i)); else revealUp(descOf(i)); };
   const hideDesc = (i) => { if (i === 3) hideFade(descOf(i)); else hideEl(descOf(i)); };
 
@@ -177,6 +199,7 @@ export function mountEffects(ctrl) {
     if (s === lastSection) return;
     const prev = lastSection;
     lastSection = s;
+    setSectionMedia(s); // stream the active section's stills, preload the next, pause the rest
     panels.forEach((pan, i) => {
       pan.classList.toggle('is-lit', (i === s) && (i === 0 || i === 1));
       pan.style.pointerEvents = i === s ? 'auto' : 'none';
@@ -288,8 +311,10 @@ function buildRealtime(root, master) {
     // Keep the stream in a centred band so large stills don't hang off the top/bottom edges
     // (the top lane used to sit at 5% and get cropped). Phones: a LOWER, wider band so the now
     // ~2× stills clear the title + stacked capability bar (chrome bottom ≈ 40%) and don't crop.
-    const top = (mob ? 48 : 22) + (lane / Math.max(1, n - 1)) * (mob ? 40 : 54);
-    const scale = mob ? L.scale * 0.98 : L.scale;
+    // Phones: -0.25× vs before (0.98→0.73) and a wider vertical spread so the fly-across
+    // stills read as a stream, not an overlapping pile.
+    const top = (mob ? 46 : 22) + (lane / Math.max(1, n - 1)) * (mob ? 48 : 54);
+    const scale = mob ? L.scale * 0.73 : L.scale;
     const fromX = () => window.innerWidth * L.reach + 140;
     const toX = () => -window.innerWidth * L.reach - 140;
     gsap.set(m, { top: top.toFixed(2) + '%', yPercent: -50, zIndex: L.z, scale, x: fromX });

@@ -16,16 +16,20 @@ const { src, href, slug, title, tour, caps, video, ar: itemAr } = item;
 // section default passed in (16:9).
 const finalAr = itemAr || ar;
 ---
+{/* Media is DEFERRED: the real URL lives in data-lazysrc, not src, so nothing loads
+    until the scroll engine (services-effects.js) reaches this still's section and swaps
+    it in. Without this every section's video autoplays at page load (~276MB up front).
+    Videos: muted/loop/playsinline but NO autoplay — the engine calls .play() on entry. */}
 {video ? (
   <video
     class="media"
     style={`aspect-ratio:${finalAr}`}
-    src={src}
-    autoplay
+    data-lazymedia
+    data-lazysrc={src}
     muted
     loop
     playsinline
-    preload="metadata"
+    preload="none"
     data-href={href}
     data-slug={slug}
     data-title={title}
@@ -36,9 +40,9 @@ const finalAr = itemAr || ar;
   <img
     class="media"
     style={`aspect-ratio:${finalAr}`}
-    src={src}
+    data-lazymedia
+    data-lazysrc={src}
     alt=""
-    loading="lazy"
     data-href={href}
     data-slug={slug}
     data-title={title}
