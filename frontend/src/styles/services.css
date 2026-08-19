@@ -215,7 +215,10 @@ html.lenis, html.lenis body { height: auto; }
      identical — it just blows the thin strip up into a bold band. gsap only writes to
      .container (rotationY) and the imgs (opacity), never to .mwg_effect061's transform,
      so this is safe; overflow:hidden scales with it so nothing new clips. */
-  .mwg_effect061 { --mr-w: 46vw; --mr-h: 25.875vw; transform: scale(2); transform-origin: 50% 50%; }
+  /* translateY drops the ring from the raw viewport centre into the middle of the
+     space between the capability subs and the description, killing the deadspace that
+     otherwise opened below it. (translate is applied after scale, so it's screen px.) */
+  .mwg_effect061 { --mr-w: 46vw; --mr-h: 25.875vw; transform: translateY(72px) scale(2); transform-origin: 50% 50%; }
   /* SCREENS columns rise through the FULL height on desktop; on a phone the title +
      stacked capability bar own the top ~40%, so confine the gallery to the lower 60%
      (overflow:hidden clips a column as it reaches the fold) — no image behind the chrome. */
