@@ -585,6 +585,9 @@ class ServicesController {
       titleRow.style.flexDirection = narrow ? 'column' : 'row';
       titleRow.style.alignItems = narrow ? 'center' : 'baseline';
       titleRow.style.gap = narrow ? '2px' : '0px';
+      // Tighten the top padding on phones (desktop keeps the 112px inline default). This also
+      // lifts the sub marquee, which sits just under the title (activeTop tracks the title's bottom).
+      titleRow.style.top = narrow ? '80px' : '112px';
     }
     if (bar) {
       bar.style.flexDirection = narrow ? 'column' : 'row';

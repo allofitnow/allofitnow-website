@@ -216,7 +216,7 @@ html.lenis, html.lenis body { height: auto; }
     -webkit-mask: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
             mask: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
     font-family: 'SN Ja Mono', ui-monospace, Menlo, monospace; font-weight: 300;
-    font-size: 15px; letter-spacing: 0.16em; color: rgb(217, 225, 234);
+    font-size: 12px; letter-spacing: 0.14em; color: rgb(217, 225, 234);
   }
   [data-bar][data-mq] [data-sub-marquee] { display: block !important; }
   [data-sub-track] { display: inline-flex; will-change: transform; animation: svc-sub-marquee 20s linear infinite; }
