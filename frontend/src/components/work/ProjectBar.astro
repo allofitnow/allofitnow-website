@@ -301,10 +301,12 @@ const L = {
   }
   /* tile: hangs off the LEFT edge, wipes right to left */
   .pbar__tip--left { right: calc(100% - 12px); align-items: flex-end; }
-  /* next: hangs off the button's expanded right edge (measured), wipes right to left */
-  .pbar__tip--next { left: 0; width: var(--pbar-next-box, 44px); align-items: flex-end; }
+  /* next: right edge pinned to the button's expanded right edge (--pbar-next-box),
+     but sized to its content so a wide tour name never clips the way it did when
+     the box was locked to the button width. Wipes right to left. */
+  .pbar__tip--next { right: calc(44px - var(--pbar-next-box, 44px)); width: max-content; align-items: flex-end; }
   .pbar__slot:hover .pbar__tip,
-  .pbar__slot:focus-within .pbar__tip { max-width: 240px; }
+  .pbar__slot:focus-within .pbar__tip { max-width: 340px; }
   .pbar__plate {
     white-space: nowrap;
     padding: 6px 9px;
