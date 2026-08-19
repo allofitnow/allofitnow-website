@@ -79,7 +79,7 @@ html.lenis, html.lenis body { height: auto; }
   /* bottom:44 (not 48) so the last line's BASELINE lands on the bottom-right nav's baseline —
      the description's 1.45 line-height otherwise lifts its baseline ~4px above the 12px mono nav. */
   max-width: 34ch; font-family: var(--font-headline); font-weight: 400;
-  font-size: clamp(13px, 1.35vw, 17px); line-height: 1.45; color: rgba(217, 225, 234, 0.86);
+  font-size: clamp(15px, 1.5vw, 19px); line-height: 1.45; color: rgba(217, 225, 234, 0.86);
   pointer-events: none;
 }
 .svc-desc--overlay { text-shadow: 0 2px 30px rgba(0, 0, 0, 0.55); }
@@ -186,10 +186,10 @@ html.lenis, html.lenis body { height: auto; }
 .svc-nav-row {
   display: inline-flex; align-items: baseline; gap: 12px; background: none; border: 0;
   padding: 0; cursor: pointer; font-family: var(--font-mono); font-weight: 300;
-  font-size: 12px; letter-spacing: 0.18em; color: rgba(217, 225, 234, 0.4);
+  font-size: 14px; letter-spacing: 0.18em; color: rgba(217, 225, 234, 0.4);
   transition: color 0.26s ease; white-space: nowrap;
 }
-.svc-nav-idx { font-size: 10px; letter-spacing: 0.2em; color: rgba(217, 225, 234, 0.3); transition: color 0.26s ease; }
+.svc-nav-idx { font-size: 12px; letter-spacing: 0.2em; color: rgba(217, 225, 234, 0.3); transition: color 0.26s ease; }
 .svc-nav-row:hover, .svc-nav-row.is-active { color: rgb(217, 225, 234); }
 .svc-nav-row.is-active .svc-nav-idx, .svc-nav-row:hover .svc-nav-idx { color: rgba(217, 225, 234, 0.7); }
 
