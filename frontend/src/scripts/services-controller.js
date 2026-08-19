@@ -426,6 +426,36 @@ class ServicesController {
       s.__target = target;
       this.scramble(s, target);
     });
+
+    this._setSubMarquee(i);
+  }
+
+  // Mobile: inside a section (i>=0) collapse the four stacked slots into one auto-scrolling
+  // marquee line of that service's subs (frees ~70px for the galleries). On the hero (i<0) or
+  // desktop it clears the mode so the real slots render. The marquee track holds TWO identical
+  // copies so the CSS translateX(-50%) loop is seamless.
+  _setSubMarquee(i) {
+    const root = this.el();
+    if (!root) return;
+    const bar = root.querySelector('[data-bar]');
+    const mq = root.querySelector('[data-sub-marquee]');
+    const track = root.querySelector('[data-sub-track]');
+    if (!bar || !mq || !track) return;
+    this._lastSvcI = i;
+    const subs = i >= 0 && SERVICES[i] && SERVICES[i].subs ? SERVICES[i].subs.filter(Boolean) : [];
+    const on = !!this._narrow && subs.length > 0;
+    if (bar.hasAttribute('data-mq') !== on) bar.toggleAttribute('data-mq', on);
+    if (!on) return;
+    const SEP = ' · '; // em-space · em-space
+    const line = subs.join(SEP) + SEP;
+    if (track.__line === line) return; // guard against per-frame churn
+    track.__line = line;
+    track.textContent = '';
+    for (let c = 0; c < 2; c++) {
+      const span = document.createElement('span');
+      span.textContent = line;
+      track.appendChild(span);
+    }
   }
 
   // Scramble a title half to `to` (STUDIO/CAPABILITIES <-> a category word), guarded
@@ -637,6 +667,8 @@ class ServicesController {
         inv.style.width = narrow ? '100%' : '';
       }
     });
+    // Re-evaluate the in-section sub marquee for the new width (desktop <-> mobile resize).
+    this._setSubMarquee(this._lastSvcI != null ? this._lastSvcI : -1);
   }
 
   fitSlots() {

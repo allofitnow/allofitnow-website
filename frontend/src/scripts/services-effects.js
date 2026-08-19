@@ -311,10 +311,10 @@ function buildRealtime(root, master) {
     // Keep the stream in a centred band so large stills don't hang off the top/bottom edges
     // (the top lane used to sit at 5% and get cropped). Phones: a LOWER, wider band so the now
     // ~2× stills clear the title + stacked capability bar (chrome bottom ≈ 40%) and don't crop.
-    // Phones: -0.25× vs before (0.98→0.73) and a wider vertical spread so the fly-across
-    // stills read as a stream, not an overlapping pile.
-    const top = (mob ? 46 : 22) + (lane / Math.max(1, n - 1)) * (mob ? 48 : 54);
-    const scale = mob ? L.scale * 0.73 : L.scale;
+    // Phones: the single-line sub marquee frees the top, so the stream starts higher (36%)
+    // and spreads wider — bigger presence without the overlapping pile (scale kept modest).
+    const top = (mob ? 36 : 22) + (lane / Math.max(1, n - 1)) * (mob ? 52 : 54);
+    const scale = mob ? L.scale * 0.78 : L.scale;
     const fromX = () => window.innerWidth * L.reach + 140;
     const toX = () => -window.innerWidth * L.reach - 140;
     gsap.set(m, { top: top.toFixed(2) + '%', yPercent: -50, zIndex: L.z, scale, x: fromX });

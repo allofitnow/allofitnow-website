@@ -207,6 +207,22 @@ html.lenis, html.lenis body { height: auto; }
   }
   /* Roughly 2× the previous phone sizing (native width + the JS mob scale raised to
      ~1.0 in services-effects.js), with the bands re-spread so they don't collide. */
+  /* ===== In-section sub-service marquee (mobile) =====
+     When the controller sets data-mq on the bar, the 4 stacked slots collapse to one
+     auto-scrolling line — reclaiming ~70px of height for the galleries below. */
+  [data-bar][data-mq] [data-bar-track] { display: none !important; }
+  [data-sub-marquee] {
+    width: 100%; overflow: hidden; white-space: nowrap;
+    -webkit-mask: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+            mask: linear-gradient(to right, transparent, #000 7%, #000 93%, transparent);
+    font-family: 'SN Ja Mono', ui-monospace, Menlo, monospace; font-weight: 300;
+    font-size: 15px; letter-spacing: 0.16em; color: rgb(217, 225, 234);
+  }
+  [data-bar][data-mq] [data-sub-marquee] { display: block !important; }
+  [data-sub-track] { display: inline-flex; will-change: transform; animation: svc-sub-marquee 20s linear infinite; }
+  @keyframes svc-sub-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+  @media (prefers-reduced-motion: reduce) { [data-sub-track] { animation: none; } }
+
   .mwg_effect083 .media { width: clamp(190px, 56vw, 320px); }
   .mwg_effect051 .media { width: clamp(176px, 52vw, 300px); }
   /* Ghetto-but-correct: zoom the WHOLE composited ring with a 2D scale instead of
@@ -220,11 +236,11 @@ html.lenis, html.lenis body { height: auto; }
      gap on any viewport height. Scale is 1.5 (not 2) because on a short mobile-Safari
      viewport that gap is only ~160px — a 2× band (~175px) can't fit and rode up into
      the last sub. 1.5 keeps it bold but always clears the chrome above and copy below. */
-  .mwg_effect061 { --mr-w: 46vw; --mr-h: 25.875vw; transform: translateY(80px) scale(1.5); transform-origin: 50% 50%; }
+  .mwg_effect061 { --mr-w: 46vw; --mr-h: 25.875vw; transform: translateY(44px) scale(2.2); transform-origin: 50% 50%; } /* bigger + re-centered now the one-line marquee shortened the chrome */
   /* SCREENS columns rise through the FULL height on desktop; on a phone the title +
      stacked capability bar own the top ~40%, so confine the gallery to the lower 60%
      (overflow:hidden clips a column as it reaches the fold) — no image behind the chrome. */
-  .svc-panel--screens .mwg_effect051 { top: 40%; }
+  .svc-panel--screens .mwg_effect051 { top: 32%; } /* marquee freed the top → columns fill the lower 68% */
   /* Top gradient keeps the chrome zone clean; the bottom gradient is stronger + taller
      on mobile so the ~2× galleries can't wash out the description sitting over them. */
   .svc-panel--realtime::before, .svc-panel--screens::before {
@@ -234,8 +250,13 @@ html.lenis, html.lenis body { height: auto; }
   }
   /* plate drops below the stacked capability bar (was top:22vh → overlapped the subs);
      leaves room for the CTA below the marquee (no nav on mobile) */
-  .svc-panel--equip .equip { top: 42vh; left: 20px; right: 20px; bottom: 118px; gap: 18px; }
-  .equip-plate img, .equip-plate video { max-width: 82%; max-height: 26vh; }
+  /* Fixed px top (just below the ~240-254px marquee across 375-430w phones) instead of a vh
+     % — a vh top wastes ~75px on tall viewports, starving the plate. Fixed top maximizes the
+     plate's flex area on every height, so the render fills far more of the frame. */
+  .svc-panel--equip .equip { top: 262px; left: 20px; right: 20px; bottom: 96px; gap: 16px; }
+  /* Fill the (now much larger) plate cell rather than cap in vh — a vh cap larger than the
+     cell silently overrides the base max-height:100% and overflows into the fleet + CTA. */
+  .equip-plate img, .equip-plate video { max-width: 96%; max-height: 100%; } /* was a TINY 26vh */
   .equip-marquee { height: 46px; }
   .equip-item { font-size: clamp(14px, 5vw, 22px); }
   .svc-panel--equip .svc-desc { bottom: 104px; }
