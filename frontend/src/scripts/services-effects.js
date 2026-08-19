@@ -131,7 +131,7 @@ export function mountEffects(ctrl) {
   buildRealtime(root, master);
   buildScreens(root, master);
   const orbit = buildMixed(root); // { setBoost, assemble, show(v) }
-  initEquipment(root);
+  const equip = initEquipment(root);
   master.to({ v: 0 }, { v: 1, duration: 0.001 }, 0.999); // pin master duration to 1 (progress == time)
 
   // ---- chrome helpers --------------------------------------------------------------
@@ -197,6 +197,7 @@ export function mountEffects(ctrl) {
     orbit.show(s === 2 ? 1 : 0);
     if (s === 2 && prev !== 2) orbit.assemble();
     if (equipEl) gsap.to(equipEl, { autoAlpha: s === 3 ? 1 : 0, duration: 0.4, overwrite: 'auto' });
+    if (equip && equip.setActive) equip.setActive(s === 3); // plate video plays only in-section, from 0
     const nowSec = s >= 0, wasSec = prev >= 0;
     if (nowSec !== wasSec) {
       setDissolve(nowSec ? 1 : 0);
@@ -421,7 +422,7 @@ function initEquipment(root) {
 
   // The item to sit on the playhead when the section opens (falls back to the first).
   const defaultIdx = Math.max(0, rows.findIndex((r) => r.dataset.center === 'true'));
-  let trackX = 0, activeIdx = -1, imgT = null;
+  let trackX = 0, activeIdx = -1, imgT = null, active = false, plateIsVideo = false;
   const clampU = gsap.utils.clamp;
   const centerOf = (i) => rows[i].offsetLeft + rows[i].offsetWidth / 2;
   const xForIndex = (i) => marquee.clientWidth / 2 - centerOf(i);
@@ -442,6 +443,7 @@ function initEquipment(root) {
     if (ph) ph.textContent = isPh ? r.textContent : '';
     const src = r.dataset.img || '';
     const isVid = !isPh && isVideoSrc(src);
+    plateIsVideo = isVid;
     if (isPh) {
       if (img) { img.removeAttribute('src'); img.style.opacity = '0'; }
       if (vid) { vid.pause && vid.pause(); vid.style.opacity = '0'; }
@@ -450,7 +452,9 @@ function initEquipment(root) {
       if (vid) {
         if (vid.getAttribute('src') !== src) vid.src = src;
         vid.style.opacity = '1';
-        vid.play && vid.play().catch(() => {});
+        // Only autoplay while the equipment section is active — otherwise the plate
+        // holds frame 0 so its intro plays from the start when you scroll in.
+        if (active) { try { vid.currentTime = 0; } catch (_) {} vid.play && vid.play().catch(() => {}); }
       }
     } else {
       if (vid) { vid.pause && vid.pause(); vid.style.opacity = '0'; }
@@ -525,6 +529,18 @@ function initEquipment(root) {
   marquee.addEventListener('pointermove', move);
   marquee.addEventListener('pointerup', up);
   marquee.addEventListener('pointercancel', up);
+
+  // Section-gated playback: the plate video plays ONLY while Equipment is active,
+  // and restarts from 0 each time you scroll in — so its intro is never missed.
+  const setActive = (v) => {
+    const on = !!v;
+    if (on === active) return;
+    active = on;
+    if (!vid) return;
+    if (on && plateIsVideo) { try { vid.currentTime = 0; } catch (_) {} vid.play && vid.play().catch(() => {}); }
+    else if (!on) { vid.pause && vid.pause(); }
+  };
+  return { setActive };
 }
 
 /* ---- Service nav + deep links (homepage → a section; intro labels → scroll) ----- */
