@@ -28,6 +28,18 @@ export default buildConfig({
         ...(config.resolve.alias || {}),
         [path.resolve(__dirname, "lib/transcodeVideo")]: path.resolve(__dirname, "lib/transcodeVideo.mock.js"),
       };
+      // Belt-and-suspenders: even if the alias above doesn't match the relative require in
+      // Media.ts, tell the browser bundle these Node core modules are empty (they only run in
+      // the server-side upload hook) so it never tries to polyfill/resolve them.
+      config.resolve.fallback = {
+        ...(config.resolve.fallback || {}),
+        child_process: false,
+        util: false,
+        fs: false,
+        "fs/promises": false,
+        os: false,
+        path: false,
+      };
       return config;
     },
     // In-editor pane showing the real project page (Projects only). It reflects
