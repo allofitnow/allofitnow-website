@@ -50,8 +50,16 @@ const DEG2RAD = Math.PI / 180;
 // (Spin stays AOIN's scroll-velocity ticker below: baseline spin + faster while you scroll.)
 const ORBIT_R_VW = 0.50;              // ring radius (matches translateZ -50vw)
 const ORBIT_P_VW = 0.50;              // perspective (matches services.css perspective:50vw)
-const ORBIT_FADE_NEAR = 0.14;         // image fully gone once within this (vw) of the camera (~mag 3.5x)
-const ORBIT_FADE_SPAN = 0.16;         // fades over this vw span just before that
+// Fade a front-sweeping image out EARLIER (larger d) so it never composites at the huge
+// magnification that tanks the GPU to 30fps — at scale 2.2 a d=0.14 balloon hit ~170 MPx of
+// video overdraw. Gone by d=0.24 (~mag 2.1×) instead of 0.14 (~3.6×) caps the worst overdraw.
+const ORBIT_FADE_NEAR = 0.24;         // image fully gone once within this (vw) of the camera
+const ORBIT_FADE_SPAN = 0.22;         // fades over this vw span just before that
+// Cap simultaneous orbit video playback. Each PLAYING clip re-composites its texture through the
+// 3D perspective every frame; the profiler showed even one extra pins the section to 30fps, so
+// phones (weaker GPU + limited H.264 streams) get 1 — only the front-most clip animates, the rest
+// hold their last frame (reads like a still) until they rotate forward. Desktop stays generous.
+const orbitMaxPlaying = () => (typeof window !== 'undefined' && window.innerWidth < 768 ? 1 : 8);
 
 const reduce = () => typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
 const clamp01 = (v) => (v < 0 ? 0 : v > 1 ? 1 : v);
@@ -158,10 +166,37 @@ export function mountEffects(ctrl) {
   };
   const playMedia = (el) => { loadMedia(el); if (el.tagName === 'VIDEO') { try { const p = el.play(); if (p) p.catch(() => {}); } catch (_) {} } };
   const pauseMedia = (el) => { if (el.tagName === 'VIDEO') { try { el.pause(); } catch (_) {} } };
+
+  // Mobile decode governor. The profiler showed a hard hardware limit: >3 concurrent 2D video
+  // decodes (RTC/Screens) OR >1 through the 3D orbit drop the section from 60→30fps. Phones are
+  // worse. So on mobile we load every still but only PLAY the most-visible few; the rest hold
+  // their last frame (they still fly/rise via transform — the motion is the layout, not the clip).
+  const MOB = () => typeof window !== 'undefined' && window.innerWidth < 768;
+  const visArea = (el) => {
+    const b = el.getBoundingClientRect();
+    const iw = Math.max(0, Math.min(b.right, window.innerWidth) - Math.max(b.left, 0));
+    const ih = Math.max(0, Math.min(b.bottom, window.innerHeight) - Math.max(b.top, 0));
+    return iw * ih;
+  };
+  // Load all `els`; keep only the `n` most on-screen videos playing, pause the rest (idempotent).
+  const capPlayVideos = (els, n) => {
+    const vids = [];
+    els.forEach((el) => { loadMedia(el); if (el.tagName === 'VIDEO') vids.push(el); });
+    vids.sort((a, b) => visArea(b) - visArea(a));
+    for (let i = 0; i < vids.length; i++) {
+      const want = i < n && visArea(vids[i]) > 0;
+      if (want && vids[i].paused) { const p = vids[i].play(); if (p) p.catch(() => {}); }
+      else if (!want && !vids[i].paused) vids[i].pause();
+    }
+  };
+  const MOB_2D_CAP = 1; // RTC/Screens; the orbit (2) self-caps to 1 in its ticker; equip self-manages
+
   const setSectionMedia = (s) => {
     sectionMedia.forEach((els, i) => {
-      if (i === s) els.forEach(playMedia);              // active: load + play
-      else if (i === s + 1 && s >= 0) els.forEach(loadMedia); // next: preload once we're actually in a section
+      if (i === s) {
+        if (MOB() && (i === 0 || i === 1)) capPlayVideos(els, MOB_2D_CAP); // active 2D section: cap decodes
+        else els.forEach(playMedia);                    // desktop, or orbit/equip (self-capped)
+      } else if (i === s + 1 && s >= 0) els.forEach(loadMedia); // next: preload once we're actually in a section
       else els.forEach(pauseMedia);                     // others: pause (stay loaded once fetched)
     });
   };
@@ -251,6 +286,7 @@ export function mountEffects(ctrl) {
   // ---- the single trigger ----------------------------------------------------------
   // We scrub the master timeline MANUALLY from self.progress (already smoothed by Lenis) so the
   // galleries, field dissolve, orbit speed, and chrome all share one synced source of truth.
+  let govRaf = 0;
   const st = ScrollTrigger.create({
     trigger: scrollDist,
     start: 'top top',
@@ -261,6 +297,10 @@ export function mountEffects(ctrl) {
       orbit.setBoost(p, progScroll ? 0 : self.getVelocity());
       driveSection(p);
       driveReveal(p);
+      // Re-cap which 2D videos decode as clips scroll through view (rAF-coalesced, mobile only).
+      if (MOB() && (lastSection === 0 || lastSection === 1) && !govRaf) {
+        govRaf = requestAnimationFrame(() => { govRaf = 0; capPlayVideos(sectionMedia[lastSection], MOB_2D_CAP); });
+      }
     },
     onRefresh: (self) => {
       master.invalidate();
@@ -371,6 +411,10 @@ function buildMixed(root) {
   medias.forEach((m, i) => gsap.set(m, { z: '-50vw', rotationY: angle * i }));
   gsap.set(el, { autoAlpha: 0 });
 
+  // Reused per-frame scratch: opacities + the video-slot indices (for the decode cap).
+  const _orbitOps = new Array(medias.length).fill(0);
+  const _orbitVidIdx = medias.map((m, i) => (m.tagName === 'VIDEO' ? i : -1)).filter((i) => i >= 0);
+
   // one ticker writer integrates angular velocity into rotationY (baseline spin + scroll boost)
   let orbitRot = 0, angVel = ORBIT_BASE, targetVel = ORBIT_BASE, visible = false;
   gsap.ticker.add((t, dt) => {
@@ -388,9 +432,24 @@ function buildMixed(root) {
     gsap.set(container, { rotationY: orbitRot });
     // Drift fade: d = an image's distance in front of the camera (vw). As it sweeps to the front
     // (d → 0) it would balloon and clip off the edges, so fade it out over the last band first.
+    const ops = _orbitOps;
     for (let i = 0; i < medias.length; i++) {
       const d = ORBIT_P_VW + ORBIT_R_VW * Math.cos((angle * i + orbitRot) * DEG2RAD);
-      medias[i].style.opacity = String(clamp01((d - ORBIT_FADE_NEAR) / ORBIT_FADE_SPAN));
+      const o = clamp01((d - ORBIT_FADE_NEAR) / ORBIT_FADE_SPAN);
+      ops[i] = o;
+      medias[i].style.opacity = String(o);
+    }
+    // Cap concurrent video DECODE to the ORBIT_MAX_PLAYING most-visible clips — the profiler
+    // showed 6-9 simultaneous H.264 streams (not composite area) pin the section to 30fps; a
+    // paused clip just holds its last frame (reads like a still) until it rotates back to the
+    // front. Hysteresis via __orbitPlaying so we only toggle on rank/threshold crossings.
+    _orbitVidIdx.sort((a, b) => ops[b] - ops[a]);
+    const cap = orbitMaxPlaying();
+    for (let r = 0; r < _orbitVidIdx.length; r++) {
+      const m = medias[_orbitVidIdx[r]];
+      const wantPlay = r < cap && ops[_orbitVidIdx[r]] > 0.02;
+      if (wantPlay && m.__orbitPlaying === false) { m.__orbitPlaying = true; const p = m.play(); if (p) p.catch(() => {}); }
+      else if (!wantPlay && m.__orbitPlaying !== false) { m.__orbitPlaying = false; m.pause(); }
     }
   });
 
