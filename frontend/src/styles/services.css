@@ -209,7 +209,13 @@ html.lenis, html.lenis body { height: auto; }
      ~1.0 in services-effects.js), with the bands re-spread so they don't collide. */
   .mwg_effect083 .media { width: clamp(190px, 56vw, 320px); }
   .mwg_effect051 .media { width: clamp(176px, 52vw, 300px); }
-  .mwg_effect061 { --mr-w: 46vw; --mr-h: 25.875vw; } /* 2× the orbit slot; ring re-spaced for fewer overlaps */
+  /* Ghetto-but-correct: zoom the WHOLE composited ring with a 2D scale instead of
+     enlarging the slot (--mr-w), which would tighten the arc spacing and worsen the
+     wrap-around overlap. Scaling the outer element keeps the ring's internal spacing
+     identical — it just blows the thin strip up into a bold band. gsap only writes to
+     .container (rotationY) and the imgs (opacity), never to .mwg_effect061's transform,
+     so this is safe; overflow:hidden scales with it so nothing new clips. */
+  .mwg_effect061 { --mr-w: 46vw; --mr-h: 25.875vw; transform: scale(2); transform-origin: 50% 50%; }
   /* SCREENS columns rise through the FULL height on desktop; on a phone the title +
      stacked capability bar own the top ~40%, so confine the gallery to the lower 60%
      (overflow:hidden clips a column as it reaches the fold) — no image behind the chrome. */
