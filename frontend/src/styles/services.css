@@ -253,7 +253,9 @@ html.lenis, html.lenis body { height: auto; }
   /* Fixed px top (just below the ~240-254px marquee across 375-430w phones) instead of a vh
      % — a vh top wastes ~75px on tall viewports, starving the plate. Fixed top maximizes the
      plate's flex area on every height, so the render fills far more of the frame. */
-  .svc-panel--equip .equip { top: 262px; left: 20px; right: 20px; bottom: 96px; gap: 16px; }
+  /* bottom:150 lifts the fleet marquee ABOVE the body text (svc-desc at bottom:104) so the two
+     never overlap when the active item has a tip; order is plate → fleet marquee → body → CTA. */
+  .svc-panel--equip .equip { top: 262px; left: 20px; right: 20px; bottom: 150px; gap: 16px; }
   /* Fill the (now much larger) plate cell rather than cap in vh — a vh cap larger than the
      cell silently overrides the base max-height:100% and overflows into the fleet + CTA. */
   .equip-plate img, .equip-plate video { max-width: 96%; max-height: 100%; } /* was a TINY 26vh */
