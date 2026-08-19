@@ -194,26 +194,41 @@ html.lenis, html.lenis body { height: auto; }
 .svc-nav-row.is-active .svc-nav-idx, .svc-nav-row:hover .svc-nav-idx { color: rgba(217, 225, 234, 0.7); }
 
 @media (max-width: 768px) {
+  /* Bottom chrome stacks vertically on phones (desktop spreads it across three
+     corners). The numeric nav is hidden on mobile (scroll drives the sections), so
+     the bottom is just: CTA pill (~40px, from ServicesBar) → description (110px).
+     The description drops its own gradient — the section scrim below + a text-shadow
+     carry it over the galleries. text-wrap:pretty kills last-line widows in the copy. */
   .svc-desc {
-    left: 20px; right: 20px; bottom: 54px; max-width: none;
-    padding-top: 16px; background: linear-gradient(to top, #000 72%, rgba(0, 0, 0, 0) 100%);
+    left: 20px; right: 20px; bottom: 110px; max-width: none;
+    font-size: 13.5px; line-height: 1.42; background: none;
+    text-shadow: 0 1px 16px rgba(0, 0, 0, 0.92), 0 0 3px rgba(0, 0, 0, 0.85);
+    text-wrap: pretty;
   }
-  .mwg_effect083 .media { width: clamp(104px, 36vw, 185px); }
-  .mwg_effect051 .media { width: clamp(96px, 34vw, 165px); }
-  .mwg_effect061 { --mr-w: 26vw; --mr-h: 14.625vw; } /* narrower so 12 slots don't overlap on phones (mobile is a deferred pass) */
-  /* deeper scrim so the title + stacked bar stay legible over the moving galleries */
+  /* Roughly 2× the previous phone sizing (native width + the JS mob scale raised to
+     ~1.0 in services-effects.js), with the bands re-spread so they don't collide. */
+  .mwg_effect083 .media { width: clamp(190px, 56vw, 320px); }
+  .mwg_effect051 .media { width: clamp(176px, 52vw, 300px); }
+  .mwg_effect061 { --mr-w: 46vw; --mr-h: 25.875vw; } /* 2× the orbit slot; ring re-spaced for fewer overlaps */
+  /* SCREENS columns rise through the FULL height on desktop; on a phone the title +
+     stacked capability bar own the top ~40%, so confine the gallery to the lower 60%
+     (overflow:hidden clips a column as it reaches the fold) — no image behind the chrome. */
+  .svc-panel--screens .mwg_effect051 { top: 40%; }
+  /* Top gradient keeps the chrome zone clean; the bottom gradient is stronger + taller
+     on mobile so the ~2× galleries can't wash out the description sitting over them. */
   .svc-panel--realtime::before, .svc-panel--screens::before {
     background:
-      linear-gradient(to bottom, rgba(0, 0, 0, 0.84) 0%, rgba(0, 0, 0, 0) 44%),
-      linear-gradient(to top, rgba(0, 0, 0, 0.86) 0%, rgba(0, 0, 0, 0) 30%);
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0) 40%),
+      linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.55) 24%, rgba(0, 0, 0, 0) 46%);
   }
-  .svc-panel--equip .equip { top: 22vh; left: 20px; right: 20px; bottom: 130px; gap: 18px; }
-  .equip-plate img, .equip-plate video { max-width: 82%; max-height: 30vh; }
+  /* plate drops below the stacked capability bar (was top:22vh → overlapped the subs);
+     leaves room for the CTA below the marquee (no nav on mobile) */
+  .svc-panel--equip .equip { top: 42vh; left: 20px; right: 20px; bottom: 118px; gap: 18px; }
+  .equip-plate img, .equip-plate video { max-width: 82%; max-height: 26vh; }
   .equip-marquee { height: 46px; }
   .equip-item { font-size: clamp(14px, 5vw, 22px); }
-  .svc-panel--equip .svc-desc { bottom: 54px; }
-  /* nav → a compact horizontal row along the very bottom; desc sits just above it */
-  .svc-nav { left: 20px; right: 20px; bottom: 18px; flex-direction: row; justify-content: flex-end; align-items: center; gap: 16px; }
-  .svc-nav-row { gap: 6px; }
-  .svc-nav-label { display: none; }
+  .svc-panel--equip .svc-desc { bottom: 104px; }
+  /* Bottom-right service nav is hidden on phones — the sections are scroll-driven,
+     so the numeric index row is redundant chrome and only crowds the bottom. */
+  .svc-nav { display: none; }
 }

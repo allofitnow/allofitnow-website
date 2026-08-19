@@ -286,9 +286,10 @@ function buildRealtime(root, master) {
     const L = LAYERS[i % LAYERS.length];             // depth: reach (speed) + scale
     const lane = (i * 7) % n;                         // shuffle into evenly-spread vertical lanes
     // Keep the stream in a centred band so large stills don't hang off the top/bottom edges
-    // (the top lane used to sit at 5% and get cropped). Phones stay in a tighter mid band.
-    const top = (mob ? 36 : 22) + (lane / Math.max(1, n - 1)) * (mob ? 40 : 54);
-    const scale = mob ? L.scale * 0.72 : L.scale;
+    // (the top lane used to sit at 5% and get cropped). Phones: a LOWER, wider band so the now
+    // ~2× stills clear the title + stacked capability bar (chrome bottom ≈ 40%) and don't crop.
+    const top = (mob ? 48 : 22) + (lane / Math.max(1, n - 1)) * (mob ? 40 : 54);
+    const scale = mob ? L.scale * 0.98 : L.scale;
     const fromX = () => window.innerWidth * L.reach + 140;
     const toX = () => -window.innerWidth * L.reach - 140;
     gsap.set(m, { top: top.toFixed(2) + '%', yPercent: -50, zIndex: L.z, scale, x: fromX });
@@ -325,7 +326,7 @@ function buildScreens(root, master) {
     const left = mob
       ? MARGIN + (nc > 1 ? col / (nc - 1) : 0.5) * packTravel   // phones: keep everything on-screen
       : 50 + (col - mid) * pitch - imgPct / 2;                  // desktop: fixed pitch, outer lanes bleed off-edge
-    const scale = mob ? L.scale * 0.78 : L.scale;
+    const scale = mob ? L.scale * 1.0 : L.scale;
     const fromY = () => window.innerHeight * L.reach + 120;
     const toY = () => -window.innerHeight * L.reach - 120;
     gsap.set(m, { left: left.toFixed(2) + '%', zIndex: L.z, scale, y: fromY });

@@ -142,6 +142,19 @@ const { href = '#contact', label, ctas = [], iconRegister = 'dotted' } = Astro.p
   .sbar__cta:focus-visible .sbar__mark { transform: translateX(4px); }
   .sbar__type-arrow { display: block; font-size: 18px; line-height: 1; }
 
+  /* Phones: the longest CTA line (~44 chars) overflows a one-line nowrap pill and
+     clips off the right edge. Constrain the pill to the margins and let the label
+     wrap to two centred lines (min-width:0 so the flex label can actually shrink). */
+  @media (max-width: 768px) {
+    .sbar { bottom: var(--bar-bottom-m, 40px); padding: 0 16px; }
+    .sbar__cluster { max-width: 100%; }
+    .sbar__cta { white-space: normal; font-size: 12px; letter-spacing: 0.03em; }
+    /* text-wrap:balance evens the two lines so the last one is never a lone widow
+       word ("…RENDER TIME" instead of "…RENDER / TIME"). */
+    .sbar__label { padding: 8px 14px; text-align: center; line-height: 1.22; min-width: 0; text-wrap: balance; }
+    .sbar__mark { width: 42px; }
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .sbar { transition-duration: 1ms; }
     .sbar__cta:hover .sbar__label { animation: none; -webkit-text-fill-color: rgb(217, 225, 234); }
