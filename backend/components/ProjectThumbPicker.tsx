@@ -11,7 +11,7 @@ import { useField } from "payload/components/forms";
  */
 
 type Media = { url?: string; sizes?: Record<string, { url?: string } | undefined> };
-type Project = { id: string; title?: string; thumb?: Media | string | null };
+type Project = { id: string; title?: string; tour?: string; code?: string; thumb?: Media | string | null };
 
 const thumbUrl = (t: Project["thumb"]): string => {
   if (!t || typeof t === "string") return "";
@@ -73,36 +73,47 @@ const ProjectThumbPicker: React.FC<{ path: string }> = ({ path }) => {
             <button
               key={p.id}
               type="button"
-              title={p.title || ""}
+              title={[p.title, p.tour, p.code].filter(Boolean).join(" · ")}
               aria-pressed={isSel}
               onClick={() => setValue(isSel ? null : p.id)}
               style={{
-                position: "relative",
+                display: "flex",
+                flexDirection: "column",
                 padding: 0,
                 margin: 0,
                 cursor: "pointer",
-                aspectRatio: "16 / 10",
                 borderRadius: 4,
                 overflow: "hidden",
-                background: "var(--theme-elevation-100, #eee)",
+                textAlign: "left",
                 border: isSel
                   ? "2px solid var(--theme-success-500, #1a8f6a)"
                   : "1px solid var(--theme-elevation-200, rgba(0,0,0,0.15))",
                 boxShadow: isSel ? "0 0 0 2px var(--theme-success-500, #1a8f6a)" : "none",
+                background: "var(--theme-elevation-50, transparent)",
                 opacity: selected && !isSel ? 0.72 : 1,
                 transition: "opacity 120ms ease, box-shadow 120ms ease",
               }}
             >
-              {url ? (
-                <img
-                  src={url}
-                  alt={p.title || ""}
-                  loading="lazy"
-                  style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
-                />
-              ) : (
-                <span style={{ fontSize: 10, padding: 4, display: "block" }}>{p.title || "untitled"}</span>
-              )}
+              <span style={{ display: "block", aspectRatio: "16 / 10", background: "var(--theme-elevation-100, #eee)" }}>
+                {url ? (
+                  <img
+                    src={url}
+                    alt={p.title || ""}
+                    loading="lazy"
+                    style={{ width: "100%", height: "100%", objectFit: "cover", display: "block" }}
+                  />
+                ) : null}
+              </span>
+              <span style={{ display: "block", padding: "4px 6px", minWidth: 0 }}>
+                <span style={{ display: "block", fontSize: 11, fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                  {p.title || "Untitled"}
+                </span>
+                {p.tour ? (
+                  <span style={{ display: "block", fontSize: 10, opacity: 0.6, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                    {p.tour}
+                  </span>
+                ) : null}
+              </span>
             </button>
           );
         })}

@@ -60,9 +60,15 @@ const Services: GlobalConfig = {
             },
             {
               name: "image",
-              type: "relationship",
+              type: "upload",
               relationTo: "media",
-              admin: { description: "The still shown. Optional when a Project is set — then the project's key image is used." },
+              admin: { description: "The still shown — drag in or pick, shows a thumbnail. Optional when a Project is set (then the project's key image is used)." },
+            },
+            {
+              name: "wide",
+              type: "checkbox",
+              label: "Full width (skip 16:9 crop)",
+              admin: { description: "On: show the whole image at its natural shape instead of cropping to 16:9. Use for panoramas / stills you want to see in full." },
             },
             {
               name: "project",

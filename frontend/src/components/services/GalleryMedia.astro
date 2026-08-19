@@ -11,12 +11,15 @@ interface Props {
   ar: string;
 }
 const { item, ar } = Astro.props;
-const { src, href, slug, title, tour, caps, video } = item;
+const { src, href, slug, title, tour, caps, video, ar: itemAr } = item;
+// A "full width" still carries its own natural aspect (item.ar); otherwise use the
+// section default passed in (16:9).
+const finalAr = itemAr || ar;
 ---
 {video ? (
   <video
     class="media"
-    style={`aspect-ratio:${ar}`}
+    style={`aspect-ratio:${finalAr}`}
     src={src}
     autoplay
     muted
@@ -32,7 +35,7 @@ const { src, href, slug, title, tour, caps, video } = item;
 ) : (
   <img
     class="media"
-    style={`aspect-ratio:${ar}`}
+    style={`aspect-ratio:${finalAr}`}
     src={src}
     alt=""
     loading="lazy"

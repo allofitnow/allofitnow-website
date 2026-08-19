@@ -173,7 +173,12 @@ export function mapPayloadServiceSection(row: any): ServiceSection {
     // Video vs image — from the media's mimeType, with a filename-extension fallback.
     const mime = media && typeof media.mimeType === 'string' ? media.mimeType : '';
     const video = /^video\//i.test(mime) || /\.(webm|mp4|m4v|mov)(\?|$)/i.test(src);
-    return { src, href, slug: proj?.slug, title: proj?.title, tour: proj?.tour, caps, slot, video };
+    // "Full width" toggle → render at the media's natural aspect (uncropped) instead of 16:9.
+    const wide = !!(it && it.wide);
+    const w = media && typeof media.width === 'number' ? media.width : 0;
+    const h = media && typeof media.height === 'number' ? media.height : 0;
+    const ar = wide && w > 0 && h > 0 ? `${w} / ${h}` : undefined;
+    return { src, href, slug: proj?.slug, title: proj?.title, tour: proj?.tour, caps, slot, video, wide, ar };
   }).filter((g: any) => g.src !== '');
   // Sub-service labels (array of { label }) — trimmed + de-blanked. Empty → the seed defaults win downstream.
   const subs = Array.isArray(row.subs)

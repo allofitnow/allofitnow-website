@@ -24,6 +24,12 @@ export interface GalleryItem {
   /** True when the media is a video (mimeType video/*) — rendered as an autoplay-muted-loop
    *  <video> instead of an <img>. Set by the CMS mapper; seed stills are always images. */
   video?: boolean;
+  /** CMS "full width" toggle — show the still at its natural shape (uncropped) instead of the
+   *  default 16:9. */
+  wide?: boolean;
+  /** Natural aspect-ratio string (e.g. '21 / 9') for a `wide` still, from the media's dimensions.
+   *  Undefined → the section's default (16:9). */
+  ar?: string;
 }
 
 export interface ServiceSection {
