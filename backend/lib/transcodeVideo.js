@@ -21,7 +21,9 @@ const execFileP = promisify(execFile);
 
 const FF_ARGS = (inPath, outPath) => [
   "-y", "-i", inPath,
-  "-vf", "scale='min(1280,iw)':-2:flags=lanczos",
+  // trunc(.../2)*2 forces an EVEN width (yuv420p/libx264 reject odd dims — e.g. a 917×341
+  // source); -2 does the same for height. Quotes protect the comma in min() from the filter parser.
+  "-vf", "scale='trunc(min(1280,iw)/2)*2':-2:flags=lanczos",
   "-c:v", "libx264", "-profile:v", "high", "-pix_fmt", "yuv420p",
   "-crf", "26", "-preset", "slow",
   "-movflags", "+faststart", "-an", "-r", "30",
