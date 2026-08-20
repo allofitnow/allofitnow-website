@@ -161,6 +161,9 @@ const rows = Math.ceil(members.length / columns);
     line-height: var(--leading-body);
     color: var(--text-primary);
     text-wrap: pretty;
+    /* The profile copy is authored in sentence case (studio.ts); opt it out of the site-wide
+       uppercase transform so it reads as written rather than shouting. */
+    text-transform: none;
   }
 
   .team {
@@ -220,6 +223,34 @@ const rows = Math.ceil(members.length / columns);
   @media (max-width: 720px) {
     .about {
       padding: 0 var(--margin-edge-mobile) clamp(80px, 14vh, 140px);
+    }
+    /* Statement wraps instead of overflowing — nowrap is a desktop-rhythm choice; on a phone
+       the lines run off the edge. Wrapping only kicks in when a line can't fit. */
+    .statement {
+      font-size: clamp(20px, 5.8vw, 30px);
+    }
+    .statement .line {
+      white-space: normal;
+    }
+    /* Profile: the label stacks over ONE full-width column (was a 200px label | content grid
+       that squeezed the copy off-screen), and the two paragraphs wrap to a single column. */
+    .col {
+      grid-template-columns: 1fr;
+      gap: 14px;
+    }
+    .profile {
+      grid-template-columns: 1fr;
+      gap: 28px;
+    }
+    /* Roster: one column so the nowrap names + titles never overflow their cells. */
+    .roster {
+      grid-auto-flow: row;
+      grid-template-columns: 1fr;
+      grid-template-rows: none;
+    }
+    /* No hover on touch — reveal the titles by default so they aren't stuck hidden below the mask. */
+    .words > span {
+      transform: none;
     }
   }
 
