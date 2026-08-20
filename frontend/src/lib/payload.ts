@@ -200,6 +200,25 @@ export async function getServicesGlobal(): Promise<ServiceSection[]> {
   }
 }
 
+/** Fetch the About page team roster from the `about` global — array order is render order.
+ *  `[]` on any error/empty/404 so the frontend falls back to its local seed (never blanks the
+ *  page while the global is unpopulated). depth=0: the roster is plain text, no relations. */
+export async function getAboutTeam(): Promise<{ name: string; title: string }[]> {
+  try {
+    const res = await fetch(`${API_URL}/api/globals/about?depth=0`);
+    if (!res.ok) return [];
+    const data = await res.json();
+    return (data.team ?? [])
+      .map((m: any) => ({
+        name: typeof m?.name === 'string' ? m.name.trim() : '',
+        title: typeof m?.title === 'string' ? m.title.trim() : '',
+      }))
+      .filter((m: { name: string }) => m.name !== '');
+  } catch {
+    return [];
+  }
+}
+
 /** Fetch a single project by slug. */
 export async function getProject(slug: string): Promise<Project | undefined> {
   const res = await fetch(

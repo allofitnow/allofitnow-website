@@ -1,11 +1,11 @@
 ---
 import Base from '@/layouts/Base.astro';
-import { meta, statement, band, profile, roster } from '@/data/studio';
+import { meta, statement, band, profile, getRoster } from '@/data/studio';
 
 /* Content comes from @/data/studio. Labels, layout and motion are decisions of
    this file, not of the data. Nav + FootBar come from Base (site-wide chrome). */
 
-const members = roster();
+const members = await getRoster();
 
 // Section labels live here, not in the data: they name the page's structure.
 const labels = { about: 'ABOUT', profile: 'PROFILE', team: 'TEAM' };

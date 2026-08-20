@@ -12,6 +12,7 @@ import Users from "./collections/Users";
 import Homepage from "./globals/Homepage";
 import Settings from "./globals/Settings";
 import Services from "./globals/Services";
+import About from "./globals/About";
 
 export default buildConfig({
   admin: {
@@ -50,7 +51,7 @@ export default buildConfig({
     },
   },
   collections: [Users, Media, Projects, ServiceCategories, Equipment],
-  globals: [Homepage, Settings, Services],
+  globals: [Homepage, Settings, Services, About],
   db: mongooseAdapter({
     url: process.env.DATABASE_URI || "mongodb://localhost:27017/payload",
   }),

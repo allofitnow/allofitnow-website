@@ -1,7 +1,8 @@
-// Studio (About) page content — hardcoded now, Payload-shaped for phase 2.
-// Copy is supplied by the studio; do not rewrite it here. The contract for
-// every field (and what deliberately is NOT a field) shipped with the redesign
-// handoff (ABOUT-PAYLOAD.md). Rendered by src/pages/studio.astro.
+// Studio (About) page content. The TEAM roster is now CMS-editable via the Payload `about`
+// global — getRoster() merges it over the seed below (see the note on `team`). The statement,
+// profile prose and band images are still hardcoded here (edit in this file). Copy is supplied
+// by the studio; do not rewrite it here. The contract for every field (and what deliberately is
+// NOT a field) shipped with the redesign handoff (ABOUT-PAYLOAD.md). Rendered by src/pages/studio.astro.
 
 /** A Payload media upload, as the REST/GraphQL response returns it. Phase 1
  *  values point at files in /public/assets; phase 2 they arrive from the API
@@ -61,10 +62,10 @@ export const profile: string[] = [
   "Our passion lies at the intersection of creativity and innovation, partnering with top brands, artists, and events to deliver unforgettable experiences. Utilizing industry-leading tools such as Notch and Disguise, we bring projects to life in real-time, whether it's for concerts, permanent installations, or virtual production. At AOIN, we strive to exceed expectations and redefine the potential of digital storytelling.",
 ];
 
-// Roster. `order` decides the render position, not array position — Payload's
-// drag-sort writes a number, and a hand edit here should behave the same way.
-// Numbered in tens so a new hire slots in without renumbering the file.
-// Currently alphabetical by surname, Jude last.
+// Roster SEED — the fallback when the CMS `about` global is empty/unreachable (getRoster()
+// prefers the CMS). In the CMS, array order is render order (drag to reorder); here, `order`
+// decides render position, not array position. Numbered in tens so a new hire slots in without
+// renumbering the file. Currently alphabetical by surname, Jude last.
 export const team: TeamMember[] = [
   { name: 'CHRISTOPHER BENZ', title: 'TITLE TBD', order: 10 },
   { name: 'MYKEL BOOKER', title: 'SYSTEMS ENGINEER', order: 20 },
@@ -79,8 +80,20 @@ export const team: TeamMember[] = [
   { name: 'JUDE', title: 'TITLE TBD', order: 110 },
 ];
 
-/** Roster in render order. Sorted copy — `team` itself is never mutated. */
+/** Roster in render order (SEED). Sorted copy — `team` itself is never mutated.
+ *  This is the fallback; getRoster() below prefers the CMS when it's populated. */
 export const roster = (): TeamMember[] => [...team].sort((a, b) => a.order - b.order);
+
+/** Team roster for the page. Prefers the CMS `about` global (drag-sortable — array order
+ *  IS render order, mapped onto `order` so the shape is unchanged), and falls back to the
+ *  local seed above when the global is empty or the API is unreachable. This is the accessor
+ *  the page should call; `roster()` stays the pure-seed path it delegates to. */
+export async function getRoster(): Promise<TeamMember[]> {
+  const { getAboutTeam } = await import('@/lib/payload');
+  const cms = await getAboutTeam();
+  if (!cms.length) return roster();
+  return cms.map((m, i) => ({ name: m.name, title: m.title, order: (i + 1) * 10 }));
+}
 
 /* Every title is required: a missing one is a content gap that should stop the
    build, not ship as an empty line. This runs at module scope, so `astro build`
