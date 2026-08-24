@@ -137,7 +137,15 @@ const Projects: CollectionConfig = {
           required: true,
           defaultValue: "full",
           options: [
-            { label: "Full width — 1 image", value: "full" },
+            // Full width comes in four heights. 16/7 was the only one for a long
+            // time and it fits almost nothing: measured across the media library,
+            // 122 of 125 assets are TALLER than it, so they lose their top and
+            // bottom — median 22%. 16/9 fits 61 of them outright, and 3/1 is for
+            // the handful of true panoramas that 16/7 was cutting at the sides.
+            { label: "Full width, 16:9 — 1 image", value: "full-16-9" },
+            { label: "Full width, 2:1 — 1 image", value: "full-2-1" },
+            { label: "Full width, 16:7 — 1 image", value: "full" },
+            { label: "Full width, 3:1 (panorama) — 1 image", value: "full-3-1" },
             { label: "Two-up, equal — 2 images", value: "two-up" },
             { label: "Split, big left (8·4) — 2 images", value: "split-8-4" },
             { label: "Split, big right (5·7) — 2 images", value: "split-5-7" },

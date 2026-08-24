@@ -44,6 +44,9 @@ const metaCols: { label: string; values: string[] }[] = [
 const GALLERY_SLOTS: Record<string, number> = {
   full: 1,
   'two-up': 2,
+  'full-16-9': 1,
+  'full-2-1': 1,
+  'full-3-1': 1,
   'split-8-4': 2,
   'split-5-7': 2,
   'three-up': 3,
@@ -383,6 +386,11 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
   /* Layout presets — fixed aspect ratios per slot, keeping the page's rhythm.
      The two asymmetric splits mirror the old a/b and c/d tiles. */
   .pp__gRow--full .pp__g { grid-column: 1 / -1; aspect-ratio: 16 / 7; }
+  /* The same full-width row at other heights, so an editor can match the row to
+     the picture instead of the picture being cropped to the row. */
+  .pp__gRow--full-16-9 .pp__g { grid-column: 1 / -1; aspect-ratio: 16 / 9; }
+  .pp__gRow--full-2-1 .pp__g  { grid-column: 1 / -1; aspect-ratio: 2 / 1; }
+  .pp__gRow--full-3-1 .pp__g  { grid-column: 1 / -1; aspect-ratio: 3 / 1; }
   .pp__gRow--two-up .pp__g { grid-column: span 6; aspect-ratio: 4 / 3; }
   .pp__gRow--split-8-4 .pp__g--slot1 { grid-column: 1 / span 8; aspect-ratio: 16 / 9; }
   .pp__gRow--split-8-4 .pp__g--slot2 { grid-column: 9 / span 4; align-self: end; aspect-ratio: 1 / 1; }

@@ -104,10 +104,27 @@ Use the `create_portfolio` macro via Claude Code to ingest content and trigger t
    ```
 
 **Payload shape gotchas** (fail the build/seed otherwise):
-- `writeup.body` must be `[{paragraph: "..."}, ...]` — never plain strings
-- `gallery` must be `[{image: "<mediaId>"}, ...]`
-- `thumb`/`hero` send the raw media ID string
-- `capabilities` is a closed taxonomy: `REAL-TIME CONTENT`, `SCREENS PRODUCTION`, `MIXED REALITY`, `EQUIPMENT RENTAL`
+
+- **`image`** is the one key media ID, used as *both* the work-list thumbnail
+  and the project hero. There is no separate `hero`/`thumb` pair.
+- **`gallery`** is an array of **rows**, not images:
+  ```json
+  [{ "layout": "split-8-4", "images": [{ "image": "<mediaId>" }, { "image": "<mediaId>" }] }]
+  ```
+  `layout` is one of `full` (1 image), `two-up` (2), `split-8-4` (2),
+  `split-5-7` (2), `three-up` (3). Anything else is rejected by the select.
+- **`writeup`** is Slate rich text — an array of nodes, where a paragraph is
+  `{ "children": [{ "text": "…" }] }`. Marks are leaf flags (`bold`, `italic`,
+  `underline`, `code`); `h1`–`h6`, `blockquote`, `ul`/`ol`/`li` and `link`
+  carry a `type`. See `frontend/src/lib/richtext.ts` for exactly what renders —
+  notably **strikethrough does not**, even though the editor offers it.
+- **`capabilities`** is a closed taxonomy: `REAL-TIME CONTENT`,
+  `SCREENS PRODUCTION`, `MIXED REALITY`, `EQUIPMENT RENTAL`. Indexing only —
+  it does **not** appear on the project page.
+- **`services`** is the field that *does* print in the project-page meta block.
+  It is a `hasMany` relationship to `service-categories`, so it takes **IDs**,
+  not labels.
+- Required: `title`, `slug`, `year`, `capabilities`, `image`.
  
 ---
 
