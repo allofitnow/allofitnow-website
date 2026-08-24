@@ -146,6 +146,12 @@ const Projects: CollectionConfig = {
             { label: "Full width, 2:1 — 1 image", value: "full-2-1" },
             { label: "Full width, 16:7 — 1 image", value: "full" },
             { label: "Full width, 3:1 (panorama) — 1 image", value: "full-3-1" },
+            // 19/5 is exactly 3.8:1, and 27/4 exactly 6.75:1 — written as whole
+            // numbers because the value becomes a CSS class, where a dot would
+            // need escaping. Nothing in the library today is this wide; these
+            // are for LED-canvas exports, where the panorama IS the deliverable.
+            { label: "Full width, 3.8:1 — 1 image", value: "full-19-5" },
+            { label: "Full width, 27:4 (LED canvas) — 1 image", value: "full-27-4" },
             { label: "Two-up, equal — 2 images", value: "two-up" },
             { label: "Split, big left (8·4) — 2 images", value: "split-8-4" },
             { label: "Split, big right (5·7) — 2 images", value: "split-5-7" },
