@@ -391,12 +391,14 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 4;
     line-clamp: 4;
+    /* Clipped in BOTH states, not just when folded: the closing animation
+       shrinks the box while the text is still fully laid out inside it, and
+       anything visible would spill over the gallery on the way down. */
     overflow: hidden;
   }
   [data-pp-summary][data-open='true'] .pp__descText {
     -webkit-line-clamp: unset;
     line-clamp: unset;
-    overflow: visible;
   }
   .pp__more {
     margin-top: 14px;
@@ -995,6 +997,50 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     const button = box?.querySelector<HTMLButtonElement>('.pp__more');
     if (!box || !text || !button) return;
 
+    // Height cannot transition to or from `auto`, so the fold animates between
+    // two numbers measured either side of the clamp coming off. The page
+    // reflows around it for free, because the summary is in normal flow —
+    // the gallery below simply gets pushed.
+    //
+    // The curve is --bar-ease, the house 'glide' the bars and the contact
+    // modal already run on, and NOT --ease-brand. Sampled on the real 333px
+    // reveal, the brand curve is 49% done at 47ms and 81% at 92ms: built for
+    // flights, where a fast start reads as decisive, but on a block of text it
+    // reads as a snap with a long tail rather than as copy unfolding. The
+    // glide runs 13 / 36 / 61 / 80 / 94% across the same time, which is the
+    // shape the eye expects from something opening.
+    const OPEN_MS = 520;
+    let closedHeight = 0;
+
+    const animate = (from, to, settle?: () => void) => {
+      // Reduced motion: the site turns every transition off, so waiting for a
+      // transitionend that will never fire would leave the box stuck at an
+      // inline height.
+      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
+        settle?.();
+        text.style.height = '';
+        return;
+      }
+      text.style.height = `${from}px`;
+      void text.offsetHeight; // commit the start, or the browser sees one hop
+      text.style.transition = `height ${OPEN_MS}ms var(--bar-ease)`;
+      text.style.height = `${to}px`;
+
+      const done = () => {
+        text.removeEventListener('transitionend', done);
+        clearTimeout(timer);
+        // The clamp goes back on BEFORE the inline height is dropped, or the
+        // box flashes at full height for a frame on the way closed.
+        settle?.();
+        text.style.transition = '';
+        text.style.height = '';
+      };
+      // transitionend does not fire if the transition is interrupted or never
+      // starts; the timer is what stops that leaving an inline height behind.
+      const timer = setTimeout(done, OPEN_MS + 120);
+      text.addEventListener('transitionend', done);
+    };
+
     const measure = () => {
       // While open the clamp is off, so there is nothing to measure against —
       // an open fold keeps its button regardless.
@@ -1007,12 +1053,26 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
       // whole LINE is hidden, so half a line is the threshold.
       const line = parseFloat(getComputedStyle(text).lineHeight) || 0;
       button.hidden = text.scrollHeight - text.clientHeight < line * 0.5;
+      // Folded, the client box IS the clamped height — worth keeping, because
+      // by the time it is needed the clamp is off and it cannot be read again.
+      closedHeight = text.clientHeight;
     };
 
     button.addEventListener('click', () => {
-      const open = box.dataset.open !== 'true';
-      box.dataset.open = String(open);
-      button.textContent = open ? 'READ LESS' : 'READ MORE';
+      const opening = box.dataset.open !== 'true';
+      button.textContent = opening ? 'READ LESS' : 'READ MORE';
+      const from = text.clientHeight;
+
+      if (opening) {
+        box.dataset.open = 'true'; // the clamp comes off, so scrollHeight is the target
+        animate(from, text.scrollHeight);
+      } else {
+        // Shrink first and re-clamp at the end: re-clamping now would snap the
+        // box shut and leave nothing to animate.
+        animate(from, closedHeight, () => {
+          box.dataset.open = 'false';
+        });
+      }
     });
 
     measure();
