@@ -396,9 +396,14 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
        anything visible would spill over the gallery on the way down. */
     overflow: hidden;
   }
+  /* Open is a BIGGER clamp, not no clamp. Unsetting it takes the element out
+     of -webkit-box layout, and `text-box: trim-both` then trims differently —
+     measured at 8.5px, which the eye catches as the copy jumping up the moment
+     the fold finishes closing. Staying in the same layout mode costs nothing
+     and moves nothing. */
   [data-pp-summary][data-open='true'] .pp__descText {
-    -webkit-line-clamp: unset;
-    line-clamp: unset;
+    -webkit-line-clamp: 9999;
+    line-clamp: 9999;
   }
   .pp__more {
     margin-top: 14px;
@@ -1064,8 +1069,11 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
       const from = text.clientHeight;
 
       if (opening) {
-        box.dataset.open = 'true'; // the clamp comes off, so scrollHeight is the target
-        animate(from, text.scrollHeight);
+        box.dataset.open = 'true'; // the clamp opens up; nothing is clipped now
+        // The natural height, read before any inline height is set — and NOT
+        // scrollHeight, which ignores the 9px `text-box` trim and would leave
+        // the box to settle back by that much at the end.
+        animate(from, text.getBoundingClientRect().height);
       } else {
         // Shrink first and re-clamp at the end: re-clamping now would snap the
         // box shut and leave nothing to animate.
