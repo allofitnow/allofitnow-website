@@ -263,10 +263,26 @@ html.lenis, html.lenis body { height: auto; }
      so cap explicitly to the cell height: viewport − title/marquee top (244) − marquee/body/CTA
      stack (150) − fleet marquee (46) − gap (14) − a hair. */
   .svc-panel--equip .equip-plate { align-content: start; overflow: hidden; }
-  /* The render's box is height-capped to the cell, and the clips carry a lot of dead space around
-     the subject — so zoom in (~2.2×) and clip the overflow. That enlarges the actual server/case
-     and pushes the padding off-frame, without the box growing into the marquee/body below. */
-  .equip-plate img, .equip-plate video { max-width: 96%; max-height: calc(100svh - 456px); transform: scale(2.2); transform-origin: center; } /* was a TINY 26vh */
+  /* The clips carry dead space around the subject, so the plate zooms in and clips the overflow
+     rather than showing a small object floating in a black field. How far it can zoom is a
+     property of the FOOTAGE, though, and 2.2x was tuned against one clip and applied to all seven.
+
+     Measured across the fleet — sampling four moments per clip and taking the bounding box of
+     everything above black — the side margins are:
+
+       server rack (1280x720)   19-41%    safe to 1.60x
+       laptop flypacks (1:1)    18-22%    safe to 1.54x
+       renderstream (1:1)       11-12%    safe to 1.29x
+       VFC cards (1:1)           9-13%    safe to 1.21x
+       silverdraft / xseries /
+       gx3 (1:1)                 8-13%    safe to 1.18x
+
+     Six of the seven are square renders whose subject nearly fills the frame, so 2.2x was cutting
+     about a quarter of the object off each side — which is what the phone was showing. 1.15x is
+     under the tightest of them, so every clip stays whole, and the full width is used now instead
+     of 96%. The one 16:9 clip reads smaller than the rest as a result; re-framing it square, like
+     the other six, is the fix for that rather than a zoom the other six cannot afford. */
+  .equip-plate img, .equip-plate video { max-width: 100%; max-height: calc(100svh - 456px); transform: scale(1.15); transform-origin: center; }
   .equip-marquee { height: 46px; }
   .equip-item { font-size: clamp(14px, 5vw, 22px); }
   .svc-panel--equip .svc-desc { bottom: 104px; }
