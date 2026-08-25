@@ -207,17 +207,40 @@ while (i < clients.length) {
     transform: translateX(var(--dx));
     transition:
       opacity 0.7s linear,
-      transform 1s cubic-bezier(0.22, 1, 0.36, 1);
+      transform 1s cubic-bezier(0.22, 1, 0.36, 1),
+      /* keep the hover falloff working on this path too */
+      color var(--fall-ms, 340ms) ease var(--fall-delay, 0ms);
   }
   .aoin-clients.js-reveal .aoin-word.in {
     opacity: 1;
     transform: translateX(0);
   }
+  /* ---- hover focus: the word under the cursor holds, the rest fall away ----
+     The reveal above already animates `opacity` off the scroll timeline, and a
+     running animation beats any CSS opacity we could set here — so the falloff
+     rides on COLOUR ALPHA instead. The two then compose (a word that has not
+     been revealed yet stays invisible) rather than fight. --a is written per
+     word by the script below; --fall-delay staggers by distance so the dip
+     travels outward from the focus rather than snapping all at once. */
+  .aoin-word {
+    color: rgb(217 225 234 / var(--a, 1));
+    transition: color var(--fall-ms, 340ms) ease var(--fall-delay, 0ms);
+  }
+  .aoin-word.is-focus {
+    /* Emphasis is colour only — no scale. Pure white against coolWhite is a
+       small step, and that is the point: the lift comes from the surround
+       dropping, not from this word shouting. */
+    color: var(--aoin-white);
+  }
+
   @media (prefers-reduced-motion: reduce) {
     .aoin-word {
       animation: none !important;
       transform: none;
       opacity: 1;
+      /* The focus falloff still applies — it is a colour change, not motion —
+         but it lands immediately instead of rippling outward. */
+      transition: none;
     }
   }
 </style>
@@ -245,5 +268,120 @@ while (i < clients.length) {
       { threshold: 0.2 },
     );
     section.querySelectorAll<HTMLElement>('.aoin-word').forEach((w) => io.observe(w));
+  })();
+</script>
+
+<script>
+  // Hover focus for the client roster: the name under the cursor goes pure
+  // white, every other name fades down with a radial falloff from it.
+  //
+  // Two things make this look hand-tuned rather than mechanical:
+  //   - the radius is an ELLIPSE, wider than it is tall, because the rows are
+  //     set on 2.7 leading. A circular falloff would reach three rows up and
+  //     only two names sideways, which reads as a vertical bar, not a glow.
+  //   - each name carries a stable jitter on its own radius, so the rim of the
+  //     falloff is ragged. Stable (hashed from the name, not random per hover)
+  //     so the same neighbour dims by the same amount every time — a re-rolled
+  //     random would shimmer when you move along a row.
+  //
+  // Positions come from offsetLeft/offsetTop, NOT getBoundingClientRect: the
+  // reveal animation translates the words, and rects would fold that transform
+  // into the measurement and drift while the section scrolls.
+  (() => {
+    const section = document.querySelector<HTMLElement>('.aoin-clients');
+    if (!section) return;
+    // Touch: there is no hover, and a tap would strand the roster mid-dim.
+    if (!matchMedia('(hover: hover)').matches) return;
+
+    const TUNE = {
+      floor: 0.16,   // how far a distant name falls (colour alpha)
+      radiusX: 0.46, // of the section width
+      radiusY: 2.35, // of one row's height
+      jitter: 0.34,  // +/- on each name's own radius
+      ripple: 120,   // ms of extra delay at the rim
+    };
+
+    const words = Array.from(section.querySelectorAll<HTMLElement>('.aoin-word'));
+    if (words.length < 2) return;
+
+    // Deterministic 0..1 from the name (FNV-1a).
+    const hash = (s: string) => {
+      let h = 2166136261;
+      for (let i = 0; i < s.length; i++) {
+        h ^= s.charCodeAt(i);
+        h = Math.imul(h, 16777619);
+      }
+      return ((h >>> 0) % 10000) / 10000;
+    };
+
+    type Geo = { el: HTMLElement; x: number; y: number; j: number };
+    let geo: Geo[] = [];
+    let rowH = 0;
+
+    const measure = () => {
+      geo = words.map((el) => ({
+        el,
+        x: el.offsetLeft + el.offsetWidth / 2,
+        y: el.offsetTop + el.offsetHeight / 2,
+        j: 1 + (hash(el.textContent || '') - 0.5) * 2 * TUNE.jitter,
+      }));
+      // Row pitch = the smallest gap between two distinct baselines.
+      const ys = Array.from(new Set(geo.map((g) => Math.round(g.y)))).sort((a, b) => a - b);
+      rowH = ys.length > 1 ? Math.min(...ys.slice(1).map((y, i) => y - ys[i])) : 40;
+    };
+
+    let current: HTMLElement | null = null;
+
+    const focus = (el: HTMLElement) => {
+      if (el === current) return;
+      const me = geo.find((g) => g.el === el);
+      if (!me) return;
+      current?.classList.remove('is-focus');
+      current = el;
+      el.classList.add('is-focus');
+
+      const rx = section.clientWidth * TUNE.radiusX;
+      const ry = rowH * TUNE.radiusY;
+      for (const g of geo) {
+        const dx = (g.x - me.x) / (rx * g.j);
+        const dy = (g.y - me.y) / (ry * g.j);
+        const d = Math.min(1, Math.hypot(dx, dy));
+        const near = 1 - d * d * (3 - 2 * d); // smoothstep, 1 at the focus, 0 at the rim
+        g.el.style.setProperty('--a', (TUNE.floor + (1 - TUNE.floor) * near).toFixed(3));
+        g.el.style.setProperty('--fall-delay', Math.round(d * TUNE.ripple) + 'ms');
+      }
+    };
+
+    const clear = () => {
+      if (!current) return;
+      current.classList.remove('is-focus');
+      current = null;
+      for (const g of geo) {
+        g.el.style.setProperty('--a', '1');
+        // Everything comes back together — a staggered recovery reads as lag.
+        g.el.style.setProperty('--fall-delay', '0ms');
+      }
+    };
+
+    // Focus is held while the cursor crosses the gaps between names: the rows
+    // are justified, so those gaps are wide, and dropping focus in them would
+    // strobe the whole section as you move along a row.
+    section.addEventListener('pointerover', (e) => {
+      const el = (e.target as HTMLElement | null)?.closest?.('.aoin-word');
+      if (el instanceof HTMLElement) focus(el);
+    });
+    section.addEventListener('pointerleave', clear);
+
+    measure();
+    // Text metrics move when the webfont lands and on any reflow.
+    document.fonts?.ready.then(measure);
+    new ResizeObserver(() => {
+      measure();
+      if (current) {
+        const held = current;
+        current = null;
+        focus(held);
+      }
+    }).observe(section);
   })();
 </script>

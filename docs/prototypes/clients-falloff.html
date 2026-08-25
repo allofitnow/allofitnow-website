@@ -1,0 +1,245 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Clients — hover falloff</title>
+<!--
+  Tuning rig for the SELECTED CLIENTS hover behaviour that ships in
+  components/home/Clients.astro. The maths here is the same as the maths there;
+  the sliders exist because floor/radius/jitter are taste, not logic. When a
+  setting reads better than the shipped one, copy the numbers into the TUNE
+  object in Clients.astro — the panel prints them in that shape.
+
+  The scroll-driven reveal is deliberately NOT reproduced: it owns `opacity` on
+  the real page, which is exactly why the falloff rides on colour alpha instead.
+  Here every name is already revealed so the falloff can be judged alone.
+-->
+<style>
+  @font-face { font-family: "SN Ja Mono"; src: url("http://192.168.30.245/fonts/SNJaMono-Light.woff2") format("woff2"); font-weight: 300; }
+  :root {
+    --aoin-black: rgb(0,0,0);
+    --aoin-white: rgb(255,255,255);
+    --aoin-cool-white: rgb(217,225,234);
+    --aoin-cool-white-45: rgba(217,225,234,0.45);
+    --font-mono: "SN Ja Mono", ui-monospace, Consolas, monospace;
+    --weight-mono: 300;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #000; color: var(--aoin-cool-white); text-transform: uppercase; }
+  ::selection { background: var(--aoin-cool-white); color: var(--aoin-black); text-shadow: none; }
+
+  /* ---- the section, as in Clients.astro ---- */
+  .aoin-clients {
+    --lead: 2.7;
+    --gap: 0.34em;
+    --size: clamp(11px, 1.3cqw, 26px);
+    container-type: inline-size;
+    color: var(--aoin-cool-white);
+    padding: 40px 48px 80px;
+    position: relative;
+  }
+  .aoin-meta {
+    display: flex; justify-content: space-between;
+    font-family: var(--font-mono); font-weight: var(--weight-mono);
+    font-size: clamp(11px, 0.9cqw, 13px); letter-spacing: clamp(.14em, .3cqw, .3em);
+    opacity: .7; margin-bottom: 48px;
+  }
+  .aoin-line {
+    margin: 0 0 var(--gap) 0;
+    font-family: var(--font-mono); font-weight: var(--weight-mono);
+    font-size: var(--size); line-height: var(--lead);
+    text-align: justify; text-align-last: justify; word-spacing: .06em;
+  }
+  .aoin-word { display: inline-block; }
+
+  /* ---- the part under test (mirrors Clients.astro) ---- */
+  .aoin-word {
+    color: rgb(217 225 234 / var(--a, 1));
+    transition: color var(--fall-ms, 340ms) ease var(--fall-delay, 0ms);
+  }
+  .aoin-word.is-focus { color: var(--aoin-white); }
+
+  /* ---- rig chrome ---- */
+  .rig {
+    position: fixed; right: 18px; top: 18px; width: 260px; z-index: 9;
+    background: rgba(0,0,0,.86); border: 1px solid rgba(217,225,234,.18);
+    padding: 14px 16px 16px; font-family: var(--font-mono); font-weight: 300;
+    font-size: 10px; letter-spacing: .12em;
+  }
+  .rig h2 { font-size: 10px; letter-spacing: .3em; margin: 0 0 12px; font-weight: 300; }
+  .rig label { display: block; margin-bottom: 11px; color: rgba(217,225,234,.72); }
+  .rig .v { float: right; color: var(--aoin-white); }
+  .rig input[type=range] { width: 100%; margin-top: 5px; accent-color: rgb(217,225,234); }
+  .rig pre {
+    margin: 12px 0 0; padding: 10px; background: rgba(217,225,234,.06);
+    color: rgba(217,225,234,.8); font-size: 9.5px; line-height: 1.6;
+    letter-spacing: .04em; text-transform: none; white-space: pre-wrap;
+  }
+  .note {
+    font-family: var(--font-mono); font-weight: 300; font-size: 11px; letter-spacing: .08em;
+    line-height: 1.9; color: var(--aoin-cool-white-45); text-transform: none;
+    padding: 0 48px 60px; max-width: 92ch;
+  }
+</style>
+</head>
+<body>
+
+<section class="aoin-clients" id="clients">
+  <div class="aoin-meta"><span>selected clients</span><span id="count"></span></div>
+</section>
+
+<p class="note">
+  Hover a name. It goes pure white; everything else falls away on a radial
+  falloff measured from it. Two details are doing the work: the radius is an
+  <b>ellipse</b> (the rows sit on 2.7 leading, so a circle would reach three rows
+  up and only two names sideways — a vertical bar, not a glow), and each name
+  carries a <b>stable</b> jitter on its own radius so the rim is ragged. Stable,
+  because a per-hover reroll shimmers as you move along a row. Focus is also held
+  while the cursor crosses the gaps between names — justified rows leave wide
+  ones, and dropping focus in them strobes the whole section.
+</p>
+
+<div class="rig">
+  <h2>FALLOFF</h2>
+  <label>FLOOR <span class="v" id="v-floor"></span><input type="range" id="floor" min="0" max="0.6" step="0.01"></label>
+  <label>RADIUS X <span class="v" id="v-rx"></span><input type="range" id="rx" min="0.15" max="1.2" step="0.01"></label>
+  <label>RADIUS Y <span class="v" id="v-ry"></span><input type="range" id="ry" min="0.8" max="6" step="0.05"></label>
+  <label>JITTER <span class="v" id="v-j"></span><input type="range" id="j" min="0" max="0.8" step="0.01"></label>
+  <label>RIPPLE MS <span class="v" id="v-r"></span><input type="range" id="r" min="0" max="400" step="10"></label>
+  <pre id="out"></pre>
+</div>
+
+<script>
+const CLIENTS = [
+  'BAD BUNNY', 'MARTIN GARRIX', 'CHILDISH GAMBINO', 'RENÉE RAPP', 'BAD OMENS',
+  'THE KID LAROI', 'QUEVEDO', 'ANDERSON PAAK', 'LINKIN PARK', 'KENDRICK LAMAR',
+  'AQUEREUM', 'PESO PLUMA', 'MELANIE MARTINEZ', 'FALLOUT', 'RIOT GAMES', 'DISNEY',
+  'FLUME', 'KISS', 'COLDPLAY', 'BTS', 'MCENROE VS MCENROE', "AMERICA'S GOT TALENT",
+  'KASKADE', 'DEMI LOVATO', 'FACEBOOK OCULUS', 'MTV MILLENNIAL AWARDS', 'J COLE',
+  'HALSEY', 'AUDI', 'VOX', 'EPSON', 'PRIME VIDEO', 'FORTNITE', 'ROCKET LEAGUE',
+  'INFINITI', 'MOFAD', 'THE VOICE',
+];
+
+// ---- the broken-measure rows, as built in Clients.astro ----
+const rowCounts = [3, 2, 3];
+const rowGeometry = [[100, 0], [70, 16], [84, 8], [100, 0], [62, 0], [78, 22]];
+const FIG = ' ';
+const section = document.getElementById('clients');
+document.getElementById('count').textContent = CLIENTS.length + ' / estd. 2014';
+
+let i = 0, k = 0;
+while (i < CLIENTS.length) {
+  const count = rowCounts[k % rowCounts.length];
+  const [width, ml] = rowGeometry[k % rowGeometry.length];
+  const p = document.createElement('p');
+  p.className = 'aoin-line';
+  p.style.width = width + '%';
+  p.style.marginLeft = ml + '%';
+  CLIENTS.slice(i, i + count).forEach((name, j, arr) => {
+    const span = document.createElement('span');
+    span.className = 'aoin-word';
+    span.textContent = name.replace(/ /g, FIG);
+    p.appendChild(span);
+    if (j < arr.length - 1) p.appendChild(document.createTextNode(' '));
+  });
+  section.appendChild(p);
+  i += count;
+  k++;
+}
+
+// ---- the behaviour under test ----
+const TUNE = { floor: 0.16, radiusX: 0.46, radiusY: 2.35, jitter: 0.34, ripple: 120 };
+const words = Array.from(section.querySelectorAll('.aoin-word'));
+
+const hash = (s) => {
+  let h = 2166136261;
+  for (let i = 0; i < s.length; i++) { h ^= s.charCodeAt(i); h = Math.imul(h, 16777619); }
+  return ((h >>> 0) % 10000) / 10000;
+};
+
+let geo = [], rowH = 0, current = null;
+
+function measure() {
+  geo = words.map((el) => ({
+    el,
+    x: el.offsetLeft + el.offsetWidth / 2,
+    y: el.offsetTop + el.offsetHeight / 2,
+    j: 1 + (hash(el.textContent || '') - 0.5) * 2 * TUNE.jitter,
+  }));
+  const ys = Array.from(new Set(geo.map((g) => Math.round(g.y)))).sort((a, b) => a - b);
+  rowH = ys.length > 1 ? Math.min(...ys.slice(1).map((y, i) => y - ys[i])) : 40;
+}
+
+function focus(el) {
+  const me = geo.find((g) => g.el === el);
+  if (!me) return;
+  if (current) current.classList.remove('is-focus');
+  current = el;
+  el.classList.add('is-focus');
+  const rx = section.clientWidth * TUNE.radiusX;
+  const ry = rowH * TUNE.radiusY;
+  for (const g of geo) {
+    const dx = (g.x - me.x) / (rx * g.j);
+    const dy = (g.y - me.y) / (ry * g.j);
+    const d = Math.min(1, Math.hypot(dx, dy));
+    const near = 1 - d * d * (3 - 2 * d);
+    g.el.style.setProperty('--a', (TUNE.floor + (1 - TUNE.floor) * near).toFixed(3));
+    g.el.style.setProperty('--fall-delay', Math.round(d * TUNE.ripple) + 'ms');
+  }
+}
+
+function clear() {
+  if (!current) return;
+  current.classList.remove('is-focus');
+  current = null;
+  for (const g of geo) {
+    g.el.style.setProperty('--a', '1');
+    g.el.style.setProperty('--fall-delay', '0ms');
+  }
+}
+
+section.addEventListener('pointerover', (e) => {
+  const el = e.target.closest && e.target.closest('.aoin-word');
+  if (el && el !== current) focus(el);
+});
+section.addEventListener('pointerleave', clear);
+
+measure();
+if (document.fonts) document.fonts.ready.then(measure);
+new ResizeObserver(() => { measure(); if (current) { const h = current; current = null; focus(h); } }).observe(section);
+
+// ---- the rig ----
+const ctl = [
+  ['floor', 'floor', 'v-floor', 2],
+  ['rx', 'radiusX', 'v-rx', 2],
+  ['ry', 'radiusY', 'v-ry', 2],
+  ['j', 'jitter', 'v-j', 2],
+  ['r', 'ripple', 'v-r', 0],
+];
+const out = document.getElementById('out');
+function sync() {
+  for (const [id, key, vid, dp] of ctl) {
+    document.getElementById(id).value = TUNE[key];
+    document.getElementById(vid).textContent = TUNE[key].toFixed(dp);
+  }
+  out.textContent =
+    'const TUNE = {\n' +
+    '  floor: ' + TUNE.floor.toFixed(2) + ',\n' +
+    '  radiusX: ' + TUNE.radiusX.toFixed(2) + ',\n' +
+    '  radiusY: ' + TUNE.radiusY.toFixed(2) + ',\n' +
+    '  jitter: ' + TUNE.jitter.toFixed(2) + ',\n' +
+    '  ripple: ' + Math.round(TUNE.ripple) + ',\n};';
+}
+for (const [id, key] of ctl) {
+  document.getElementById(id).addEventListener('input', (e) => {
+    TUNE[key] = parseFloat(e.target.value);
+    measure();                       // jitter feeds the geometry
+    const held = current; current = null;
+    if (held) focus(held);
+    sync();
+  });
+}
+sync();
+</script>
+</body>
+</html>
