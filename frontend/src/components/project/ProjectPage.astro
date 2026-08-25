@@ -82,13 +82,22 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
       <div class="pp__meta" data-unit>
         <div class="pp__metaCols">
           {metaCols.map((col) => (
-            <div class="pp__metaCol">
+            <div class="pp__metaCol" data-flow={col.values.length > 4 ? 'two' : null}>
               <div class="pp__metaLabel">{col.label}</div>
-              {col.values.map((v) => <div>{v}</div>)}
+              <div class="pp__metaVals">
+                {col.values.map((v) => <div>{v}</div>)}
+              </div>
             </div>
           ))}
         </div>
-        <p class="pp__desc">{project.summary}</p>
+        {/* The summary is the one authored block with no length limit, and a
+            long one lands as a wall of type beside the meta columns. It clamps
+            to four lines and folds out; the button only appears when there is
+            something folded, which only JS can know (see the script below). */}
+        <div class="pp__desc" data-pp-summary data-open="false">
+          <p class="pp__descText">{project.summary}</p>
+          <button class="pp__more" type="button" hidden>READ MORE</button>
+        </div>
       </div>
 
       <div class="pp__galleryWrap">
@@ -322,6 +331,44 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
   .pp__metaLabel {
     color: var(--aoin-cool-white-45);
   }
+  .pp__metaVals > div {
+    /* An entry split across the column gap would read as two services. */
+    break-inside: avoid;
+  }
+  /* A long SERVICES list is the one meta column that can run away with the
+     block: five entries push it well past the summary beside it and leave a
+     tall ragged edge. Past four, the list flows into two columns — balanced by
+     the browser, so five reads as 3 + 2 and the markup never says where the
+     break goes.
+
+     The numbers here are measured off the live page, not guessed. The longest
+     service name sets a 206px column, so YEAR + COLLABORATOR + two service
+     columns + gaps come to 734px — and the block's own 40% is 730px at 1920.
+     Four pixels short, which is enough to wrap "Previsualization Suite" onto a
+     second line and undo the point of the exercise. So the block takes a floor
+     of 740px when a column flows, which still leaves a 263px gutter before the
+     summary at 1920 and 85px at the container-query threshold.
+
+     That threshold is where the arithmetic stops working: below it the meta
+     block cannot hold 740px without running into the summary, so the list
+     stays in one column rather than colliding. */
+  @container (min-width: 1500px) {
+    .pp__metaCol[data-flow='two'] .pp__metaVals {
+      columns: 2;
+      column-gap: 22px;
+    }
+    .pp__metaCols:has(.pp__metaCol[data-flow='two']) {
+      width: max(40%, 740px);
+    }
+  }
+  /* With the write-up open the meta block is down to 49% and there is no room
+     for a second column, so it goes back to one. */
+  [data-expanded='true'] .pp__metaCol[data-flow='two'] .pp__metaVals {
+    columns: 1;
+  }
+  [data-expanded='true'] .pp__metaCols:has(.pp__metaCol[data-flow='two']) {
+    width: 100%;
+  }
   .pp__desc {
     width: 45%;
     margin: 0;
@@ -334,6 +381,44 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     text-wrap: pretty;
     transition: width var(--dl), font-size var(--dl);
     transition-delay: 140ms; /* stage 1 */
+  }
+  .pp__descText {
+    margin: 0;
+    /* Four lines, then the fold. -webkit-line-clamp is the only form every
+       engine here honours; `line-clamp` rides alongside it for the day that
+       changes. */
+    display: -webkit-box;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
+    line-clamp: 4;
+    overflow: hidden;
+  }
+  [data-pp-summary][data-open='true'] .pp__descText {
+    -webkit-line-clamp: unset;
+    line-clamp: unset;
+    overflow: visible;
+  }
+  .pp__more {
+    margin-top: 14px;
+    padding: 0;
+    background: none;
+    border: 0;
+    border-bottom: 1px solid var(--rule);
+    color: var(--aoin-cool-white-45);
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 11px;
+    letter-spacing: 0.3em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: color 240ms var(--ease-brand), border-color 240ms var(--ease-brand);
+  }
+  .pp__more:hover {
+    color: var(--aoin-cool-white);
+    border-color: var(--aoin-cool-white);
+  }
+  .pp__more[hidden] {
+    display: none;
   }
   [data-expanded='true'] .pp__desc {
     width: 100%;
@@ -766,6 +851,11 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     .pp__desc {
       width: 100% !important;
     }
+    /* Belt and braces with the container query above: a phone never has the
+       1400px that would turn this on. */
+    .pp__metaCol[data-flow='two'] .pp__metaVals {
+      columns: 1;
+    }
     .pp__desc {
       margin-top: 4px;
       font-size: clamp(18px, 5vw, 24px);
@@ -893,10 +983,49 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     });
   };
 
+  // The summary's fold. Whether there is anything TO fold is a measured
+  // question, not an authored one: the same words are four lines at one width
+  // and nine at another, and the panel opening drops the type from 32px to
+  // 20px underneath it. So the button appears only when the clamped box is
+  // actually hiding something, and that is re-checked whenever the geometry
+  // can have changed.
+  const initSummaryFold = () => {
+    const box = document.querySelector<HTMLElement>('[data-pp-summary]');
+    const text = box?.querySelector<HTMLElement>('.pp__descText');
+    const button = box?.querySelector<HTMLButtonElement>('.pp__more');
+    if (!box || !text || !button) return;
+
+    const measure = () => {
+      // While open the clamp is off, so there is nothing to measure against —
+      // an open fold keeps its button regardless.
+      if (box.dataset.open === 'true') return;
+      // NOT `scrollHeight > clientHeight`. `text-box: trim-both` cuts the
+      // leading above the first line and below the last, so a paragraph that
+      // fits exactly still reports a scrollHeight around nine pixels taller
+      // than its client box — measured on a real four-line summary, which
+      // offered a READ MORE that revealed nothing. The question is whether a
+      // whole LINE is hidden, so half a line is the threshold.
+      const line = parseFloat(getComputedStyle(text).lineHeight) || 0;
+      button.hidden = text.scrollHeight - text.clientHeight < line * 0.5;
+    };
+
+    button.addEventListener('click', () => {
+      const open = box.dataset.open !== 'true';
+      box.dataset.open = String(open);
+      button.textContent = open ? 'READ LESS' : 'READ MORE';
+    });
+
+    measure();
+    // Webfonts land after first paint and change the line count under us.
+    document.fonts?.ready.then(measure);
+    new ResizeObserver(measure).observe(text);
+  };
+
   const boot = () => {
     const root = document.querySelector<HTMLElement>('[data-pp]');
     if (root) initProjectPage(root);
     fitWriteupVideos();
+    initSummaryFold();
   };
 
   boot();
