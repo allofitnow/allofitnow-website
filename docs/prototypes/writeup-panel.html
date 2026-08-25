@@ -1,0 +1,212 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Write-up panel — formatting, inline media, columns</title>
+<!-- GENERATED. The panel CSS below is lifted verbatim from ProjectPage.astro
+     (every .pp__notesRich rule, :global() unwrapped) and the prose is the real
+     output of lib/richtext.ts over the live ARCANE write-up. Regenerate rather
+     than hand-edit: scratchpad/gen_writeup_proto.mjs. -->
+<link rel="preconnect" href="http://192.168.30.245">
+<style>
+@font-face { font-family: "Denim INK WD"; src: url("http://192.168.30.245/fonts/DenimINKWD-Regular.woff2") format("woff2"); font-weight: 400; }
+@font-face { font-family: "Denim INK WD"; src: url("http://192.168.30.245/fonts/DenimINKWD-Medium.woff2") format("woff2"); font-weight: 500 700; }
+@font-face { font-family: "SN Ja Mono"; src: url("http://192.168.30.245/fonts/SNJaMono-Light.woff2") format("woff2"); font-weight: 300; }
+:root {
+  --aoin-black: rgb(0,0,0);
+  --aoin-white: rgb(255,255,255);
+  --aoin-cool-white: rgb(217,225,234);
+  --aoin-cool-white-45: rgba(217,225,234,0.45);
+  --aoin-cool-white-35: rgba(217,225,234,0.35);
+  --font-body: "Denim INK WD", -apple-system, sans-serif;
+  --font-headline: "Denim INK WD", -apple-system, sans-serif;
+  --font-mono: "SN Ja Mono", ui-monospace, Consolas, monospace;
+  --weight-body: 400;
+  --weight-headline: 500;
+  --weight-mono: 300;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: #000; color: var(--aoin-cool-white);
+  font-family: var(--font-body); text-transform: uppercase;
+}
+::selection { background: var(--aoin-cool-white); color: var(--aoin-black); text-shadow: none; }
+.head { padding: 26px 40px 6px; }
+h1.t { font-family: var(--font-mono); font-weight: 300; font-size: 12px; letter-spacing: .26em; margin: 0 0 8px; }
+.sub { font-family: var(--font-mono); font-weight: 300; font-size: 11px; letter-spacing: .1em;
+  line-height: 1.9; color: var(--aoin-cool-white-45); max-width: 96ch; text-transform: none; margin: 0; }
+/* The panes are the REAL panel measure: --pp-panel-w is 46vw, i.e. 883px on a
+   1920 display. Stacked, not side by side, so each is honestly that wide. */
+.panes { padding: 30px 40px 90px; }
+.pane { width: 883px; max-width: 100%; border-left: 1px solid rgba(217,225,234,.14);
+  padding-left: 22px; margin-bottom: 76px; }
+.paneName { font-family: var(--font-mono); font-weight: 300; font-size: 10px; letter-spacing: .3em;
+  color: var(--aoin-cool-white-45); margin-bottom: 22px; }
+.pp__notesLabel { font-family: var(--font-mono); font-weight: var(--weight-mono); font-size: 11px;
+  letter-spacing: .3em; color: var(--aoin-cool-white-45); margin-bottom: 24px; }
+
+/* ---- lifted from ProjectPage.astro ---- */
+/* Rendered write-up (rich text), set in Denim; the first paragraph reads as
+     the lede. NB: the content is injected via set:html, so Astro's scoped
+     selectors can't tag it — set the base type on the (scoped) container so the
+     injected children inherit it, and use  for the per-element rules. */
+  .pp__notesRich {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    /* Opt out of the global uppercase — the write-up reads as authored. */
+    text-transform: none;
+    /* Base prose type — inherited by the injected content (Denim, not serif). */
+    font-family: var(--font-body);
+    font-weight: var(--weight-body);
+    font-size: 15px;
+    line-height: 1.7;
+    color: var(--aoin-cool-white-45);
+  }
+.pp__notesRich p {
+    margin: 0;
+  }
+.pp__notesRich ul,
+  .pp__notesRich ol {
+    margin: 0;
+    padding-left: 1.2em;
+  }
+.pp__notesRich h1,
+  .pp__notesRich h2,
+  .pp__notesRich h3,
+  .pp__notesRich h4,
+  .pp__notesRich h5,
+  .pp__notesRich h6 {
+    margin: 4px 0 0;
+    font-family: var(--font-headline);
+    font-weight: var(--weight-headline);
+    line-height: 1.2;
+    letter-spacing: 0.02em;
+    color: var(--aoin-cool-white);
+  }
+.pp__notesRich strong {
+    color: var(--aoin-cool-white);
+    font-weight: var(--weight-headline);
+  }
+.pp__notesRich a {
+    color: inherit;
+    text-decoration: none;
+    border-bottom: 1px solid rgba(217, 225, 234, 0.28);
+  }
+.pp__notesRich p:first-of-type {
+    font-weight: var(--weight-body);
+    font-size: 20px;
+    line-height: 1.45;
+    color: var(--aoin-cool-white);
+    text-wrap: pretty;
+  }
+/* ---- two-column flow (writeupColumns on the project) ----
+     Multi-column, not grid: the copy has to FLOW between the columns. A grid
+     would make the editor decide, per block, which side each paragraph lands
+     on. The `300px 2` shorthand caps it at two columns and drops back to one
+     the moment they'd be narrower than 300px — which is what happens on the
+     mobile panel (100% wide) and on a small laptop, so no breakpoint needed. */
+  .pp__notesRich[data-cols='2'] {
+    display: block;
+    columns: 300px 2;
+    column-gap: 34px;
+  }
+.pp__notesRich[data-cols='2'] > * {
+    /* the flex gap is gone with display:block — space the blocks by margin */
+    margin: 0 0 20px;
+    /* a paragraph broken across the column gap reads as two paragraphs */
+    break-inside: avoid;
+  }
+.pp__notesRich[data-cols='2'] p:first-of-type {
+    /* the lede runs the full measure; the body breaks into columns under it */
+    column-span: all;
+    margin-bottom: 26px;
+  }
+/* ---- inline media (an `upload` node in the write-up) ----
+     Serialized by lib/richtext.ts as <figure class="rt-fig rt-fig--full|half">.
+     Unlike the gallery these are NOT cropped to a fixed row: the figure takes
+     the media's own aspect ratio, because in prose the picture is an aside, not
+     a slot to be filled. */
+  .pp__notesRich .rt-fig {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    break-inside: avoid;
+  }
+.pp__notesRich .rt-fig img,
+  .pp__notesRich .rt-fig video {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 10px; /* matches the gallery tiles */
+  }
+.pp__notesRich .rt-fig figcaption {
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--aoin-cool-white-35);
+  }
+/* FULL breaks out across both columns; ONE COLUMN stays in the text flow.
+     With one column there is nothing to span, so ONE COLUMN just renders
+     narrower — the setting still means something either way. */
+  .pp__notesRich[data-cols='2'] .rt-fig--full {
+    column-span: all;
+  }
+.pp__notesRich[data-cols='1'] .rt-fig--half {
+    width: 62%;
+  }
+/* ---- the rest of the toolbar ---- */
+  .pp__notesRich blockquote {
+    margin: 0;
+    padding-left: 14px;
+    border-left: 1px solid rgba(217, 225, 234, 0.28);
+    color: var(--aoin-cool-white);
+  }
+.pp__notesRich .rt-indent {
+    padding-left: 1.4em;
+  }
+.pp__notesRich s {
+    opacity: 0.6;
+  }
+.pp__notesRich code {
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 0.92em;
+  }
+</style>
+</head>
+<body>
+<div class="head">
+  <h1 class="t">WRITE-UP PANEL</h1>
+  <p class="sub">The PROJECT INFO panel, both column settings side by side, at the real panel
+  width (46vw of a 1920 display = 883px — the panes below are exactly that). Everything visible is
+  produced by the shipped code: the CSS is lifted from ProjectPage.astro and the prose is
+  lib/richtext.ts run over the live ARCANE / RIOT UNDERCITY NIGHTS write-up. That doc already
+  contained an inserted image which the old serializer dropped on the floor — it is the full-width
+  figure below. The clip and the caption underneath it are the new per-insert options.</p>
+</div>
+<div class="panes">
+  <div class="pane">
+    <div class="paneName">WRITEUPCOLUMNS = 1</div>
+    <div class="pp__notesLabel">[ PRODUCTION NOTES ]</div>
+    <div class="pp__notesRich" data-cols="1"><h4><strong>AOIN Involvement</strong></h4><p>The event’s broadcast was produced by the BC Live team, who enlisted AOIN to design and integrate a real-time augmented reality environment enveloping home viewers in the setting as much as those attending in person.</p><p>These AR set extension elements allowed the practical environment to expand beyond the venue’s physical confines, allowing viewers to gaze into the undercity and soak in the city of Zaun. </p><p>To bring this vision to life, AOIN transformed an offline rendering of the undercity into an AR environment optimized for real-time playback. Additionally, the team designed custom holdouts and masking post-process tools for runtime compositing within Unreal Engine.</p><p>AOIN worked closely with Stype and BC Live to coordinate a delicate load-in procedure resulting in AR camera accuracy down to the millimeter, a process crucial for sustaining the digital illusion and for ensuring the AR holdout tools worked as expected.</p><p>Technical Challenges</p><p>One of our primary challenges for this project was developing a custom solution for integrating AR elements into an existing physical set built to emulate the show’s undercity. Arcane viewers were already intimately familiar with the setting, so reproducing Zaun’s look and feel was of the utmost importance.</p><p>Onsite AR integration for this project was particularly difficult, as while most of the scenic and production elements were already in place at the time of integration, others were still arriving onsite for showtime. This meant that AOIN needed to develop a custom solution for ensuring AR element accuracy while working around existing production elements and coordinating closely with the core production team to avoid delays and stoppages.</p><figure class="rt-fig rt-fig--full"><img src="http://192.168.30.245/media/ChatGPT Image Aug 13, 2026, 03_27_27 PM.png" style="aspect-ratio:1402 / 1122" alt="" loading="lazy" decoding="async"></figure><h4><strong>Our Solution</strong></h4><p>To accommodate this dynamic environment, All of it Now developed a custom AR holdouts tool enabling AR elements to be properly masked and occluded by real-world elements, seamlessly melding the digital and physical worlds into one. </p><p>To achieve this, AOIN used 3D models of the fabricated set as masking elements for the AR objects. These masking elements unlocked tremendous creative potential, allowing for a much more dynamic AR environment, spanning far wider and deeper than a traditional AR broadcast would normally accommodate. </p><p>Augmented reality elements are typically overlaid on top of the camera feed; it is as if someone had applied a sticker to a camera’s lens. Given the shifting perspective of the camera, a simple composite would severely constrain AR element positioning and create other occlusion issues.</p><p>By innovating this holdouts tool, production elements like the lighting rig and camera jib were hidden, preserving the immersive quality of the show’s environment.</p><h4><strong>The Result</strong></h4><p>By leveraging existing game assets for integration into the physical set as AR elements and developing the AR holdout occlusion tool, AOIN transported broadcast audiences to Zaun’s streets in all of their grimy glory with an experience exclusively tailored for digital screens.</p><p>The broadcast featured the AR elements prominently, using them frequently dramatic camera flythroughs, transitions and as backdrops for segments hosted by the event’s MCs, bringing Arcane fans closer to the show than ever… all without needing to brave the vile stench of the undercity’s air.</p><h3>Inline media</h3><figure class="rt-fig rt-fig--half"><video src="http://192.168.30.245/media/peso-dinastia-dinastia-tour_gallery06-1.mp4" style="aspect-ratio:16 / 9" autoplay muted loop playsinline preload="metadata"></video><figcaption>One-column clip · autoplays muted</figcaption></figure><ul><li>lists, <strong>bold</strong> and <em>italic</em></li><li><s>strikethrough</s> and <code>code</code></li></ul><blockquote>A pull quote, set off from the copy.</blockquote><p style="text-align:center">A centred line.</p></div>
+  </div>
+  <div class="pane">
+    <div class="paneName">WRITEUPCOLUMNS = 2</div>
+    <div class="pp__notesLabel">[ PRODUCTION NOTES ]</div>
+    <div class="pp__notesRich" data-cols="2"><h4><strong>AOIN Involvement</strong></h4><p>The event’s broadcast was produced by the BC Live team, who enlisted AOIN to design and integrate a real-time augmented reality environment enveloping home viewers in the setting as much as those attending in person.</p><p>These AR set extension elements allowed the practical environment to expand beyond the venue’s physical confines, allowing viewers to gaze into the undercity and soak in the city of Zaun. </p><p>To bring this vision to life, AOIN transformed an offline rendering of the undercity into an AR environment optimized for real-time playback. Additionally, the team designed custom holdouts and masking post-process tools for runtime compositing within Unreal Engine.</p><p>AOIN worked closely with Stype and BC Live to coordinate a delicate load-in procedure resulting in AR camera accuracy down to the millimeter, a process crucial for sustaining the digital illusion and for ensuring the AR holdout tools worked as expected.</p><p>Technical Challenges</p><p>One of our primary challenges for this project was developing a custom solution for integrating AR elements into an existing physical set built to emulate the show’s undercity. Arcane viewers were already intimately familiar with the setting, so reproducing Zaun’s look and feel was of the utmost importance.</p><p>Onsite AR integration for this project was particularly difficult, as while most of the scenic and production elements were already in place at the time of integration, others were still arriving onsite for showtime. This meant that AOIN needed to develop a custom solution for ensuring AR element accuracy while working around existing production elements and coordinating closely with the core production team to avoid delays and stoppages.</p><figure class="rt-fig rt-fig--full"><img src="http://192.168.30.245/media/ChatGPT Image Aug 13, 2026, 03_27_27 PM.png" style="aspect-ratio:1402 / 1122" alt="" loading="lazy" decoding="async"></figure><h4><strong>Our Solution</strong></h4><p>To accommodate this dynamic environment, All of it Now developed a custom AR holdouts tool enabling AR elements to be properly masked and occluded by real-world elements, seamlessly melding the digital and physical worlds into one. </p><p>To achieve this, AOIN used 3D models of the fabricated set as masking elements for the AR objects. These masking elements unlocked tremendous creative potential, allowing for a much more dynamic AR environment, spanning far wider and deeper than a traditional AR broadcast would normally accommodate. </p><p>Augmented reality elements are typically overlaid on top of the camera feed; it is as if someone had applied a sticker to a camera’s lens. Given the shifting perspective of the camera, a simple composite would severely constrain AR element positioning and create other occlusion issues.</p><p>By innovating this holdouts tool, production elements like the lighting rig and camera jib were hidden, preserving the immersive quality of the show’s environment.</p><h4><strong>The Result</strong></h4><p>By leveraging existing game assets for integration into the physical set as AR elements and developing the AR holdout occlusion tool, AOIN transported broadcast audiences to Zaun’s streets in all of their grimy glory with an experience exclusively tailored for digital screens.</p><p>The broadcast featured the AR elements prominently, using them frequently dramatic camera flythroughs, transitions and as backdrops for segments hosted by the event’s MCs, bringing Arcane fans closer to the show than ever… all without needing to brave the vile stench of the undercity’s air.</p><h3>Inline media</h3><figure class="rt-fig rt-fig--half"><video src="http://192.168.30.245/media/peso-dinastia-dinastia-tour_gallery06-1.mp4" style="aspect-ratio:16 / 9" autoplay muted loop playsinline preload="metadata"></video><figcaption>One-column clip · autoplays muted</figcaption></figure><ul><li>lists, <strong>bold</strong> and <em>italic</em></li><li><s>strikethrough</s> and <code>code</code></li></ul><blockquote>A pull quote, set off from the copy.</blockquote><p style="text-align:center">A centred line.</p></div>
+  </div>
+</div>
+<script>
+  // Same correction ProjectPage.astro applies: Payload stores no dimensions for
+  // video, so the figure ships 16/9 and takes the real shape from metadata.
+  document.querySelectorAll('.pp__notesRich .rt-fig video').forEach((v) => {
+    const apply = () => { if (v.videoWidth && v.videoHeight) v.style.aspectRatio = v.videoWidth + ' / ' + v.videoHeight; };
+    if (v.readyState >= 1) apply(); else v.addEventListener('loadedmetadata', apply, { once: true });
+  });
+</script>
+</body>
+</html>

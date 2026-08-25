@@ -1,4 +1,5 @@
 import { CollectionConfig, BeforeChangeHook } from "payload/types";
+import { slateEditor } from "@payloadcms/richtext-slate";
 
 const STOPWORDS = new Set(["THE", "A", "AN", "OF", "AND"]);
 
@@ -198,7 +199,68 @@ const Projects: CollectionConfig = {
     {
       name: "writeup",
       type: "richText",
-      admin: { description: "The expandable full write-up (FULL WRITE-UP panel)." },
+      // The default toolbar is bold/italic/underline and headings. This opens up
+      // the rest of what Slate already ships — lists, quotes, alignment, indent —
+      // and, the point of the exercise, the `upload` element: an editor can drop a
+      // media doc INTO the prose. Media accepts video/* (and transcodes it to mp4
+      // on the way in), so an inline clip is just an upload like any other.
+      editor: slateEditor({
+        admin: {
+          elements: [
+            "h2",
+            "h3",
+            "h4",
+            "blockquote",
+            "link",
+            "ol",
+            "ul",
+            "indent",
+            "textAlign",
+            "upload",
+          ],
+          leaves: ["bold", "italic", "underline", "strikethrough", "code"],
+          upload: {
+            collections: {
+              media: {
+                // Shown when you click an inserted image/clip in the editor.
+                fields: [
+                  {
+                    name: "span",
+                    type: "select",
+                    defaultValue: "full",
+                    options: [
+                      { label: "Full width of the panel", value: "full" },
+                      { label: "One column", value: "half" },
+                    ],
+                    admin: {
+                      description:
+                        "In a two-column write-up: FULL breaks across both columns, ONE COLUMN sits inside the text flow. In a one-column write-up, ONE COLUMN just renders narrower.",
+                    },
+                  },
+                  { name: "caption", type: "text", admin: { description: "Optional line under the media." } },
+                ],
+              },
+            },
+          },
+        },
+      }),
+      admin: {
+        description:
+          "The expandable full write-up (PROJECT INFO panel). Headings, lists, quotes, alignment and inline images/video are all available from the toolbar. NB: publishing this project from the page composer REPLACES this field — add inline media after the last publish, or it will be overwritten.",
+      },
+    },
+    {
+      name: "writeupColumns",
+      type: "select",
+      defaultValue: "1",
+      options: [
+        { label: "One column", value: "1" },
+        { label: "Two columns", value: "2" },
+      ],
+      admin: {
+        description:
+          "How the write-up flows in the panel on desktop. Two columns suits a long write-up; anything narrow than a tablet is always one column.",
+      },
     },
 
     // ---- Sidebar: publishing + meta ----

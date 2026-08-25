@@ -62,6 +62,8 @@ export interface Project {
   credits: { title: string; entries: { title: string; name: string; url: string }[] }[];
   /** The expandable write-up panel — rich text (Slate nodes). */
   writeup: RichText;
+  /** How that panel flows on desktop: 1 or 2 columns (mobile is always 1). */
+  writeupColumns: 1 | 2;
 }
 
 export { getProjects, getProject, getHomeMarquee } from '@/lib/payload';

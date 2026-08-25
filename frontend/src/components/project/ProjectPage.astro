@@ -140,7 +140,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
       {/* Mobile-only swipe cue (top of the write-up) — tap or swipe back. */}
       <button class="pp__cue pp__cue--back" data-pp-cue="close" type="button">«««&nbsp;&nbsp;SWIPE FOR {CUE_WORK}&nbsp;&nbsp;«««</button>
       <div class="pp__notesLabel">[ PRODUCTION NOTES ]</div>
-      <div class="pp__notesRich" set:html={renderRichText(project.writeup)}></div>
+      <div class="pp__notesRich" data-cols={project.writeupColumns} set:html={renderRichText(project.writeup)}></div>
     </div>
   </aside>
 </main>
@@ -577,6 +577,85 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     text-wrap: pretty;
   }
 
+  /* ---- two-column flow (writeupColumns on the project) ----
+     Multi-column, not grid: the copy has to FLOW between the columns. A grid
+     would make the editor decide, per block, which side each paragraph lands
+     on. The `300px 2` shorthand caps it at two columns and drops back to one
+     the moment they'd be narrower than 300px — which is what happens on the
+     mobile panel (100% wide) and on a small laptop, so no breakpoint needed. */
+  .pp__notesRich[data-cols='2'] {
+    display: block;
+    columns: 300px 2;
+    column-gap: 34px;
+  }
+  .pp__notesRich[data-cols='2'] :global(> *) {
+    /* the flex gap is gone with display:block — space the blocks by margin */
+    margin: 0 0 20px;
+    /* a paragraph broken across the column gap reads as two paragraphs */
+    break-inside: avoid;
+  }
+  .pp__notesRich[data-cols='2'] :global(p:first-of-type) {
+    /* the lede runs the full measure; the body breaks into columns under it */
+    column-span: all;
+    margin-bottom: 26px;
+  }
+
+  /* ---- inline media (an `upload` node in the write-up) ----
+     Serialized by lib/richtext.ts as <figure class="rt-fig rt-fig--full|half">.
+     Unlike the gallery these are NOT cropped to a fixed row: the figure takes
+     the media's own aspect ratio, because in prose the picture is an aside, not
+     a slot to be filled. */
+  .pp__notesRich :global(.rt-fig) {
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    break-inside: avoid;
+  }
+  .pp__notesRich :global(.rt-fig img),
+  .pp__notesRich :global(.rt-fig video) {
+    display: block;
+    width: 100%;
+    height: auto;
+    border-radius: 10px; /* matches the gallery tiles */
+  }
+  .pp__notesRich :global(.rt-fig figcaption) {
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    color: var(--aoin-cool-white-35);
+  }
+  /* FULL breaks out across both columns; ONE COLUMN stays in the text flow.
+     With one column there is nothing to span, so ONE COLUMN just renders
+     narrower — the setting still means something either way. */
+  .pp__notesRich[data-cols='2'] :global(.rt-fig--full) {
+    column-span: all;
+  }
+  .pp__notesRich[data-cols='1'] :global(.rt-fig--half) {
+    width: 62%;
+  }
+
+  /* ---- the rest of the toolbar ---- */
+  .pp__notesRich :global(blockquote) {
+    margin: 0;
+    padding-left: 14px;
+    border-left: 1px solid rgba(217, 225, 234, 0.28);
+    color: var(--aoin-cool-white);
+  }
+  .pp__notesRich :global(.rt-indent) {
+    padding-left: 1.4em;
+  }
+  .pp__notesRich :global(s) {
+    opacity: 0.6;
+  }
+  .pp__notesRich :global(code) {
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 0.92em;
+  }
+
   /* ---- mobile swipe cue (desktop: hidden; shown in the mobile block) ---- */
   .pp__cue {
     display: none;
@@ -800,9 +879,24 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
 <script>
   import { initProjectPage } from '@/lib/project-page';
 
+  // Inline write-up video: the figure ships with a 16/9 placeholder ratio (see
+  // lib/richtext.ts — Payload stores no dimensions for video), so swap in the
+  // real one as soon as the metadata lands. A vertical clip would otherwise sit
+  // letterboxed in a landscape box for the life of the page.
+  const fitWriteupVideos = () => {
+    document.querySelectorAll<HTMLVideoElement>('.pp__notesRich .rt-fig video').forEach((v) => {
+      const apply = () => {
+        if (v.videoWidth && v.videoHeight) v.style.aspectRatio = `${v.videoWidth} / ${v.videoHeight}`;
+      };
+      if (v.readyState >= 1) apply();
+      else v.addEventListener('loadedmetadata', apply, { once: true });
+    });
+  };
+
   const boot = () => {
     const root = document.querySelector<HTMLElement>('[data-pp]');
     if (root) initProjectPage(root);
+    fitWriteupVideos();
   };
 
   boot();

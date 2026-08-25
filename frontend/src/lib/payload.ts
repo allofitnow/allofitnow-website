@@ -8,8 +8,10 @@ import type { ServiceSection } from '@/data/services';
 
 const API_URL = import.meta.env.PAYLOAD_URL || 'http://192.168.30.245';
 
-/** Normalize a media object (or null) into an absolute URL string. */
-function mediaUrl(media: { url?: string } | null | undefined): string {
+/** Normalize a media object (or null) into an absolute URL string.
+ *  Exported for lib/richtext.ts, which resolves the media docs that Payload
+ *  populates into inline `upload` nodes in a rich-text field. */
+export function mediaUrl(media: { url?: string } | null | undefined): string {
   const url = media?.url;
   if (!url) return '';
   return url.startsWith('/') ? `${API_URL}${url}` : url;
@@ -70,6 +72,8 @@ export function mapPayloadProject(doc: any): Project {
     // Rich text (Slate node array) passed straight through; rendered by
     // renderRichText in the project page.
     writeup: doc.writeup ?? [],
+    // Stored as a string on the select; the page only cares about 1 vs 2.
+    writeupColumns: doc.writeupColumns === '2' ? 2 : 1,
   };
 }
 
