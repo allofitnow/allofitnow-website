@@ -180,6 +180,14 @@ const projects = await getHomeMarquee();
     font-size: 1em;
     letter-spacing: 0.06em;
   }
+  /* The sitewide highlight (tokens.css) paints a cool-white plate with black
+     type — which is what the dropcap ALREADY looks like, so selecting it would
+     show nothing. It is the one inverted surface on the site, so it gets the
+     inverse highlight. */
+  .dropcap::selection {
+    background: var(--aoin-black);
+    color: var(--aoin-cool-white);
+  }
   /* built lines get their own [data-ai] masks via the controller */
   .stmt-wrap :global([data-ai]) {
     transform: translateY(110%);

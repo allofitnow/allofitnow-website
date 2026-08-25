@@ -232,6 +232,22 @@ a {
   color: var(--aoin-cool-white);
   text-decoration: none;
 }
+/* Highlight = the brand pair, inverted: coolWhite plate, black type. The UA
+   default (a blue plate with cool-white type on it) reads as a bug on a black
+   page. Declared on both `::selection` and `::selection` under a descendant so
+   it also lands on text inside components with their own colour; the plate is
+   opaque on purpose — a translucent one greys out over imagery. */
+::selection {
+  background: var(--aoin-cool-white);
+  color: var(--aoin-black);
+  /* Kill any text-shadow the type carries, which would smear over the plate. */
+  text-shadow: none;
+}
+*::selection {
+  background: var(--aoin-cool-white);
+  color: var(--aoin-black);
+  text-shadow: none;
+}
 a:hover {
   color: var(--aoin-cool-white-45);
 }
