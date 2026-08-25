@@ -147,6 +147,37 @@ function serializeNode(node: SlateNode): string {
   }
 }
 
+/**
+ * Inline emphasis for the PLAIN-TEXT fields.
+ *
+ * `summary` is a textarea, so what an editor types is what the site prints —
+ * and six of the forty projects write the tour or album name in *asterisks*,
+ * because that is the convention the copy docs use and the write-up field
+ * honours it. Only the summary was printing the markers raw.
+ *
+ * Escaped first, then marked up, so this stays safe to hand to set:html.
+ * Bold before italic, or `**x**` gets eaten by the italic rule. The word-
+ * boundary guards keep `snake_case` and mid-word asterisks out of it.
+ */
+export function renderInline(text: unknown): string {
+  return escapeHtml(String(text ?? ''))
+    .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+    .replace(/(^|[^*\w])\*([^*\n]+)\*(?![*\w])/g, '$1<em>$2</em>')
+    .replace(/(^|[^_\w])_([^_\n]+)_(?![_\w])/g, '$1<em>$2</em>');
+}
+
+/**
+ * The same markers removed rather than rendered, for the places that need real
+ * text — the <meta description>, where a tag would be nonsense and an asterisk
+ * would end up in a search result.
+ */
+export function plainInline(text: unknown): string {
+  return String(text ?? '')
+    .replace(/\*\*([^*]+)\*\*/g, '$1')
+    .replace(/(^|[^*\w])\*([^*\n]+)\*(?![*\w])/g, '$1$2')
+    .replace(/(^|[^_\w])_([^_\n]+)_(?![_\w])/g, '$1$2');
+}
+
 /** Render a Payload Slate rich-text value to an HTML string. */
 export function renderRichText(value: unknown): string {
   if (!Array.isArray(value)) return '';

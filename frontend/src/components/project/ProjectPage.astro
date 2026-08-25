@@ -19,7 +19,7 @@
 import type { Project } from '@/data/projects';
 import Media from '@/components/Media.astro';
 import ProjectBar from '@/components/work/ProjectBar.astro';
-import { renderRichText } from '@/lib/richtext';
+import { renderRichText, renderInline } from '@/lib/richtext';
 
 interface Props {
   project: Project;
@@ -95,7 +95,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
             to four lines and folds out; the button only appears when there is
             something folded, which only JS can know (see the script below). */}
         <div class="pp__desc" data-pp-summary data-open="false">
-          <p class="pp__descText">{project.summary}</p>
+          <p class="pp__descText" set:html={renderInline(project.summary)} />
           <button class="pp__more" type="button" hidden>READ MORE</button>
         </div>
       </div>
@@ -381,6 +381,18 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     text-wrap: pretty;
     transition: width var(--dl), font-size var(--dl);
     transition-delay: 140ms; /* stage 1 */
+  }
+  /* There is no italic cut of Denim INK WD — the family ships Regular and
+     Medium and nothing else — so an <em> would be browser-slanted, which on a
+     display face reads as a mistake. Emphasis takes the treatment the write-up
+     already gives <strong>: the real Medium cut, at full brightness. Getting
+     true italics needs an italic binary from the foundry, not a CSS rule. */
+  .pp__descText :global(em),
+  .pp__descText :global(strong),
+  .pp__notesRich :global(em) {
+    font-style: normal;
+    font-weight: var(--weight-headline);
+    color: var(--aoin-cool-white);
   }
   .pp__descText {
     margin: 0;

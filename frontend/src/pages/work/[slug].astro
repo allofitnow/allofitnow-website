@@ -2,6 +2,7 @@
 import Base from '@/layouts/Base.astro';
 import ProjectPage from '@/components/project/ProjectPage.astro';
 import { getProjects, type Project } from '@/data/projects';
+import { plainInline } from '@/lib/richtext';
 
 export async function getStaticPaths() {
   const projects = await getProjects();
@@ -23,6 +24,6 @@ interface Props {
 const { project, prev, next } = Astro.props;
 ---
 
-<Base title={`${project.title} — All Of It Now`} description={project.summary} preloader>
+<Base title={`${project.title} — All Of It Now`} description={plainInline(project.summary)} preloader>
   <ProjectPage project={project} prev={prev} next={next} />
 </Base>
