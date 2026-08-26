@@ -507,7 +507,7 @@ function initEquipment(root) {
 
   // The item to sit on the playhead when the section opens (falls back to the first).
   const defaultIdx = Math.max(0, rows.findIndex((r) => r.dataset.center === 'true'));
-  let trackX = 0, activeIdx = -1, imgT = null, active = false, plateIsVideo = false, plateSrc = '';
+  let trackX = 0, activeIdx = -1, imgT = null, active = false, plateIsVideo = false;
   const clampU = gsap.utils.clamp;
   const centerOf = (i) => rows[i].offsetLeft + rows[i].offsetWidth / 2;
   const xForIndex = (i) => marquee.clientWidth / 2 - centerOf(i);
@@ -519,181 +519,17 @@ function initEquipment(root) {
     for (let i = 0; i < rows.length; i++) { const d = Math.abs(centerOf(i) - cp); if (d < bd) { bd = d; best = i; } }
     return best;
   };
-  // ---- plate content-box fit (phones) ----------------------------------------------
-  // The fleet renders ship with black margins baked into the frame, and how much varies wildly
-  // per clip: measured across the seven, the subject fills 33-88% of the frame vertically and
-  // 76-96% of it horizontally. object-fit:contain therefore parks a slab of black between the
-  // plate and the fleet marquee, and no single zoom fixes that — the old blanket 1.15x barely
-  // moved the rack render while already cutting into the renderstream plate. So measure each
-  // asset's real content box once, off-screen, and scale the media so THAT box fills the cell.
-  // The surplus frame margin overflows and .equip-plate clips it, so no subject is ever lost.
-  // Any failure — tainted canvas, decode error — caches null and leaves the plain contain-fit.
-  const fitMQ = window.matchMedia('(max-width: 768px)');
-  const boxes = new Map();                    // src -> {x,y,w,h} as fractions of the frame, or null
-  const SCAN_W = 96;                          // scan width; a percentage box needs no more
-  const SCAN_FLOOR = 12;                      // 0-255 channel value — above the encoders' noise on black
-  // Sample count for a clip. The subject's extent moves — the turntables rotate, the rack clip is a
-  // build animation — so the box has to be the union over the whole clip, not one frame. Measured
-  // against a 10fps ground truth over the seven: four samples read the rack a third narrower than it
-  // is, and it takes ~48 evenly spaced ones before every clip lands within a few percent.
-  const SCAN_N = 48;
-  const SCAN_MS = 20000;                      // phones seek far slower than a desktop; give it room
-  const SCAN_MIN = 16;                        // fewer samples than this and the union is guesswork
-  // The union of sampled frames is a floor on the real box, so the scale it yields is a ceiling on
-  // the safe one — and the fewer frames, the further over. Measured against a 10fps ground truth,
-  // the worst clip came in ~4% over at 48 samples, ~14% at 32 and ~28% at 16. Shave that back off
-  // rather than risk shaving the subject: an over-zoom that crops the hardware is worse than a
-  // slightly small plate. A phone that only manages a partial sweep still gets a usable fit.
-  const safetyFor = (n) => (n >= 48 ? 0.96 : n >= 32 ? 0.88 : n >= 24 ? 0.82 : 0.78);
-  // Measuring costs a few seconds of seeking, so a full sweep is remembered for the next visit.
-  // Partial sweeps stay in memory only — a later visit on a better connection should get a full one.
-  const STORE_KEY = 'aoin:equip-box:';
-  const STORE_V = 1;
-  const stored = (src) => {
-    try {
-      const raw = localStorage.getItem(STORE_KEY + src);
-      const b = raw && JSON.parse(raw);
-      return b && b.v === STORE_V && b.ar ? b : null;
-    } catch (_) { return null; }
-  };
-  const store = (src, box) => {
-    try { localStorage.setItem(STORE_KEY + src, JSON.stringify({ ...box, v: STORE_V })); } catch (_) {}
-  };
-  let scanCanvas = null;
+  // ---- plate fit (phones) ----------------------------------------------------------
+  // No zoom. The plate is a box between the sub-service marquee above it and the fleet marquee
+  // below, and the render is fitted whole inside that box at whatever size fits — so no part of
+  // any clip can ever leave the cell, on any viewport.
+  //
+  // Two attempts at zooming past the cell and clipping the surplus black margin came before this,
+  // and both cut the hardware: a per-asset scale from a content box the phone measured at runtime,
+  // then a pair of fixed scales measured off the fleet by hand. The renders carry that margin in
+  // the frame, and how much varies per clip, so anything that crops the frame to hide it is one
+  // bad measurement away from cropping the subject. Tightening the frames belongs in the export.
 
-  // Grow `acc` to cover every non-black pixel of one frame of `el`. Throws if the canvas is
-  // tainted — the media host sends Access-Control-Allow-Origin:*, so normally it isn't.
-  const scanInto = (el, acc) => {
-    const nw = el.naturalWidth || el.videoWidth, nh = el.naturalHeight || el.videoHeight;
-    if (!nw || !nh) return;
-    const h = Math.max(2, Math.round((SCAN_W * nh) / nw));
-    acc.nw = nw; acc.nh = nh;
-    const c = scanCanvas || (scanCanvas = document.createElement('canvas'));
-    c.width = SCAN_W; c.height = h;
-    const ctx = c.getContext('2d', { willReadFrequently: true });
-    ctx.drawImage(el, 0, 0, SCAN_W, h);
-    const d = ctx.getImageData(0, 0, SCAN_W, h).data;
-    for (let y = 0; y < h; y++) {
-      for (let x = 0; x < SCAN_W; x++) {
-        const i = (y * SCAN_W + x) * 4;
-        if (d[i] <= SCAN_FLOOR && d[i + 1] <= SCAN_FLOOR && d[i + 2] <= SCAN_FLOOR) continue;
-        if (x < acc.x1) acc.x1 = x;
-        if (x > acc.x2) acc.x2 = x;
-        if (y < acc.y1) acc.y1 = y;
-        if (y > acc.y2) acc.y2 = y;
-      }
-    }
-    acc.w = SCAN_W; acc.h = h;
-  };
-
-  const measure = (src, isVid) => {
-    if (boxes.has(src)) return Promise.resolve(boxes.get(src));
-    const saved = stored(src);
-    if (saved) { boxes.set(src, saved); return Promise.resolve(saved); }
-    const acc = { x1: Infinity, y1: Infinity, x2: -1, y2: -1, w: 0, h: 0, nw: 0, nh: 0, n: 0 };
-    const settle = () => {
-      const box = acc.x2 < 0 || (isVid && acc.n < SCAN_MIN) ? null : {
-        x: acc.x1 / acc.w, y: acc.y1 / acc.h,
-        w: (acc.x2 - acc.x1 + 1) / acc.w, h: (acc.y2 - acc.y1 + 1) / acc.h,
-        ar: acc.nw / acc.nh,                     // frame aspect, so a re-fit needs no decoded media
-        safety: isVid ? safetyFor(acc.n) : 1,    // a still needs no margin — one frame IS the box
-      };
-      // Too few frames to trust: leave it unmeasured rather than cached, so it can be retried.
-      if (box) { boxes.set(src, box); if (!isVid || acc.n >= SCAN_N) store(src, box); }
-      return box;
-    };
-    return new Promise((resolve) => {
-      let done = false;
-      const give = (v) => { if (done) return; done = true; resolve(v); };
-      const fail = () => { boxes.set(src, null); give(null); };
-      if (isVid) {
-        // Seeking — not playback — is what drives this: requestVideoFrameCallback only fires for
-        // frames the compositor actually presents, so a hidden probe (or a backgrounded tab) yields
-        // no callbacks at all, while 'seeked' fires either way.
-        const v = document.createElement('video');
-        v.crossOrigin = 'anonymous'; v.muted = true; v.preload = 'auto';
-        v.playsInline = true; v.setAttribute('playsinline', '');   // older iOS reads the attribute
-        // A phone will not decode a video that is detached from the document, and treats preload as
-        // a hint it is free to ignore — so the probe lives in the DOM at 1px and fully transparent
-        // (display:none would stop it decoding too), and a muted play/pause forces the first frame.
-        v.style.cssText = 'position:fixed;left:0;top:0;width:1px;height:1px;opacity:0;pointer-events:none;z-index:-1';
-        const t0 = Date.now();
-        let timer = 0;
-        const stop = () => {
-          clearTimeout(timer);
-          v.pause && v.pause();
-          v.removeAttribute('src');
-          if (v.parentNode) v.parentNode.removeChild(v);
-        };
-        // settle() returns null below SCAN_MIN samples and caches nothing, so a probe that barely
-        // got going leaves the plain contain-fit and is retried next time this plate is opened.
-        const finish = () => { stop(); give(settle()); };
-        const step = () => {
-          if (acc.n >= SCAN_N || Date.now() - t0 > SCAN_MS) { finish(); return; }
-          const t = ((acc.n + 0.5) / SCAN_N) * (v.duration || 0);
-          if (!isFinite(t)) { finish(); return; }
-          v.currentTime = t;
-        };
-        v.addEventListener('seeked', () => {
-          if (done) return;
-          try { scanInto(v, acc); } catch (_) { stop(); fail(); return; }   // tainted canvas won't fix itself
-          acc.n++;
-          step();
-        });
-        v.addEventListener('loadedmetadata', () => {
-          if (done) return;
-          const go = v.play && v.play();          // muted + playsinline, so this is allowed unprompted
-          if (go && go.catch) go.catch(() => {});
-          try { v.pause(); } catch (_) {}
-          step();
-        }, { once: true });
-        v.addEventListener('error', () => { stop(); fail(); }, { once: true });
-        timer = setTimeout(finish, SCAN_MS + 2000);   // backstop for a probe that never reports at all
-        document.body.appendChild(v);
-        v.src = src;
-        v.load && v.load();
-      } else {
-        const im = new Image();
-        im.crossOrigin = 'anonymous';
-        im.onload = () => { try { scanInto(im, acc); } catch (_) { fail(); return; } give(settle()); };
-        im.onerror = fail;
-        im.src = src;
-      }
-    });
-  };
-
-  // Scale the painted media so its measured content box fills the plate cell, centred.
-  const applyFit = () => {
-    const el = plateIsVideo ? vid : img;
-    const other = plateIsVideo ? img : vid;
-    if (other) other.style.transform = '';
-    if (!el) return;
-    const box = fitMQ.matches ? boxes.get(plateSrc) : null;
-    const W = plate ? plate.clientWidth : 0, H = plate ? plate.clientHeight : 0;
-    if (!box || !box.ar || !W || !H) { el.style.transform = ''; return; }
-    // where object-fit:contain lays the frame out inside the cell. Driven off the aspect stored
-    // with the box, not the element — videoWidth is still 0 for a plate whose metadata is in flight.
-    const fw = W / box.ar <= H ? W : H * box.ar;
-    const fh = fw / box.ar;
-    const cw = box.w * fw, ch = box.h * fh;
-    if (cw <= 0 || ch <= 0) { el.style.transform = ''; return; }
-    const s = Math.max(1, Math.min(W / cw, H / ch) * (box.safety || 1));
-    // the content box's centre in cell coords — slide it back onto the cell centre after the scale
-    const cx = (W - fw) / 2 + (box.x + box.w / 2) * fw;
-    const cy = (H - fh) / 2 + (box.y + box.h / 2) * fh;
-    const tx = (W / 2 - cx) * s, ty = (H / 2 - cy) * s;
-    el.style.transform = `translate(${tx.toFixed(1)}px, ${ty.toFixed(1)}px) scale(${s.toFixed(3)})`;
-  };
-
-  // Measured lazily, on first paint of each asset; re-fits once the numbers land.
-  const pending = new Set();
-  const fitPlate = () => {
-    const src = plateSrc, isVid = plateIsVideo;
-    applyFit();                                 // a cached box, or the plain contain-fit, right away
-    if (!src || boxes.has(src) || pending.has(src)) return;
-    pending.add(src);
-    measure(src, isVid).then(() => { pending.delete(src); if (plateSrc === src) applyFit(); });
-  };
   // Paint the plate for a row: real items show their image; placeholder items show a
   // labelled placeholder box (the data has no plate asset yet — pending the CMS).
   const isVideoSrc = (s) => /\.(webm|mp4|m4v|mov)(\?|$)/i.test(s || '');
@@ -704,7 +540,6 @@ function initEquipment(root) {
     const src = r.dataset.img || '';
     const isVid = !isPh && isVideoSrc(src);
     plateIsVideo = isVid;
-    plateSrc = isPh ? '' : src;
     if (isPh) {
       if (img) { img.removeAttribute('src'); img.style.opacity = '0'; }
       if (vid) { vid.pause && vid.pause(); vid.style.opacity = '0'; }
@@ -721,7 +556,6 @@ function initEquipment(root) {
       if (vid) { vid.pause && vid.pause(); vid.style.opacity = '0'; }
       if (img) { img.src = src; img.style.opacity = '1'; }
     }
-    fitPlate();
   };
   const swap = (i, immediate) => {
     if (i === activeIdx) return;
@@ -750,9 +584,7 @@ function initEquipment(root) {
   window.addEventListener('resize', () => {
     const i = activeIdx < 0 ? defaultIdx : activeIdx;
     setX(clampU(bounds().min, bounds().max, xForIndex(i)));
-    applyFit();
   });
-  if (fitMQ.addEventListener) fitMQ.addEventListener('change', applyFit);
 
   // pointer drag (touch-action:pan-y in CSS lets vertical page scroll pass through)
   let dragging = false, downX = 0, startX = 0, lastX = 0, lastT = 0, vel = 0, moved = 0;
