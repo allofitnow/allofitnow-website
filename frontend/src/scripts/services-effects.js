@@ -519,16 +519,49 @@ function initEquipment(root) {
     for (let i = 0; i < rows.length; i++) { const d = Math.abs(centerOf(i) - cp); if (d < bd) { bd = d; best = i; } }
     return best;
   };
-  // ---- plate fit (phones) ----------------------------------------------------------
-  // No zoom. The plate is a box between the sub-service marquee above it and the fleet marquee
-  // below, and the render is fitted whole inside that box at whatever size fits — so no part of
-  // any clip can ever leave the cell, on any viewport.
+  // ---- plate scale -----------------------------------------------------------------
+  // The plate is a square box between the sub-service marquee above it and the fleet marquee below,
+  // and --plate-scale (services.css) sizes it against the cell. The renders carry black margin in
+  // the frame, so the box is grown past the cell and the surplus clipped, which reads as a bigger
+  // render. How much margin there is to take varies per clip, though, and one of the seven has
+  // none to give: renderstream is framed tight to its subject — measured, it spans .031-.979 of
+  // its frame across, so anything above ~1.05x eats the hardware — and it stays at 1.
   //
-  // Two attempts at zooming past the cell and clipping the surplus black margin came before this,
-  // and both cut the hardware: a per-asset scale from a content box the phone measured at runtime,
-  // then a pair of fixed scales measured off the fleet by hand. The renders carry that margin in
-  // the frame, and how much varies per clip, so anything that crops the frame to hide it is one
-  // bad measurement away from cropping the subject. Tightening the frames belongs in the export.
+  // So the scale is per clip, and each one is the largest that keeps its whole subject inside the
+  // cell. Derived from the subject's measured box — the union of every sampled frame, x..r across
+  // the frame and y..b down it — and the fact that the box is scaled about the CELL's centre, so an
+  // off-centre subject reaches its near edge first:
+  //
+  //   across  min(1/(1-2x), 1/(2r-1))      down  min(1/(1-2y), 1/(2b-1))
+  //
+  // and the scale is the smaller of those two, less ~2.5% for measurement error. Taking BOTH is
+  // what makes one number per clip safe in a cell of any shape: a tall cell only ever relaxes the
+  // vertical limit and a wide one only relaxes the horizontal, so the smaller of the pair is under
+  // both, whatever the phone. renderstream comes out at 1 — its subject runs to the very bottom
+  // edge of its frame (b = 1.0), so it has nothing to give in either direction.
+  //
+  //   gx3 / x-series / silverdraft  .083-.927  .344-.875 -> 1.17  ->  1.14
+  //   laptop                        .104-.864  .156-.864 -> 1.26  ->  1.23
+  //   vfc                           .083-.959  .333-.656 -> 1.09  ->  1.06
+  //   rack                          .042-.886  .037-.889 -> 1.08  ->  1.05
+  //   renderstream                  .031-.979  .208-1.00 -> 1.00  ->  1.00
+  //
+  // Keyed by slug because that is the only thing that separates them: six of the seven are
+  // 1000x1000, so the frame's shape says nothing about how tightly the render sits in it. Which
+  // makes this a list to revisit whenever the fleet changes — anything not in it stays at 1, whole
+  // and uncropped, until someone measures it. Re-exporting the loose renders as tight as
+  // renderstream retires the whole table AND makes every plate bigger than any of these numbers
+  // can: gx3's subject is 53% of its frame's height, so a tight re-frame is worth ~1.9x down the
+  // long axis, where the most a crop-free zoom can buy is 1.17x.
+  const PLATE_SCALE = {
+    'disguise-gx3': 1.14, 'x-series-servers': 1.14, 'silverdraft-a6000-nodes': 1.14,
+    'laptop-flypacks': 1.23, 'vfc-cards': 1.06, 'custom-rack-builds': 1.05,
+    'renderstream-hardware': 1,
+  };
+  const setScale = (r) => {
+    if (!plate) return;
+    plate.style.setProperty('--plate-scale', String((r && PLATE_SCALE[r.dataset.slug]) || 1));
+  };
 
   // Paint the plate for a row: real items show their image; placeholder items show a
   // labelled placeholder box (the data has no plate asset yet — pending the CMS).
@@ -540,6 +573,7 @@ function initEquipment(root) {
     const src = r.dataset.img || '';
     const isVid = !isPh && isVideoSrc(src);
     plateIsVideo = isVid;
+    setScale(r);
     if (isPh) {
       if (img) { img.removeAttribute('src'); img.style.opacity = '0'; }
       if (vid) { vid.pause && vid.pause(); vid.style.opacity = '0'; }
