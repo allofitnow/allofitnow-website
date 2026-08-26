@@ -5,6 +5,7 @@
 import type { Project } from '@/data/projects';
 import type { Equipment } from '@/data/equipment';
 import type { ServiceSection } from '@/data/services';
+import type { Reel } from '@/data/home';
 
 const API_URL = import.meta.env.PAYLOAD_URL || 'http://192.168.30.245';
 
@@ -224,6 +225,44 @@ export async function getAboutTeam(): Promise<{ name: string; title: string }[]>
       .filter((m: { name: string }) => m.name !== '');
   } catch {
     return [];
+  }
+}
+
+/** Pull a Vimeo id — and the privacy hash an unlisted video needs — out of whatever the CMS
+ *  field holds. Accepts a share URL (`vimeo.com/ID`, `vimeo.com/ID/HASH`), a player URL
+ *  (`player.vimeo.com/video/ID?h=HASH`), the `?h=` query form, or a bare id, so pasting
+ *  the address bar just works. `id: ''` when there is no id to be found. */
+export function parseVimeo(input: string): { id: string; hash: string } {
+  const raw = typeof input === 'string' ? input.trim() : '';
+  if (!raw) return { id: '', hash: '' };
+  if (/^\d+$/.test(raw)) return { id: raw, hash: '' };
+  const id = (raw.match(/(?:vimeo\.com|video)\/(\d+)/i) || [])[1] || '';
+  if (!id) return { id: '', hash: '' };
+  // The hash rides either as the path segment after the id, or as ?h=.
+  const query = (raw.match(/[?&]h=([0-9a-z]+)/i) || [])[1];
+  const segment = (raw.match(new RegExp('/' + id + '/([0-9a-z]+)', 'i')) || [])[1];
+  return { id, hash: query || segment || '' };
+}
+
+/** Fetch the hero reel from the `homepage` global. `null` on any error or empty response —
+ *  and equally when the chosen source has nothing behind it yet (file not uploaded, link not
+ *  pasted), so data/home.ts falls back to the seed rather than opening the hero on a black
+ *  box. depth=1 populates the upload relations into media docs carrying a `url`. */
+export async function getHomepageReel(): Promise<Reel | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/globals/homepage?depth=1`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const reel = data?.reel;
+    if (!reel) return null;
+    if (reel.source === 'upload') {
+      const src = mediaUrl(reel.video);
+      return src ? { source: 'upload', src, poster: mediaUrl(reel.poster), vimeoId: '', hash: '' } : null;
+    }
+    const { id, hash } = parseVimeo(reel.vimeoUrl);
+    return id ? { source: 'vimeo', src: '', poster: '', vimeoId: id, hash } : null;
+  } catch {
+    return null;
   }
 }
 

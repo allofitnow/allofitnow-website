@@ -1,6 +1,11 @@
 ---
-import { hero, reel } from '@/data/home';
-const reelSrc = `https://player.vimeo.com/video/${reel.vimeoId}?h=${reel.hash}&background=1&autoplay=1&loop=1&muted=1&autopause=0&dnt=1`;
+import { hero, getReel } from '@/data/home';
+const reel = await getReel();
+// A self-hosted file plays in a <video> cover-cropped by CSS; a Vimeo link goes through the
+// background player (background=1 is what strips the chrome). h= only belongs on the URL for
+// an unlisted video — sending an empty one makes Vimeo reject the embed.
+const isUpload = reel.source === 'upload';
+const reelSrc = `https://player.vimeo.com/video/${reel.vimeoId}?${reel.hash ? `h=${reel.hash}&` : ''}background=1&autoplay=1&loop=1&muted=1&autopause=0&dnt=1`;
 const cueWord = (w: string) => w.split('');
 ---
 
@@ -17,11 +22,26 @@ const cueWord = (w: string) => w.split('');
       </div>
       <div class="box" data-ref="box">
         <div class="reel-frame" data-ref="reelFrame">
-          <iframe
-            data-ref="reelIframe"
-            src={reelSrc}
-            allow="autoplay; fullscreen"
-            title="AOIN reel"></iframe>
+          {
+            isUpload ? (
+              <video
+                data-ref="reelVideo"
+                src={reel.src}
+                poster={reel.poster || undefined}
+                autoplay
+                loop
+                muted
+                playsinline
+                preload="auto"
+                aria-label="AOIN reel"></video>
+            ) : (
+              <iframe
+                data-ref="reelIframe"
+                src={reelSrc}
+                allow="autoplay; fullscreen"
+                title="AOIN reel"></iframe>
+            )
+          }
         </div>
       </div>
     </div>
@@ -123,6 +143,19 @@ const cueWord = (w: string) => w.split('');
     left: 50%;
     transform: translate(-50%, -50%);
     border: 0;
+    pointer-events: none;
+  }
+  /* The iframe is cover-cropped in JS (controller sizeReel measures the frame and sizes a
+     16:9 player to overflow it) because an iframe has no intrinsic aspect to fit. A real
+     video does, so object-fit does the same job here — and sizeReel no-ops, since it bails
+     when there is no [data-ref="reelIframe"] to size. */
+  .reel-frame video {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
     pointer-events: none;
   }
 

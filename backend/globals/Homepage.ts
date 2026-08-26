@@ -1,10 +1,14 @@
 import { GlobalConfig } from "payload/types";
+import { notifyPublish } from "../hooks/publish";
 
 const Homepage: GlobalConfig = {
   slug: "homepage",
   access: {
     read: () => true,
     update: ({ req: { user } }) => Boolean(user),
+  },
+  hooks: {
+    afterChange: [async () => notifyPublish("update", { slug: "homepage", status: "published" })],
   },
   fields: [
     {
@@ -20,6 +24,55 @@ const Homepage: GlobalConfig = {
           fields: [{ name: "word", type: "text", required: true }],
         },
         { name: "cue", type: "text", required: true },
+      ],
+    },
+    {
+      name: "reel",
+      type: "group",
+      admin: {
+        description:
+          "The film behind the hero lockup. Upload a file for full control over the encode, or point at Vimeo to keep the bytes off this server.",
+      },
+      fields: [
+        {
+          name: "source",
+          type: "radio",
+          required: true,
+          defaultValue: "vimeo",
+          options: [
+            { label: "Uploaded file", value: "upload" },
+            { label: "Vimeo link", value: "vimeo" },
+          ],
+          admin: { description: "Which of the two below is live. The other is ignored." },
+        },
+        {
+          name: "video",
+          type: "upload",
+          relationTo: "media",
+          admin: {
+            condition: (_data: any, siblings: any) => siblings?.source === "upload",
+            description:
+              "Drop an mp4 here. Anything that is not already mp4 is transcoded on upload. It plays muted and looping, so it needs no audio.",
+          },
+        },
+        {
+          name: "poster",
+          type: "upload",
+          relationTo: "media",
+          admin: {
+            condition: (_data: any, siblings: any) => siblings?.source === "upload",
+            description: "Optional still held until the first frame can paint.",
+          },
+        },
+        {
+          name: "vimeoUrl",
+          type: "text",
+          admin: {
+            condition: (_data: any, siblings: any) => siblings?.source === "vimeo",
+            description:
+              "Paste the Vimeo address straight from the browser — vimeo.com/ID, or vimeo.com/ID/HASH for an unlisted video. A bare id works too.",
+          },
+        },
       ],
     },
     {
