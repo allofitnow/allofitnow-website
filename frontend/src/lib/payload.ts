@@ -85,9 +85,11 @@ export function mapPayloadProject(doc: any): Project {
 // failure clear it so a retry can re-fetch instead of replaying the rejection.
 let projectsCache: Promise<Project[]> | null = null;
 
-/** Fetch all published projects, sorted chronologically (newest year first),
- *  with the manual `order` field only breaking ties within a year. Memoised for
- *  the production build. */
+/** Fetch all published projects in the running order set on the `order` field,
+ *  lowest first — that is the sequence the Work grid, the list view and the
+ *  prev/next links all follow. Year is only the tiebreak between two projects
+ *  that share a number, so the run can be arranged freely across years rather
+ *  than being locked into year blocks. Memoised for the production build. */
 export function getProjects(): Promise<Project[]> {
   if (import.meta.env.PROD && projectsCache) return projectsCache;
   const req = (async () => {
@@ -96,10 +98,12 @@ export function getProjects(): Promise<Project[]> {
     const data = await res.json();
     const projects: Project[] = data.docs.map(mapPayloadProject);
     projects.sort((a, b) => {
-      const ya = parseInt(a.year, 10) || 0;
-      const yb = parseInt(b.year, 10) || 0;
-      if (yb !== ya) return yb - ya;                 // newest year first
-      return (a.order ?? 0) - (b.order ?? 0);        // manual tiebreak within a year
+      const oa = a.order ?? 0;
+      const ob = b.order ?? 0;
+      if (oa !== ob) return oa - ob;                 // the manual running order decides
+      const ya = parseInt(a.year, 10) || 0;          // ...and only a tie falls back
+      const yb = parseInt(b.year, 10) || 0;          //    to newest year first
+      return yb - ya;
     });
     return projects;
   })();

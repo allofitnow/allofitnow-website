@@ -3,12 +3,23 @@ import { slateEditor } from "@payloadcms/richtext-slate";
 
 const STOPWORDS = new Set(["THE", "A", "AN", "OF", "AND"]);
 
-const assignCode: BeforeChangeHook = async ({ data, req }) => {
+// Assigns a short display code (initials + counter, e.g. "KL01") on create.
+//
+// `data` here is the incoming request body, which on an update does NOT carry
+// an `id` — so the exclusion filter has to come from `originalDoc`, otherwise the
+// document's own code counts as taken and every re-publish bumps the counter
+// (the KL02-with-no-KL01 / MW03-with-no-MW01 gaps in the live CMS).
+const assignCode: BeforeChangeHook = async ({ data, req, originalDoc }) => {
   if (!data?.title) return data;
+  // Nothing to re-derive if the title is unchanged and a code already exists.
+  if (originalDoc?.code && originalDoc.title === data.title) {
+    return { ...data, code: originalDoc.code };
+  }
   const existing = await req.payload.find({
     collection: "projects",
     limit: 100,
-    where: data.id ? { id: { not_equals: data.id } } : {},
+    depth: 0,
+    where: originalDoc?.id ? { id: { not_equals: originalDoc.id } } : {},
   });
   const existingCodes = existing.docs.map((p: any) => p.code);
   const title = String(data.title);
@@ -283,7 +294,7 @@ const Projects: CollectionConfig = {
       required: false,
       admin: {
         position: "sidebar",
-        description: "Manual sort nudge — now only breaks ties within a year (default sort is newest-first).",
+        description: "Position on the Work page, lowest first — this is the running order, and it outranks the year. Easiest set visually in the page composer (WORK ORDER); year only breaks a tie between two projects sharing a number.",
       },
     },
     {
