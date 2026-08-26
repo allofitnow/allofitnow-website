@@ -396,9 +396,9 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
   }
   .pp__descText {
     margin: 0;
-    /* Four lines, then the fold. -webkit-line-clamp is the only form every
-       engine here honours; `line-clamp` rides alongside it for the day that
-       changes. */
+    /* Four lines, then the fold — keep in step with CLAMP_LINES in the script.
+       -webkit-line-clamp is the only form every engine here honours;
+       `line-clamp` rides alongside it for the day that changes. */
     display: -webkit-box;
     -webkit-box-orient: vertical;
     -webkit-line-clamp: 4;
@@ -413,7 +413,10 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
      measured at 8.5px, which the eye catches as the copy jumping up the moment
      the fold finishes closing. Staying in the same layout mode costs nothing
      and moves nothing. */
-  [data-pp-summary][data-open='true'] .pp__descText {
+  [data-pp-summary][data-open='true'] .pp__descText,
+  /* Short enough not to be worth a button: it just runs. Set by measure(), so
+     the default stays clamped and nothing flashes at full height first. */
+  [data-pp-summary][data-fold='no'] .pp__descText {
     -webkit-line-clamp: 9999;
     line-clamp: 9999;
   }
@@ -1013,6 +1016,17 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     const text = box?.querySelector<HTMLElement>('.pp__descText');
     const button = box?.querySelector<HTMLButtonElement>('.pp__more');
     if (!box || !text || !button) return;
+    // ClientRouter fires `astro:page-load` on the first load as well as on
+    // every soft navigation, and boot() is both called directly and bound to
+    // it — so on a hard load this ran twice and the button ended up with two
+    // click handlers. The first opened the fold; the second read the state the
+    // first had just written and closed it again. Net effect: a button that
+    // did nothing at all, silently.
+    //
+    // The flag lives on the element, not in module scope, because a soft-nav
+    // swap brings a genuinely new box that does need wiring up.
+    if (box.dataset.ppFold === 'ready') return;
+    box.dataset.ppFold = 'ready';
 
     // Height cannot transition to or from `auto`, so the fold animates between
     // two numbers measured either side of the clamp coming off. The page
@@ -1027,6 +1041,14 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     // glide runs 13 / 36 / 61 / 80 / 94% across the same time, which is the
     // shape the eye expects from something opening.
     const OPEN_MS = 520;
+    // The clamped height, and it must match the `-webkit-line-clamp` below.
+    const CLAMP_LINES = 4;
+    // ...and the point past which folding earns its keep. A summary that spills
+    // two words onto a fifth line does not need a button — hiding a scrap
+    // behind a click is worse than the extra line, and the reader gets a READ
+    // MORE that reveals almost nothing. Anything up to seven lines simply runs;
+    // past that the density is the problem the fold was added for.
+    const FULL_MAX = 7;
     let closedHeight = 0;
 
     const animate = (from, to, settle?: () => void) => {
@@ -1062,17 +1084,23 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
       // While open the clamp is off, so there is nothing to measure against —
       // an open fold keeps its button regardless.
       if (box.dataset.open === 'true') return;
-      // NOT `scrollHeight > clientHeight`. `text-box: trim-both` cuts the
-      // leading above the first line and below the last, so a paragraph that
-      // fits exactly still reports a scrollHeight around nine pixels taller
-      // than its client box — measured on a real four-line summary, which
-      // offered a READ MORE that revealed nothing. The question is whether a
-      // whole LINE is hidden, so half a line is the threshold.
       const line = parseFloat(getComputedStyle(text).lineHeight) || 0;
-      button.hidden = text.scrollHeight - text.clientHeight < line * 0.5;
+      if (!line) return;
+      // How long the summary really is. `scrollHeight` reads the whole content
+      // even while the clamp is on, and it overshoots the true height by a few
+      // pixels because `text-box` trims the leading above the first line and
+      // below the last — well under half a line, so rounding absorbs it.
+      // Measured rather than toggling the clamp off and back: this runs from a
+      // ResizeObserver, and changing the size inside it is a loop.
+      const lines = Math.round(text.scrollHeight / line);
+      const worthFolding = lines > FULL_MAX;
+      // `no` unclamps in CSS, so a summary that is merely a bit long simply
+      // runs its five or six lines instead of hiding two words behind a click.
+      box.dataset.fold = worthFolding ? 'yes' : 'no';
+      button.hidden = !worthFolding;
       // Folded, the client box IS the clamped height — worth keeping, because
       // by the time it is needed the clamp is off and it cannot be read again.
-      closedHeight = text.clientHeight;
+      closedHeight = worthFolding ? text.clientHeight : 0;
     };
 
     button.addEventListener('click', () => {
@@ -1103,7 +1131,12 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
 
   const boot = () => {
     const root = document.querySelector<HTMLElement>('[data-pp]');
-    if (root) initProjectPage(root);
+    // Same reason as the fold's guard below: boot runs twice on a hard load,
+    // and initProjectPage attaches seven listeners of its own.
+    if (root && root.dataset.ppReady !== '1') {
+      root.dataset.ppReady = '1';
+      initProjectPage(root);
+    }
     fitWriteupVideos();
     initSummaryFold();
   };
