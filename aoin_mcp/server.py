@@ -371,17 +371,19 @@ async def delete_portfolio(slug: str) -> Dict[str, Any]:
 # But wait, this is a FastMCP instance. To expose it via ASGI:
 # app = mcp.http_app
 
-# Now we need to add Starlette middleware for Bearer token and /hook
+# Now we need Starlette middleware for Bearer token; /hook mounts as a
+# FastMCP custom route further down.
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 from starlette.requests import Request
-from starlette.routing import Route
-from starlette.applications import Starlette
 
 BEARER_TOKEN = os.environ.get("MCP_BEARER_TOKEN")
 WEBHOOK_SECRET = os.environ.get("MCP_WEBHOOK_SECRET")
 
-# Add the /hook endpoint BEFORE the auth middleware, or make the auth middleware skip it.
+# /hook is registered ON the FastMCP instance (custom_route) so it rides the
+# same ASGI app http_app() builds below. It is exempt from AuthMiddleware by
+# path and carries its own X-Webhook-Secret check.
+@mcp.custom_route("/hook", methods=["POST"])
 async def hook_endpoint(request: Request):
     if request.headers.get("X-Webhook-Secret") != WEBHOOK_SECRET:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
@@ -424,18 +426,16 @@ class AuthMiddleware(BaseHTTPMiddleware):
             
         return await call_next(request)
 
-# Wrap the app
-routes = [
-    Route("/hook", hook_endpoint, methods=["POST"])
-]
-
-from fastmcp.server.http import create_sse_app
+# Mount as streamable HTTP. Notes:
+# - middleware= is the supported http_app() parameter (FastMCP 3.4.7); it
+#   does NOT accept routes=, which is why /hook moved to @mcp.custom_route.
+# - host_origin_protection=False pins today's verified default so a future
+#   FastMCP upgrade that flips it cannot start 403ing through nginx.
+#   Bearer auth already gates every MCP route; /hook is secret-gated.
 from starlette.middleware import Middleware
 
-app = create_sse_app(
-    server=mcp,
-    message_path="/mcp/messages",
-    sse_path="/mcp",
-    routes=[Route("/hook", hook_endpoint, methods=["POST"])],
-    middleware=[Middleware(AuthMiddleware)]
+app = mcp.http_app(
+    path="/mcp",
+    middleware=[Middleware(AuthMiddleware)],
+    host_origin_protection=False,
 )
