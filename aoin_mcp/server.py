@@ -149,11 +149,11 @@ async def list_projects(status: Optional[Literal['published', 'archive']] = None
         "projects": [{
             "slug": p["slug"],
             "title": p["title"],
-            "client": p["client"],
-            "year": p["year"],
-            "role": p["role"],
-            "status": p["status"],
-            "thumb_url": p.get("thumb", {}).get("url", "")
+            "client": p.get("client") or p.get("code", ""),
+            "year": p.get("year", ""),
+            "role": p.get("role") or ", ".join(p.get("capabilities") or []),
+            "status": p.get("status", ""),
+            "thumb_url": (p.get("thumb") or {}).get("url", "")
         } for p in data["docs"]]
     }
 
