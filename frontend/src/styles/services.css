@@ -167,7 +167,13 @@ html.lenis, html.lenis body { height: auto; }
    1280x720 clip opened a 586px row inside a 304px cell, so nothing constrained it and the render
    overhung the fleet marquee and ran off the bottom of the screen. */
 .equip-plate img, .equip-plate video {
-  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  position: absolute; top: 50%; left: 50%;
+  /* --plate-nudge slides the render sideways by that fraction of its own width before the box is
+     centred, to put the SUBJECT on the cell's centre line rather than the frame. Several of these
+     renders sit off-centre in frame, and a zoom about the cell's middle runs the near side into the
+     edge while the far side still has margin to spare — the nudge spends that spare margin, which
+     is worth up to a tenth of the render's size (see initEquipment for the per-clip numbers). */
+  transform: translate(calc(-50% + min(100cqw, 100cqh) * var(--plate-scale) * var(--plate-nudge, 0)), -50%);
   width: calc(min(100cqw, 100cqh) * var(--plate-scale));
   height: calc(min(100cqw, 100cqh) * var(--plate-scale));
   object-fit: contain; display: block; transition: opacity 0.22s ease; will-change: opacity;

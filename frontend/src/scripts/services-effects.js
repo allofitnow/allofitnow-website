@@ -527,40 +527,54 @@ function initEquipment(root) {
   // none to give: renderstream is framed tight to its subject — measured, it spans .031-.979 of
   // its frame across, so anything above ~1.05x eats the hardware — and it stays at 1.
   //
-  // So the scale is per clip, and each one is the largest that keeps its whole subject inside the
-  // cell. Derived from the subject's measured box — the union of every sampled frame, x..r across
-  // the frame and y..b down it — and the fact that the box is scaled about the CELL's centre, so an
-  // off-centre subject reaches its near edge first:
+  // So it is per clip, and each is the largest that keeps that whole subject inside the cell.
+  // Derived from the subject's measured box — the union of every sampled frame, x..r across the
+  // frame and y..b down it — plus a NUDGE that slides the render sideways first so the subject,
+  // not the frame, is on the cell's centre line. That nudge is what the sizes are worth: scaled
+  // about the cell's middle, an off-centre subject runs its near side into the edge while the far
+  // side still has margin going spare, and the rack is 3.6% off — which was costing it a tenth of
+  // its size. Recentred, the limits are:
   //
-  //   across  min(1/(1-2x), 1/(2r-1))      down  min(1/(1-2y), 1/(2b-1))
+  //   across  1/(r-x)      down  min(1/(1-2y), 1/(2b-1)) / f      f = picture height / box side
   //
-  // and the scale is the smaller of those two, less ~2.5% for measurement error. Taking BOTH is
-  // what makes one number per clip safe in a cell of any shape: a tall cell only ever relaxes the
-  // vertical limit and a wide one only relaxes the horizontal, so the smaller of the pair is under
-  // both, whatever the phone. renderstream comes out at 1 — its subject runs to the very bottom
-  // edge of its frame (b = 1.0), so it has nothing to give in either direction.
+  // and the scale is the smaller, less ~2.5% for measurement error. Down is left un-nudged: it
+  // only ever binds renderstream, and centring the others vertically would move the render off
+  // where the frame puts it for a percent or two. Taking both axes is what makes one number per
+  // clip safe in a cell of ANY shape — a tall cell only relaxes the vertical limit and a wide one
+  // only the horizontal, so the smaller of the pair is under both, on any phone and on desktop.
   //
-  //   gx3 / x-series / silverdraft  .083-.927  .344-.875 -> 1.17  ->  1.14
-  //   laptop                        .104-.864  .156-.864 -> 1.26  ->  1.23
-  //   vfc                           .083-.959  .333-.656 -> 1.09  ->  1.06
-  //   rack                          .042-.886  .037-.889 -> 1.08  ->  1.05
-  //   renderstream                  .031-.979  .208-1.00 -> 1.00  ->  1.00
+  //     clip                          box across   box down    nudge    max     used
+  //     gx3 / x-series / silverdraft  .083-.927    .344-.875   -0.005   1.185   1.15
+  //     laptop                        .104-.864    .156-.864   +0.016   1.316   1.28
+  //     vfc                           .083-.959    .333-.656   -0.021   1.142   1.11
+  //     rack (16:9, f=0.5625)         .042-.886    .037-.889   +0.036   1.185   1.15
+  //     renderstream                  .031-.979    .208-1.00        0   1.000   1.00
+  //
+  // renderstream stays at 1: its subject runs to the very bottom EDGE of its frame (b = 1.0), so
+  // there is nothing to give and no nudge helps — that is a vertical limit, not a horizontal one.
   //
   // Keyed by slug because that is the only thing that separates them: six of the seven are
   // 1000x1000, so the frame's shape says nothing about how tightly the render sits in it. Which
   // makes this a list to revisit whenever the fleet changes — anything not in it stays at 1, whole
-  // and uncropped, until someone measures it. Re-exporting the loose renders as tight as
-  // renderstream retires the whole table AND makes every plate bigger than any of these numbers
-  // can: gx3's subject is 53% of its frame's height, so a tight re-frame is worth ~1.9x down the
-  // long axis, where the most a crop-free zoom can buy is 1.17x.
-  const PLATE_SCALE = {
-    'disguise-gx3': 1.14, 'x-series-servers': 1.14, 'silverdraft-a6000-nodes': 1.14,
-    'laptop-flypacks': 1.23, 'vfc-cards': 1.06, 'custom-rack-builds': 1.05,
-    'renderstream-hardware': 1,
+  // and uncropped, until someone measures it. And these numbers are the ceiling, not a preference:
+  // every one is bounded by how much black the clip carries. Re-exporting the loose renders as
+  // tight as renderstream retires the table AND beats anything in it — gx3's subject is 53% of its
+  // frame's height, so a tight re-frame is worth ~1.9x down the long axis where a crop-free zoom
+  // tops out at 1.19x.
+  const PLATE = {
+    'disguise-gx3':            { scale: 1.15, nudge: -0.005 },
+    'x-series-servers':        { scale: 1.15, nudge: -0.005 },
+    'silverdraft-a6000-nodes': { scale: 1.15, nudge: -0.005 },
+    'laptop-flypacks':         { scale: 1.28, nudge: 0.016 },
+    'vfc-cards':               { scale: 1.11, nudge: -0.021 },
+    'custom-rack-builds':      { scale: 1.15, nudge: 0.036 },
+    'renderstream-hardware':   { scale: 1, nudge: 0 },
   };
   const setScale = (r) => {
     if (!plate) return;
-    plate.style.setProperty('--plate-scale', String((r && PLATE_SCALE[r.dataset.slug]) || 1));
+    const p = (r && PLATE[r.dataset.slug]) || { scale: 1, nudge: 0 };
+    plate.style.setProperty('--plate-scale', String(p.scale));
+    plate.style.setProperty('--plate-nudge', String(p.nudge));
   };
 
   // Paint the plate for a row: real items show their image; placeholder items show a
