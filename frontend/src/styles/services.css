@@ -306,6 +306,19 @@ html.lenis, html.lenis body { height: auto; }
   .svc-panel--equip .equip { top: 244px; left: 20px; right: 20px; bottom: 150px; gap: 14px; }
   /* The plate box is the shared 1:1 rule above — no phone override, no zoom, no clipping. */
   .equip-marquee { height: 46px; }
+  /* A much tighter feather than the desktop 11%, because 11% of a phone-width marquee is ~37px and
+     that is the whole of what a neighbouring name has to show. Centred, the active name leaves only
+     a ~26px sliver of the one either side of it, so the desktop mask faded out precisely the part
+     that tells you the fleet continues — it read as a single name with nothing next to it. At 3%
+     (~10px) those slivers land in the opaque middle and are cut rather than faded, which is what
+     makes them read as "more, off-screen" instead of an edge. */
+  .equip-marquee {
+    -webkit-mask: linear-gradient(to right, transparent, #000 3%, #000 97%, transparent);
+            mask: linear-gradient(to right, transparent, #000 3%, #000 97%, transparent);
+  }
+  /* And bring the names closer together — the gap is the other half of why only one is visible.
+     20px instead of 30px hands each neighbour another 10px of itself on screen. */
+  .equip-track { gap: 20px; }
   .equip-item { font-size: clamp(14px, 5vw, 22px); }
   .svc-panel--equip .svc-desc { bottom: 104px; }
   /* Bottom-right service nav is hidden on phones — the sections are scroll-driven,
