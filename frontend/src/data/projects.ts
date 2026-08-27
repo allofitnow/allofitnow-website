@@ -1,3 +1,4 @@
+import type { WriteupBlock } from '@/lib/richtext';
 // Work / project content — served live from the Payload CMS at build time.
 //
 // This module exports the shared TYPE definitions (used across components and
@@ -60,10 +61,14 @@ export interface Project {
   /** Credit groups. Each entry renders TITLE | NAME with the name linking out
    *  to the social `url`. */
   credits: { title: string; entries: { title: string; name: string; url: string }[] }[];
-  /** The expandable write-up panel — rich text (Slate nodes). */
+  /** The expandable write-up panel — rich text (Slate nodes).
+   *  Superseded by `writeupBlocks`; kept for projects not migrated yet. */
   writeup: RichText;
+  /** The block form of the same panel. When this has rows it wins over
+   *  `writeup` — see renderWriteup in lib/richtext. */
+  writeupBlocks: WriteupBlock[];
   /** How that panel flows on desktop: 1 or 2 columns (mobile is always 1). */
   writeupColumns: 1 | 2;
 }
 
-export { getProjects, getProject, getHomeMarquee } from '@/lib/payload';
+export { getProjects, getRoutableProjects, getProject, getHomeMarquee } from '@/lib/payload';

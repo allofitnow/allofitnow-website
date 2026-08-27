@@ -1,14 +1,21 @@
 ---
 import Base from '@/layouts/Base.astro';
 import ProjectPage from '@/components/project/ProjectPage.astro';
-import { getProjects, type Project } from '@/data/projects';
+import { getProjects, getRoutableProjects, type Project } from '@/data/projects';
 import { plainInline } from '@/lib/richtext';
 
 export async function getStaticPaths() {
-  const projects = await getProjects();
-  return projects.map((project, i) => {
-    const prev = projects[(i - 1 + projects.length) % projects.length];
-    const next = projects[(i + 1) % projects.length];
+  // Pages are built for the published roster PLUS the unlisted ones; prev/next walk the
+  // published running order only, because that is the sequence the site actually presents.
+  const [routable, listed] = await Promise.all([getRoutableProjects(), getProjects()]);
+  return routable.map((project) => {
+    const i = listed.findIndex((p) => p.slug === project.slug);
+    // An unlisted project (i < 0) has no neighbours in the running order — point both ends
+    // at the head of the published run, so someone handed the link direct can still walk
+    // into the site rather than hitting a dead control.
+    const fallback = listed[0] ?? project;
+    const prev = i < 0 ? fallback : listed[(i - 1 + listed.length) % listed.length];
+    const next = i < 0 ? fallback : listed[(i + 1) % listed.length];
     return {
       params: { slug: project.slug },
       props: { project, prev, next },

@@ -19,7 +19,7 @@
 import type { Project } from '@/data/projects';
 import Media from '@/components/Media.astro';
 import ProjectBar from '@/components/work/ProjectBar.astro';
-import { renderRichText, renderInline } from '@/lib/richtext';
+import { renderWriteup, renderInline } from '@/lib/richtext';
 
 interface Props {
   project: Project;
@@ -149,7 +149,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
       {/* Mobile-only swipe cue (top of the write-up) — tap or swipe back. */}
       <button class="pp__cue pp__cue--back" data-pp-cue="close" type="button">«««&nbsp;&nbsp;SWIPE FOR {CUE_WORK}&nbsp;&nbsp;«««</button>
       <div class="pp__notesLabel">[ PRODUCTION NOTES ]</div>
-      <div class="pp__notesRich" data-cols={project.writeupColumns} set:html={renderRichText(project.writeup)}></div>
+      <div class="pp__notesRich" data-cols={project.writeupColumns} set:html={renderWriteup(project.writeupBlocks, project.writeup)}></div>
     </div>
   </aside>
 </main>
