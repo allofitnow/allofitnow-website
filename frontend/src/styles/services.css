@@ -237,6 +237,21 @@ html.lenis, html.lenis body { height: auto; }
   }
   /* Roughly 2× the previous phone sizing (native width + the JS mob scale raised to
      ~1.0 in services-effects.js), with the bands re-spread so they don't collide. */
+  /* ===== Hero capability list (mobile) =====
+     The bar's `top` is owned by JS (52vh on the hero, risen under the title in a section), so the
+     centring is done here with a transform instead of fighting it for the property: pull the block
+     back by half its own height to sit ON 52vh rather than hang below it, and by the 2vh that puts
+     its middle on the viewport's. Hero only — `:not([data-mq])`, since in a section the bar is the
+     one-line marquee and is deliberately tucked under the title, not centred.
+
+     The names also carry the description's text-shadow. They sit over the character field, which
+     is lit brightest exactly where they are (the per-word pools ADD light) and only dissolves once
+     you are into a section — so through the whole scroll out of the hero the field reads straight
+     through the type. The shadow keeps them legible over it at every point of that transition
+     without touching the field or the timing. Same treatment .svc-desc uses over the galleries. */
+  [data-bar]:not([data-mq]) { transform: translateY(calc(-50% - 2vh)); }
+  [data-slot] { text-shadow: 0 1px 16px rgba(0, 0, 0, 0.92), 0 0 3px rgba(0, 0, 0, 0.85); }
+
   /* ===== In-section sub-service marquee (mobile) =====
      When the controller sets data-mq on the bar, the 4 stacked slots collapse to one
      auto-scrolling line — reclaiming ~70px of height for the galleries below. */
