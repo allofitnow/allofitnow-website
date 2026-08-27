@@ -1191,10 +1191,32 @@ export class HomeController {
 
   // - Services -
   private wireServices() {
+    // Hover opens a panel on a pointer device. A touch screen has no hover to leave: the tap fires
+    // an emulated mouseenter that opens the panel and nothing ever fires to close it again, so the
+    // title becomes a toggle there instead. One or the other, never both — bound together, the tap
+    // would open on the emulated mouseenter and the click would immediately toggle it shut.
+    // The handler goes on the title, not the row: the row includes the panel, and a tap on the
+    // LEARN MORE link inside it should follow the link, not fold the panel away under the finger.
+    const canHover = matchMedia('(hover: hover)').matches;
     this.refs('[data-ref="services"] [data-svc]').forEach((row) => {
-      row.addEventListener('mouseenter', () => this.openService(row));
-      row.addEventListener('mouseleave', () => this.closeService(row));
+      if (canHover) {
+        row.addEventListener('mouseenter', () => this.openService(row));
+        row.addEventListener('mouseleave', () => this.closeService(row));
+        return;
+      }
+      const title = row.querySelector<HTMLElement>('[data-sr]');
+      if (!title) return;
+      title.addEventListener('click', () => {
+        if (this.isServiceOpen(row)) this.closeService(row);
+        else this.openService(row);
+      });
     });
+  }
+  /** Open === the panel has been given a height. Untouched panels have no inline height at all
+   *  (the stylesheet keeps them at 0), and parseFloat('') is NaN, which reads as closed. */
+  private isServiceOpen(row: HTMLElement) {
+    const p = row && row.querySelector<HTMLElement>('[data-panel]');
+    return !!p && parseFloat(p.style.height) > 0;
   }
   private openService(row: HTMLElement) {
     const list = this.ref('servicesList');

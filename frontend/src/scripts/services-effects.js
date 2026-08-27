@@ -519,6 +519,64 @@ function initEquipment(root) {
     for (let i = 0; i < rows.length; i++) { const d = Math.abs(centerOf(i) - cp); if (d < bd) { bd = d; best = i; } }
     return best;
   };
+  // ---- plate scale -----------------------------------------------------------------
+  // The plate is a square box between the sub-service marquee above it and the fleet marquee below,
+  // and --plate-scale (services.css) sizes it against the cell. The renders carry black margin in
+  // the frame, so the box is grown past the cell and the surplus clipped, which reads as a bigger
+  // render. How much margin there is to take varies per clip, though, and one of the seven has
+  // none to give: renderstream is framed tight to its subject — measured, it spans .031-.979 of
+  // its frame across, so anything above ~1.05x eats the hardware — and it stays at 1.
+  //
+  // So it is per clip, and each is the largest that keeps that whole subject inside the cell.
+  // Derived from the subject's measured box — the union of every sampled frame, x..r across the
+  // frame and y..b down it — plus a NUDGE that slides the render sideways first so the subject,
+  // not the frame, is on the cell's centre line. That nudge is what the sizes are worth: scaled
+  // about the cell's middle, an off-centre subject runs its near side into the edge while the far
+  // side still has margin going spare, and the rack is 3.6% off — which was costing it a tenth of
+  // its size. Recentred, the limits are:
+  //
+  //   across  1/(r-x)      down  min(1/(1-2y), 1/(2b-1)) / f      f = picture height / box side
+  //
+  // and the scale is the smaller, less ~2.5% for measurement error. Down is left un-nudged: it
+  // only ever binds renderstream, and centring the others vertically would move the render off
+  // where the frame puts it for a percent or two. Taking both axes is what makes one number per
+  // clip safe in a cell of ANY shape — a tall cell only relaxes the vertical limit and a wide one
+  // only the horizontal, so the smaller of the pair is under both, on any phone and on desktop.
+  //
+  //     clip                          box across   box down    nudge    max     used
+  //     gx3 / x-series / silverdraft  .083-.927    .344-.875   -0.005   1.185   1.15
+  //     laptop                        .104-.864    .156-.864   +0.016   1.316   1.28
+  //     vfc                           .083-.959    .333-.656   -0.021   1.142   1.11
+  //     rack (16:9, f=0.5625)         .042-.886    .037-.889   +0.036   1.185   1.15
+  //     renderstream                  .031-.979    .208-1.00        0   1.000   1.00
+  //
+  // renderstream stays at 1: its subject runs to the very bottom EDGE of its frame (b = 1.0), so
+  // there is nothing to give and no nudge helps — that is a vertical limit, not a horizontal one.
+  //
+  // Keyed by slug because that is the only thing that separates them: six of the seven are
+  // 1000x1000, so the frame's shape says nothing about how tightly the render sits in it. Which
+  // makes this a list to revisit whenever the fleet changes — anything not in it stays at 1, whole
+  // and uncropped, until someone measures it. And these numbers are the ceiling, not a preference:
+  // every one is bounded by how much black the clip carries. Re-exporting the loose renders as
+  // tight as renderstream retires the table AND beats anything in it — gx3's subject is 53% of its
+  // frame's height, so a tight re-frame is worth ~1.9x down the long axis where a crop-free zoom
+  // tops out at 1.19x.
+  const PLATE = {
+    'disguise-gx3':            { scale: 1.15, nudge: -0.005 },
+    'x-series-servers':        { scale: 1.15, nudge: -0.005 },
+    'silverdraft-a6000-nodes': { scale: 1.15, nudge: -0.005 },
+    'laptop-flypacks':         { scale: 1.28, nudge: 0.016 },
+    'vfc-cards':               { scale: 1.11, nudge: -0.021 },
+    'custom-rack-builds':      { scale: 1.15, nudge: 0.036 },
+    'renderstream-hardware':   { scale: 1, nudge: 0 },
+  };
+  const setScale = (r) => {
+    if (!plate) return;
+    const p = (r && PLATE[r.dataset.slug]) || { scale: 1, nudge: 0 };
+    plate.style.setProperty('--plate-scale', String(p.scale));
+    plate.style.setProperty('--plate-nudge', String(p.nudge));
+  };
+
   // Paint the plate for a row: real items show their image; placeholder items show a
   // labelled placeholder box (the data has no plate asset yet — pending the CMS).
   const isVideoSrc = (s) => /\.(webm|mp4|m4v|mov)(\?|$)/i.test(s || '');
@@ -529,6 +587,7 @@ function initEquipment(root) {
     const src = r.dataset.img || '';
     const isVid = !isPh && isVideoSrc(src);
     plateIsVideo = isVid;
+    setScale(r);
     if (isPh) {
       if (img) { img.removeAttribute('src'); img.style.opacity = '0'; }
       if (vid) { vid.pause && vid.pause(); vid.style.opacity = '0'; }
@@ -570,15 +629,23 @@ function initEquipment(root) {
   // Center the default item (CUSTOM RACK BUILDS) once fonts — and thus item widths — settle.
   const center = () => { const i = activeIdx < 0 ? defaultIdx : activeIdx; setX(xForIndex(i)); swap(i, true); };
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(center); else center();
-  window.addEventListener('resize', () => { const i = activeIdx < 0 ? defaultIdx : activeIdx; setX(clampU(bounds().min, bounds().max, xForIndex(i))); });
+  window.addEventListener('resize', () => {
+    const i = activeIdx < 0 ? defaultIdx : activeIdx;
+    setX(clampU(bounds().min, bounds().max, xForIndex(i)));
+  });
 
   // pointer drag (touch-action:pan-y in CSS lets vertical page scroll pass through)
-  let dragging = false, downX = 0, startX = 0, lastX = 0, lastT = 0, vel = 0, moved = 0;
+  // Bound to the plate as well as the marquee, so the render is draggable too — on a phone the
+  // plate is most of the section and swiping it is the obvious gesture. `surface` is whichever of
+  // the two started this drag: the capture has to go on that element or the move/up events stop
+  // arriving mid-swipe, and it is also what tells `up` whether a tap means anything (see there).
+  let dragging = false, downX = 0, startX = 0, lastX = 0, lastT = 0, vel = 0, moved = 0, surface = null;
   const down = (e) => {
     dragging = true; downX = lastX = e.clientX; startX = trackX; vel = 0; moved = 0; lastT = performance.now();
+    surface = e.currentTarget;
     gsap.killTweensOf(track);
     marquee.classList.add('is-grabbing');
-    if (marquee.setPointerCapture) try { marquee.setPointerCapture(e.pointerId); } catch (_) {}
+    if (surface.setPointerCapture) try { surface.setPointerCapture(e.pointerId); } catch (_) {}
   };
   const move = (e) => {
     if (!dragging) return;
@@ -600,20 +667,27 @@ function initEquipment(root) {
   };
   const up = (e) => {
     if (!dragging) return; dragging = false;
+    const from = surface; surface = null;
     marquee.classList.remove('is-grabbing');
-    if (marquee.releasePointerCapture && e.pointerId != null) try { marquee.releasePointerCapture(e.pointerId); } catch (_) {}
+    if (from && from.releasePointerCapture && e.pointerId != null) try { from.releasePointerCapture(e.pointerId); } catch (_) {}
     // A tap (no real movement) selects the name under the pointer; a drag snaps to center (a flick
     // advances one). Tap is handled here — not via a row 'click' listener — because pointer capture
     // routes the click to the marquee, so per-row click handlers never fire.
+    // Only the marquee reads a tap that way: an x on the plate points at whichever name happens to
+    // sit above it, so tapping the render would jump the fleet somewhere arbitrary. A tap there
+    // settles back onto the current item instead.
     let target;
-    if (moved < 5) target = itemAtClientX(e.clientX);
+    if (moved < 5) target = from === marquee ? itemAtClientX(e.clientX) : (activeIdx < 0 ? defaultIdx : activeIdx);
     else { target = nearest(); if (Math.abs(vel) > 0.35) target += vel < 0 ? 1 : -1; }
     snapTo(clampU(0, rows.length - 1, target));
   };
-  marquee.addEventListener('pointerdown', down);
-  marquee.addEventListener('pointermove', move);
-  marquee.addEventListener('pointerup', up);
-  marquee.addEventListener('pointercancel', up);
+  [marquee, plate].forEach((el) => {
+    if (!el) return;
+    el.addEventListener('pointerdown', down);
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  });
 
   // Section-gated playback: the plate video plays ONLY while Equipment is active,
   // and restarts from 0 each time you scroll in — so its intro is never missed.

@@ -139,9 +139,45 @@ html.lenis, html.lenis body { height: auto; }
   display: flex; flex-direction: column; align-items: stretch; gap: clamp(20px, 3.4vh, 44px);
   /* pointer-events inherited from the panel — enabled only when Equipment is the active section */
 }
-.equip-plate { position: relative; flex: 1 1 auto; display: grid; place-items: center; min-height: 0; min-width: 0; }
-/* img + video share the one centred grid cell so they overlay; setPlate cross-fades opacity between them */
-.equip-plate img, .equip-plate video { grid-area: 1 / 1; max-width: 88%; max-height: 100%; object-fit: contain; display: block; transition: opacity 0.22s ease; will-change: transform, opacity; }
+/* The cell the plate gets: whatever the fleet marquee leaves between the copy above and below.
+   flex-basis 0, not auto, so its height is never a function of the media inside it. `container-type`
+   publishes the cell's two axes to the box below as cqw/cqh. */
+/* --plate-scale multiplies the square below. 1 fits the render whole inside the cell; above 1 the
+   box grows past the cell and `overflow:hidden` takes the surplus off, which is the black margin
+   first and the hardware itself once a clip runs out of margin. initEquipment overrides it per item
+   from each clip's measured subject box; anything it has no number for stays at 1. */
+.equip-plate {
+  --plate-scale: 1;
+  position: relative; flex: 1 1 0%; min-height: 0; min-width: 0;
+  container-type: size; overflow: hidden;
+  /* The render is a drag surface for the fleet too, not just the names (initEquipment binds both).
+     Same touch-action as the marquee: we own the horizontal, vertical page scroll passes straight
+     through — which matters more here, since the plate is most of the section on a phone and the
+     page scroll is what scrubs the whole narrative. The callout guard stops a long-press over the
+     render offering to save the image mid-swipe. */
+  cursor: grab; touch-action: pan-y; -webkit-touch-callout: none;
+}
+.equip-plate:active { cursor: grabbing; }
+/* The plate box is 1:1 — its side is the SMALLER of the cell's two axes times the scale above, so
+   at scale 1 it can never reach past the cell's left/right or its top/bottom, whatever shape the
+   cell takes on a given screen. Both plates sit in that one square, centred, so they still overlay
+   for setPlate's opacity cross-fade, and object-fit:contain fits each render inside it.
+   Absolutely positioned — NOT grid items — so the box resolves against the cell's own size. As
+   items in an auto-sized row, `max-height:100%` measured against a row the media had just sized: a
+   1280x720 clip opened a 586px row inside a 304px cell, so nothing constrained it and the render
+   overhung the fleet marquee and ran off the bottom of the screen. */
+.equip-plate img, .equip-plate video {
+  position: absolute; top: 50%; left: 50%;
+  /* --plate-nudge slides the render sideways by that fraction of its own width before the box is
+     centred, to put the SUBJECT on the cell's centre line rather than the frame. Several of these
+     renders sit off-centre in frame, and a zoom about the cell's middle runs the near side into the
+     edge while the far side still has margin to spare — the nudge spends that spare margin, which
+     is worth up to a tenth of the render's size (see initEquipment for the per-clip numbers). */
+  transform: translate(calc(-50% + min(100cqw, 100cqh) * var(--plate-scale) * var(--plate-nudge, 0)), -50%);
+  width: calc(min(100cqw, 100cqh) * var(--plate-scale));
+  height: calc(min(100cqw, 100cqh) * var(--plate-scale));
+  object-fit: contain; display: block; transition: opacity 0.22s ease; will-change: opacity;
+}
 /* placeholder plate — shown for fleet items with no plate asset yet (pending the CMS) */
 .equip-plate-ph {
   position: absolute; inset: 14% 20%; display: grid; place-items: center; text-align: center;
@@ -178,6 +214,14 @@ html.lenis, html.lenis body { height: auto; }
 .equip-item.is-active { color: rgb(217, 225, 234); }
 .svc-panel--equip .svc-desc { max-width: 62ch; bottom: 44px; }
 
+/* ===== Capability list (the four [data-slot] names) =====
+   The list sits on the character field, which is lit brightest exactly where the names are — the
+   per-word luminance pools ADD light rather than clear it — and only dissolves once you are into a
+   section. So the field's characters read straight through the type, worst of all on the hero and
+   the whole way out of it. A soft dark halo lifts the names off the field without dimming it or
+   retiming the dissolve. Same treatment .svc-desc uses to hold up over the galleries. */
+[data-slot] { text-shadow: 0 1px 16px rgba(0, 0, 0, 0.92), 0 0 3px rgba(0, 0, 0, 0.85); }
+
 /* ===== Persistent bottom-right service nav ===== */
 .svc-nav {
   position: absolute; right: 48px; bottom: 48px; z-index: 35;
@@ -207,6 +251,17 @@ html.lenis, html.lenis body { height: auto; }
   }
   /* Roughly 2× the previous phone sizing (native width + the JS mob scale raised to
      ~1.0 in services-effects.js), with the bands re-spread so they don't collide. */
+  /* ===== Hero capability list (mobile) =====
+     The bar's `top` is owned by JS (52vh on the hero, risen under the title in a section), so the
+     centring is done here with a transform instead of fighting it for the property: pull the block
+     back by half its own height to sit ON 52vh rather than hang below it, and by the 2vh that puts
+     its middle on the viewport's. Hero only — `:not([data-mq])`, since in a section the bar is the
+     one-line marquee and is deliberately tucked under the title, not centred.
+
+     (The names' shadow, which was here for the same reason, now applies at every width — see the
+     capability-list rule above.) */
+  [data-bar]:not([data-mq]) { transform: translateY(calc(-50% - 2vh)); }
+
   /* ===== In-section sub-service marquee (mobile) =====
      When the controller sets data-mq on the bar, the 4 stacked slots collapse to one
      auto-scrolling line — reclaiming ~70px of height for the galleries below. */
@@ -253,37 +308,27 @@ html.lenis, html.lenis body { height: auto; }
   /* Fixed px top (just below the ~240-254px marquee across 375-430w phones) instead of a vh
      % — a vh top wastes ~75px on tall viewports, starving the plate. Fixed top maximizes the
      plate's flex area on every height, so the render fills far more of the frame. */
-  /* bottom:150 keeps the fleet marquee above the body copy (svc-desc bottom:104). The render row
-     is TOP-aligned in the plate cell (align-content:start) so a short render sits right under the
-     marquee instead of floating to the cell's middle (the "gap super high up"). Explicit vh cap so
-     it can't overflow the cell (max-height:100% doesn't cap a content-sized grid row). */
+  /* bottom:150 keeps the fleet marquee above the body copy (svc-desc bottom:104), so what is left
+     between the two is the plate cell — and the square box is centred in it. It used to be
+     top-aligned, to hide the void a short render left under itself; that void was the rack clip's,
+     the one 16:9 frame in a portrait cell, and top-aligning it just moved the whole slab of black
+     below the render instead. Centred, the letterbox splits either side of it. */
   .svc-panel--equip .equip { top: 244px; left: 20px; right: 20px; bottom: 150px; gap: 14px; }
-  /* align-content:start TOP-aligns the render under the marquee (a centred render floated to the
-     cell's middle, leaving the void). max-height:100% can't cap a grid row taller than its cell,
-     so cap explicitly to the cell height: viewport − title/marquee top (244) − marquee/body/CTA
-     stack (150) − fleet marquee (46) − gap (14) − a hair. */
-  .svc-panel--equip .equip-plate { align-content: start; overflow: hidden; }
-  /* The clips carry dead space around the subject, so the plate zooms in and clips the overflow
-     rather than showing a small object floating in a black field. How far it can zoom is a
-     property of the FOOTAGE, though, and 2.2x was tuned against one clip and applied to all seven.
-
-     Measured across the fleet — sampling four moments per clip and taking the bounding box of
-     everything above black — the side margins are:
-
-       server rack (1280x720)   19-41%    safe to 1.60x
-       laptop flypacks (1:1)    18-22%    safe to 1.54x
-       renderstream (1:1)       11-12%    safe to 1.29x
-       VFC cards (1:1)           9-13%    safe to 1.21x
-       silverdraft / xseries /
-       gx3 (1:1)                 8-13%    safe to 1.18x
-
-     Six of the seven are square renders whose subject nearly fills the frame, so 2.2x was cutting
-     about a quarter of the object off each side — which is what the phone was showing. 1.15x is
-     under the tightest of them, so every clip stays whole, and the full width is used now instead
-     of 96%. The one 16:9 clip reads smaller than the rest as a result; re-framing it square, like
-     the other six, is the fix for that rather than a zoom the other six cannot afford. */
-  .equip-plate img, .equip-plate video { max-width: 100%; max-height: calc(100svh - 456px); transform: scale(1.15); transform-origin: center; }
+  /* The plate box is the shared 1:1 rule above — no phone override, no zoom, no clipping. */
   .equip-marquee { height: 46px; }
+  /* A much tighter feather than the desktop 11%, because 11% of a phone-width marquee is ~37px and
+     that is the whole of what a neighbouring name has to show. Centred, the active name leaves only
+     a ~26px sliver of the one either side of it, so the desktop mask faded out precisely the part
+     that tells you the fleet continues — it read as a single name with nothing next to it. At 3%
+     (~10px) those slivers land in the opaque middle and are cut rather than faded, which is what
+     makes them read as "more, off-screen" instead of an edge. */
+  .equip-marquee {
+    -webkit-mask: linear-gradient(to right, transparent, #000 3%, #000 97%, transparent);
+            mask: linear-gradient(to right, transparent, #000 3%, #000 97%, transparent);
+  }
+  /* And bring the names closer together — the gap is the other half of why only one is visible.
+     20px instead of 30px hands each neighbour another 10px of itself on screen. */
+  .equip-track { gap: 20px; }
   .equip-item { font-size: clamp(14px, 5vw, 22px); }
   .svc-panel--equip .svc-desc { bottom: 104px; }
   /* Bottom-right service nav is hidden on phones — the sections are scroll-driven,

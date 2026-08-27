@@ -12,5 +12,7 @@ components to fit them.
 Planned:
 
 - **`home.ts`** — bleed-carousel tiles (artist + still), the selected-clients
-  roster, the four capabilities, hero copy, footer info, and the Vimeo reel id
-  (currently the `1153696598` stand-in).
+  roster, the four capabilities, hero copy, footer info, and the hero reel.
+  The reel is the one part of this file already on the CMS: `getReel()` reads the
+  `homepage` global (an uploaded file or a Vimeo link) and the `1153696598`
+  stand-in is now only the fallback for when nothing is set.
