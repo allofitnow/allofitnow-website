@@ -208,6 +208,14 @@ html.lenis, html.lenis body { height: auto; }
 .equip-item.is-active { color: rgb(217, 225, 234); }
 .svc-panel--equip .svc-desc { max-width: 62ch; bottom: 44px; }
 
+/* ===== Capability list (the four [data-slot] names) =====
+   The list sits on the character field, which is lit brightest exactly where the names are — the
+   per-word luminance pools ADD light rather than clear it — and only dissolves once you are into a
+   section. So the field's characters read straight through the type, worst of all on the hero and
+   the whole way out of it. A soft dark halo lifts the names off the field without dimming it or
+   retiming the dissolve. Same treatment .svc-desc uses to hold up over the galleries. */
+[data-slot] { text-shadow: 0 1px 16px rgba(0, 0, 0, 0.92), 0 0 3px rgba(0, 0, 0, 0.85); }
+
 /* ===== Persistent bottom-right service nav ===== */
 .svc-nav {
   position: absolute; right: 48px; bottom: 48px; z-index: 35;
@@ -244,13 +252,9 @@ html.lenis, html.lenis body { height: auto; }
      its middle on the viewport's. Hero only — `:not([data-mq])`, since in a section the bar is the
      one-line marquee and is deliberately tucked under the title, not centred.
 
-     The names also carry the description's text-shadow. They sit over the character field, which
-     is lit brightest exactly where they are (the per-word pools ADD light) and only dissolves once
-     you are into a section — so through the whole scroll out of the hero the field reads straight
-     through the type. The shadow keeps them legible over it at every point of that transition
-     without touching the field or the timing. Same treatment .svc-desc uses over the galleries. */
+     (The names' shadow, which was here for the same reason, now applies at every width — see the
+     capability-list rule above.) */
   [data-bar]:not([data-mq]) { transform: translateY(calc(-50% - 2vh)); }
-  [data-slot] { text-shadow: 0 1px 16px rgba(0, 0, 0, 0.92), 0 0 3px rgba(0, 0, 0, 0.85); }
 
   /* ===== In-section sub-service marquee (mobile) =====
      When the controller sets data-mq on the bar, the 4 stacked slots collapse to one
