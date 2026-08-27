@@ -140,6 +140,33 @@ const main = async () => {
 
   console.log(`${APPLY ? 'APPLY' : 'DRY RUN'} — ${API} — ${docs.length} project(s)\n`);
 
+  // Does the server actually KNOW the field yet?
+  //
+  // Payload silently DROPS unknown keys on a PATCH: if the backend running at
+  // this address predates `writeupBlocks`, every write below returns 200 and
+  // throws the data away, while this script cheerfully prints "wrote <slug>"
+  // 19 times and queues 19 site builds for nothing. That happened once; it
+  // should not be possible to happen quietly again.
+  //
+  // The test is presence, not truthiness: Payload returns a defined-but-empty
+  // array field as `[]` (19 of these projects come back with `gallery: []`),
+  // so a missing KEY means a missing FIELD.
+  const schemaOk = docs.some((d) => 'writeupBlocks' in d);
+  if (!schemaOk) {
+    console.log('The `writeupBlocks` field does not exist on the server at this address.');
+    console.log('');
+    console.log('The backend there is running code that predates it, so a PATCH would be');
+    console.log('accepted and then discarded -- silently. Deploy the backend and restart');
+    console.log('Payload before running this:');
+    console.log('');
+    console.log('    git pull            # on the machine serving Payload');
+    console.log('    <restart payload>');
+    console.log('');
+    console.log('Nothing was written.');
+    process.exitCode = 1;
+    return;
+  }
+
   const totals = { text: 0, heading: 0, media: 0 };
   const lossy = [];
   const unmappedAll = [];
@@ -205,14 +232,27 @@ const main = async () => {
   // Each PATCH queues a site build through the collection's afterChange hook.
   console.log(`\nApplying to ${todo.length} project(s). Each one queues a site build.\n`);
   const token = await login();
+  let wrote = 0;
   for (const { doc, blocks } of todo) {
     const r = await fetch(`${API}/api/projects/${doc.id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json', Authorization: `JWT ${token}` },
       body: JSON.stringify({ writeupBlocks: blocks }),
     });
-    console.log(r.ok ? `wrote ${doc.slug}` : `FAILED ${doc.slug}: ${r.status} ${await r.text()}`);
+    if (!r.ok) {
+      console.log(`FAILED ${doc.slug}: ${r.status} ${await r.text()}`);
+      continue;
+    }
+    // A 200 is not proof: confirm the rows came back before claiming a write.
+    const saved = (await r.json())?.doc?.writeupBlocks;
+    if (Array.isArray(saved) && saved.length === blocks.length) {
+      wrote++;
+      console.log(`wrote ${doc.slug} (${blocks.length} blocks)`);
+    } else {
+      console.log(`DISCARDED ${doc.slug} — the server accepted the write and kept ${Array.isArray(saved) ? saved.length : 0} blocks.`);
+    }
   }
+  console.log(`\n${wrote} of ${todo.length} project(s) confirmed written.`);
 };
 
 main().catch((e) => { console.error(e.message); process.exitCode = 1; });
