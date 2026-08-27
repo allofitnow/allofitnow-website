@@ -150,7 +150,14 @@ html.lenis, html.lenis body { height: auto; }
   --plate-scale: 1;
   position: relative; flex: 1 1 0%; min-height: 0; min-width: 0;
   container-type: size; overflow: hidden;
+  /* The render is a drag surface for the fleet too, not just the names (initEquipment binds both).
+     Same touch-action as the marquee: we own the horizontal, vertical page scroll passes straight
+     through — which matters more here, since the plate is most of the section on a phone and the
+     page scroll is what scrubs the whole narrative. The callout guard stops a long-press over the
+     render offering to save the image mid-swipe. */
+  cursor: grab; touch-action: pan-y; -webkit-touch-callout: none;
 }
+.equip-plate:active { cursor: grabbing; }
 /* The plate box is 1:1 — its side is the SMALLER of the cell's two axes times the scale above, so
    at scale 1 it can never reach past the cell's left/right or its top/bottom, whatever shape the
    cell takes on a given screen. Both plates sit in that one square, centred, so they still overlay

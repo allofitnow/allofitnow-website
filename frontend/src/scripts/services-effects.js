@@ -621,12 +621,17 @@ function initEquipment(root) {
   });
 
   // pointer drag (touch-action:pan-y in CSS lets vertical page scroll pass through)
-  let dragging = false, downX = 0, startX = 0, lastX = 0, lastT = 0, vel = 0, moved = 0;
+  // Bound to the plate as well as the marquee, so the render is draggable too — on a phone the
+  // plate is most of the section and swiping it is the obvious gesture. `surface` is whichever of
+  // the two started this drag: the capture has to go on that element or the move/up events stop
+  // arriving mid-swipe, and it is also what tells `up` whether a tap means anything (see there).
+  let dragging = false, downX = 0, startX = 0, lastX = 0, lastT = 0, vel = 0, moved = 0, surface = null;
   const down = (e) => {
     dragging = true; downX = lastX = e.clientX; startX = trackX; vel = 0; moved = 0; lastT = performance.now();
+    surface = e.currentTarget;
     gsap.killTweensOf(track);
     marquee.classList.add('is-grabbing');
-    if (marquee.setPointerCapture) try { marquee.setPointerCapture(e.pointerId); } catch (_) {}
+    if (surface.setPointerCapture) try { surface.setPointerCapture(e.pointerId); } catch (_) {}
   };
   const move = (e) => {
     if (!dragging) return;
@@ -648,20 +653,27 @@ function initEquipment(root) {
   };
   const up = (e) => {
     if (!dragging) return; dragging = false;
+    const from = surface; surface = null;
     marquee.classList.remove('is-grabbing');
-    if (marquee.releasePointerCapture && e.pointerId != null) try { marquee.releasePointerCapture(e.pointerId); } catch (_) {}
+    if (from && from.releasePointerCapture && e.pointerId != null) try { from.releasePointerCapture(e.pointerId); } catch (_) {}
     // A tap (no real movement) selects the name under the pointer; a drag snaps to center (a flick
     // advances one). Tap is handled here — not via a row 'click' listener — because pointer capture
     // routes the click to the marquee, so per-row click handlers never fire.
+    // Only the marquee reads a tap that way: an x on the plate points at whichever name happens to
+    // sit above it, so tapping the render would jump the fleet somewhere arbitrary. A tap there
+    // settles back onto the current item instead.
     let target;
-    if (moved < 5) target = itemAtClientX(e.clientX);
+    if (moved < 5) target = from === marquee ? itemAtClientX(e.clientX) : (activeIdx < 0 ? defaultIdx : activeIdx);
     else { target = nearest(); if (Math.abs(vel) > 0.35) target += vel < 0 ? 1 : -1; }
     snapTo(clampU(0, rows.length - 1, target));
   };
-  marquee.addEventListener('pointerdown', down);
-  marquee.addEventListener('pointermove', move);
-  marquee.addEventListener('pointerup', up);
-  marquee.addEventListener('pointercancel', up);
+  [marquee, plate].forEach((el) => {
+    if (!el) return;
+    el.addEventListener('pointerdown', down);
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  });
 
   // Section-gated playback: the plate video plays ONLY while Equipment is active,
   // and restarts from 0 each time you scroll in — so its intro is never missed.
