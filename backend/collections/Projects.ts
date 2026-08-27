@@ -274,17 +274,111 @@ const Projects: CollectionConfig = {
       },
     },
 
+    {
+      // The block form of the write-up, and the eventual replacement for the
+      // `writeup` rich-text field above.
+      //
+      // Measured on the live CMS, that field holds 148 paragraphs, 8 headings,
+      // 2 inline images, 21 bold/italic spans and ZERO links, lists or quotes --
+      // so nothing here is a downgrade in practice, and three things get better:
+      //
+      //  - an inline image is a row like any other, instead of an `upload` node
+      //    that no text editor outside the Payload admin can represent (the page
+      //    composer has to preserve them by not touching the field at all);
+      //  - a heading is a heading because someone chose it, not because mammoth
+      //    emitted `##` and it came in under a length guess -- the rule that
+      //    published Renee Rapp, Bad Omens and GRiZ as walls of headings;
+      //  - the shape matches `gallery` (an array with a per-row select), which
+      //    is the one the page composer already edits well.
+      //
+      // Inline emphasis lives in the text as Markdown, which is what the copy
+      // doc parser already produces and what the composer already round-trips.
+      //
+      // ADDITIVE FOR NOW: the frontend renders this when it is populated and
+      // falls back to `writeup` otherwise, so projects migrate one at a time and
+      // nothing is unrenderable in between.
+      name: "writeupBlocks",
+      type: "array",
+      labels: { singular: "Write-up block", plural: "Write-up blocks" },
+      admin: {
+        description:
+          "The write-up as an ordered run of blocks. Leave empty to keep using the rich-text field above.",
+        initCollapsed: true,
+      },
+      fields: [
+        {
+          name: "kind",
+          type: "select",
+          required: true,
+          defaultValue: "text",
+          options: [
+            { label: "Text", value: "text" },
+            { label: "Heading", value: "heading" },
+            { label: "Media", value: "media" },
+          ],
+        },
+        {
+          name: "text",
+          type: "textarea",
+          admin: {
+            condition: (_data: any, sibling: any) => sibling?.kind === "text" || sibling?.kind === "heading",
+            description:
+              "Markdown for emphasis: **bold**, *italic*, `code`, <u>underline</u>, [links](url). A text block may also hold a `- ` list or a `> ` quote.",
+          },
+        },
+        {
+          name: "level",
+          type: "select",
+          defaultValue: "2",
+          options: [
+            { label: "Section heading", value: "2" },
+            { label: "Sub-heading", value: "3" },
+          ],
+          admin: { condition: (_data: any, sibling: any) => sibling?.kind === "heading" },
+        },
+        {
+          name: "media",
+          type: "upload",
+          relationTo: "media",
+          admin: {
+            condition: (_data: any, sibling: any) => sibling?.kind === "media",
+            description: "Media accepts video as well as stills — a clip is an upload like any other.",
+          },
+        },
+        {
+          name: "span",
+          type: "select",
+          defaultValue: "full",
+          options: [
+            { label: "Full width of the panel", value: "full" },
+            { label: "One column", value: "half" },
+          ],
+          admin: {
+            condition: (_data: any, sibling: any) => sibling?.kind === "media",
+            description:
+              "In a two-column write-up, FULL breaks across both columns (column-span: all) and ONE COLUMN sits in the text flow.",
+          },
+        },
+        {
+          name: "caption",
+          type: "text",
+          admin: { condition: (_data: any, sibling: any) => sibling?.kind === "media" },
+        },
+      ],
+    },
+
     // ---- Sidebar: publishing + meta ----
     { name: "slug", type: "text", required: true, unique: true, admin: { position: "sidebar" } },
     { name: "code", type: "text", admin: { hidden: true } },
     {
       name: "status",
       type: "select",
-      options: ["published", "archive"],
+      options: ["published", "unlisted", "archive"],
       defaultValue: "published",
       admin: {
         position: "sidebar",
-        description: "published = shown on the site; archive = hidden, browsable in CMS only",
+        description:
+          "published = live and listed on the Work page; unlisted = the page builds and the URL works, but nothing on the site links to it (share the link directly); archive = no page at all, browsable in the CMS only",
       },
       index: true,
     },

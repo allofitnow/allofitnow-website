@@ -73,6 +73,9 @@ export function mapPayloadProject(doc: any): Project {
     // Rich text (Slate node array) passed straight through; rendered by
     // renderRichText in the project page.
     writeup: doc.writeup ?? [],
+    // Passed through as stored. At depth 2 each media block's `media` is the
+    // populated document, which is what the figure serializer needs.
+    writeupBlocks: Array.isArray(doc.writeupBlocks) ? doc.writeupBlocks : [],
     // Stored as a string on the select; the page only cares about 1 vs 2.
     writeupColumns: doc.writeupColumns === '2' ? 2 : 1,
   };
@@ -85,6 +88,28 @@ export function mapPayloadProject(doc: any): Project {
 // per build. In dev (per-request SSR) skip the cache so edits show on reload; on
 // failure clear it so a retry can re-fetch instead of replaying the rejection.
 let projectsCache: Promise<Project[]> | null = null;
+let routableCache: Promise<Project[]> | null = null;
+
+/** The running order the site follows: the manual `order` decides, lowest first, and the
+ *  year only settles a tie between two projects sharing a number. */
+function sortRunningOrder(projects: Project[]): Project[] {
+  return projects.sort((a, b) => {
+    const oa = a.order ?? 0;
+    const ob = b.order ?? 0;
+    if (oa !== ob) return oa - ob;                 // the manual running order decides
+    const ya = parseInt(a.year, 10) || 0;          // ...and only a tie falls back
+    const yb = parseInt(b.year, 10) || 0;          //    to newest year first
+    return yb - ya;
+  });
+}
+
+/** Shared fetch for a status set, memoised per-set for the production build. */
+async function fetchProjectsByStatus(statusQuery: string): Promise<Project[]> {
+  const res = await fetch(`${API_URL}/api/projects?limit=100&depth=2&sort=order&${statusQuery}`);
+  if (!res.ok) throw new Error(`Payload API ${res.status}: ${await res.text()}`);
+  const data = await res.json();
+  return sortRunningOrder(data.docs.map(mapPayloadProject));
+}
 
 /** Fetch all published projects in the running order set on the `order` field,
  *  lowest first — that is the sequence the Work grid, the list view and the
@@ -93,24 +118,27 @@ let projectsCache: Promise<Project[]> | null = null;
  *  than being locked into year blocks. Memoised for the production build. */
 export function getProjects(): Promise<Project[]> {
   if (import.meta.env.PROD && projectsCache) return projectsCache;
-  const req = (async () => {
-    const res = await fetch(`${API_URL}/api/projects?limit=100&depth=2&sort=order&where[status][equals]=published`);
-    if (!res.ok) throw new Error(`Payload API ${res.status}: ${await res.text()}`);
-    const data = await res.json();
-    const projects: Project[] = data.docs.map(mapPayloadProject);
-    projects.sort((a, b) => {
-      const oa = a.order ?? 0;
-      const ob = b.order ?? 0;
-      if (oa !== ob) return oa - ob;                 // the manual running order decides
-      const ya = parseInt(a.year, 10) || 0;          // ...and only a tie falls back
-      const yb = parseInt(b.year, 10) || 0;          //    to newest year first
-      return yb - ya;
-    });
-    return projects;
-  })();
+  const req = fetchProjectsByStatus('where[status][equals]=published');
   if (import.meta.env.PROD) {
     projectsCache = req;
     req.catch(() => { projectsCache = null; });
+  }
+  return req;
+}
+
+/** Every project that should GET A PAGE BUILT: the published roster plus the `unlisted`
+ *  ones. Unlisted is deliberately not a visibility level on the site — it is a routing
+ *  level. Nothing links to an unlisted project (the Work grid, the homepage marquee and
+ *  the flight roster all read `getProjects`, which stays published-only); its URL simply
+ *  exists, so the link can be handed out directly. Used by `getStaticPaths` alone.
+ *
+ *  `archive` is still excluded outright — that status means no page at all. */
+export function getRoutableProjects(): Promise<Project[]> {
+  if (import.meta.env.PROD && routableCache) return routableCache;
+  const req = fetchProjectsByStatus('where[status][in]=published,unlisted');
+  if (import.meta.env.PROD) {
+    routableCache = req;
+    req.catch(() => { routableCache = null; });
   }
   return req;
 }

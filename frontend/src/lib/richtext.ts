@@ -183,3 +183,85 @@ export function renderRichText(value: unknown): string {
   if (!Array.isArray(value)) return '';
   return serializeNodes(value as SlateNode[]);
 }
+
+// ---------------------------------------------------------------------------
+// The block write-up (`writeupBlocks` on the collection).
+//
+// The replacement for the Slate value above. A project renders whichever it
+// has: blocks when populated, the rich text otherwise — so the two coexist
+// while projects are migrated one at a time and nothing is ever unrenderable.
+//
+// The output markup is deliberately IDENTICAL to the Slate path's — same tags,
+// same `rt-fig` figures, same classes — so ProjectPage.astro's stylesheet does
+// not have to know which source produced it.
+// ---------------------------------------------------------------------------
+
+export interface WriteupBlock {
+  kind?: string;
+  /** text/heading: Markdown. Emphasis is rendered by renderInline. */
+  text?: string;
+  /** heading: "2" | "3". */
+  level?: string;
+  /** media: the populated media doc at depth >= 1, or a bare id at depth 0. */
+  media?: MediaDoc | string;
+  span?: string;
+  caption?: string;
+}
+
+const BULLET = /^\s*[-*]\s+/;
+const NUMBERED = /^\s*\d+[.)]\s+/;
+
+/** One text block. A block may hold a markdown list or a quote as well as prose. */
+function serializeTextBlock(raw: string): string {
+  const lines = raw.split('\n').map((l) => l.trimEnd()).filter((l) => l.trim());
+  if (!lines.length) return '';
+
+  const listItems = (re: RegExp) =>
+    lines.map((l) => `<li>${renderInline(l.replace(re, ''))}</li>`).join('');
+  if (lines.every((l) => BULLET.test(l))) return `<ul>${listItems(BULLET)}</ul>`;
+  if (lines.every((l) => NUMBERED.test(l))) return `<ol>${listItems(NUMBERED)}</ol>`;
+
+  // Everything else is one flowing paragraph: a write-up block is a block, and
+  // a hard-wrapped source line is not a line break the reader should see.
+  const joined = lines.join(' ');
+  if (/^>\s+/.test(joined)) return `<blockquote>${renderInline(joined.replace(/^>\s+/, ''))}</blockquote>`;
+  return `<p>${renderInline(joined)}</p>`;
+}
+
+function serializeBlock(block: WriteupBlock): string {
+  if (!block || typeof block !== 'object') return '';
+
+  if (block.kind === 'media') {
+    // Reuse the Slate upload serializer rather than repeating its aspect-ratio
+    // and video handling: the shapes differ only in where the media doc sits.
+    return serializeUpload({
+      type: 'upload',
+      value: block.media,
+      fields: { span: block.span, caption: block.caption },
+    } as SlateNode);
+  }
+
+  if (block.kind === 'heading') {
+    const text = String(block.text ?? '').trim();
+    if (!text) return '';
+    // Only the two levels the panel styles; anything else lands on h3.
+    const tag = block.level === '2' ? 'h2' : 'h3';
+    return `<${tag}>${renderInline(text)}</${tag}>`;
+  }
+
+  return serializeTextBlock(String(block.text ?? ''));
+}
+
+/** Render the block write-up to an HTML string. Empty when there are no blocks. */
+export function renderWriteupBlocks(value: unknown): string {
+  if (!Array.isArray(value) || !value.length) return '';
+  return (value as WriteupBlock[]).map(serializeBlock).join('');
+}
+
+/**
+ * What the project page should show: the blocks when a project has been
+ * migrated, the Slate value when it has not. One call site, one rule.
+ */
+export function renderWriteup(blocks: unknown, slate: unknown): string {
+  return renderWriteupBlocks(blocks) || renderRichText(slate);
+}
