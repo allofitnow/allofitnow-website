@@ -39,8 +39,8 @@ if [ "$GATE_ONLY" -eq 0 ]; then
   # Rewrite only files that still match (mtime-preserving on re-runs).
   if command -v grep >/dev/null 2>&1; then
     while IFS= read -r -d '' f; do
-      sed -i "s|${PATTERN}|/media/|g" "$f"
-    done < <(grep -rlZ "${PATTERN}" "$PROD" --include='*.html' --include='*.css' --include='*.js' --include='*.map' 2>/dev/null)
+      sed -Ei "s#${PATTERN}#/media/#g" "$f"
+    done < <(grep -rlEZ "${PATTERN}" "$PROD" --include='*.html' --include='*.css' --include='*.js' --include='*.map' 2>/dev/null)
   fi
 fi
 
