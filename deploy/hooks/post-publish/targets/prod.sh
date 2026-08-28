@@ -26,7 +26,8 @@
 # (auth/endpoint/translate-gate-red, detected in preflight before any write).
 set -uo pipefail
 
-BUILD_TREE=/opt/aoin-astro-prod
+STAGING_TREE=/opt/aoin-astro
+PROD_TREE=/opt/aoin-astro-prod
 PUBLISH_ID=""
 PREFIX=""
 DRY_RUN=0
@@ -37,7 +38,8 @@ ENDPOINT_OVERRIDE=""
 
 while [ $# -gt 0 ]; do
   case "$1" in
-    --build-tree)     BUILD_TREE="${2:-}"; shift 2 ;;
+    --build-tree)     STAGING_TREE="${2:-}"; shift 2 ;;
+    --prod-tree)      PROD_TREE="${2:-}"; shift 2 ;;
     --publish-id)     PUBLISH_ID="${2:-}"; shift 2 ;;
     --media-src)      MEDIA_SRC="${2:-}"; shift 2 ;;
     --prefix)         PREFIX="${2:-}"; shift 2 ;;
@@ -113,16 +115,16 @@ aws_retry() {  # aws_retry <phase> <args...>
 }
 
 # --- preflight: everything that can fail FATAL (exit 2) before any write ----
-if [ ! -d "$BUILD_TREE" ]; then
-  echo "prod: build tree missing: $BUILD_TREE" >&2
-  fatal "build-tree-missing" 0
+if [ ! -d "$STAGING_TREE" ]; then
+  echo "prod: staging tree missing: $STAGING_TREE" >&2
+  fatal "staging-tree-missing" 0
   exit 2
 fi
-GATE_LOG="$LOGDIR/translate-gate-$PUBLISH_ID.log"
-"$LIB/translate.sh" --build-tree "$BUILD_TREE" --gate-only >"$GATE_LOG" 2>&1
+GATE_LOG="$LOGDIR/translate-$PUBLISH_ID.log"
+"$LIB/translate.sh" --staging-tree "$STAGING_TREE" --prod-tree "$PROD_TREE" >"$GATE_LOG" 2>&1
 GRC=$?
 if [ "$GRC" -ne 0 ]; then
-  echo "prod: translate gate red (exit $GRC, see $GATE_LOG); bucket untouched" >&2
+  echo "prod: translate failed or gate red (exit $GRC, see $GATE_LOG); bucket untouched" >&2
   fatal "translate-gate-red" 0
   exit 2
 fi
@@ -137,7 +139,7 @@ LOCAL_MAN="${AOIN_PROD_MANIFEST_OVERRIDE:-}"
 if [ -z "$LOCAL_MAN" ] || [ ! -f "$LOCAL_MAN" ]; then
   LOCAL_MAN="$LOGDIR/manifest-$PUBLISH_ID.json"
   BUILD_COMMIT=$(git -C /root/projects/allofitnow-website rev-parse --short HEAD 2>/dev/null || echo unknown)
-  "$PY" "$LIB/manifest.py" build --tree "$BUILD_TREE" --media-src "$MEDIA_SRC" \
+  "$PY" "$LIB/manifest.py" build --tree "$PROD_TREE" --media-src "$MEDIA_SRC" \
     --publish-id "$PUBLISH_ID" --build-commit "$BUILD_COMMIT" --out "$LOCAL_MAN" || { fatal "manifest-build-failed" 0; exit 2; }
 fi
 
@@ -224,7 +226,7 @@ echo "phase: assets"
 ASSET_RC=0
 DRYFLAG=()
 [ "$DRY_RUN" -eq 1 ] && DRYFLAG=(--dryrun)
-aws_retry assets s3 sync "$BUILD_TREE" "s3://$BUCKET/${PREFIX}" --exclude "*.html" "${DRYFLAG[@]}" || ASSET_RC=1
+aws_retry assets s3 sync "$PROD_TREE" "s3://$BUCKET/${PREFIX}" --exclude "*.html" "${DRYFLAG[@]}" || ASSET_RC=1
 if [ "$DRY_RUN" -ne 1 ]; then
   while IFS= read -r k; do
     [ -n "$k" ] || continue
@@ -240,7 +242,7 @@ note_phase assets "$ASSET_RC" "$ATTEMPTS"
 # --- phase 3: html (last writes; then manifest + CURRENT pointer) -----------
 echo "phase: html"
 HTML_RC=0
-aws_retry html s3 sync "$BUILD_TREE" "s3://$BUCKET/${PREFIX}" --exclude "*" --include "*.html" "${DRYFLAG[@]}" || HTML_RC=1
+aws_retry html s3 sync "$PROD_TREE" "s3://$BUCKET/${PREFIX}" --exclude "*" --include "*.html" "${DRYFLAG[@]}" || HTML_RC=1
 if [ "$DRY_RUN" -ne 1 ]; then
   while IFS= read -r k; do
     [ -n "$k" ] || continue
