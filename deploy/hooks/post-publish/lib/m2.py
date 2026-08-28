@@ -19,6 +19,7 @@ Exit codes: 0 = green or log-only drift, 1 = escalate, 2 = fatal.
 """
 import argparse
 import json
+import fnmatch
 import os
 import sys
 import time
@@ -45,7 +46,9 @@ def roster(rows, tree):
     pages = []
     for r in rows:
         p = r["page"]
-        if p != "all" and p not in pages:
+        if p == "all" or "*" in p:
+            continue  # 'all' and glob patterns contribute no literal page
+        if p not in pages:
             pages.append(p)
     workdir = os.path.join(tree, "work")
     if os.path.isdir(workdir):
@@ -60,7 +63,12 @@ def roster(rows, tree):
 
 
 def rows_for(rows, page):
-    return [r for r in rows if r["page"] in (page, "all")]
+    out = []
+    for r in rows:
+        p = r["page"]
+        if p == page or p == "all" or ("*" in p and fnmatch.fnmatch(page, p)):
+            out.append(r)
+    return out
 
 
 def fetch(origin, page, timeout=10):
@@ -72,7 +80,7 @@ def fetch(origin, page, timeout=10):
 
 def count_page(html, rows, page):
     soup = BeautifulSoup(html, "html.parser")
-    return {r["id"]: len(soup.select(r["selector"])) for r in rows_for(rows, page)}
+    return {str(r["id"]): len(soup.select(r["selector"])) for r in rows_for(rows, page)}
 
 
 def main():
@@ -144,7 +152,7 @@ def main():
             mark("NEW")
             continue
         for r in rows_for(rows, p):
-            rid = r["id"]
+            rid = str(r["id"])
             if rid not in bcounts[p]:
                 verdicts.append({"page": p, "row": rid, "verdict": "NEW"})
                 mark("NEW")
