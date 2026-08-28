@@ -666,7 +666,21 @@ export class HomeController {
     box.style.transform = 'translateY(' + reelY + '%)';
     if (icon) icon.style.transform = 'translate(-50%, calc(-50% - ' + Math.round(iconY) + 'px))';
     const cue = this.ref('cue');
-    if (cue && this.cueShown) cue.style.opacity = String(Math.max(0, 1 - p / 0.06));
+    // The cue used to fade over the FIRST 6% of the pin, so it was gone after a
+    // nudge of the wheel — while the reel was still pinned and filling the
+    // screen, which is exactly when a reader needs telling there is a way past
+    // it. It now holds for the whole hero and goes only as the pin releases.
+    //
+    // Opacity is safe to fade even though `.cue` blends: opacity groups the
+    // element and the group is what gets blended, so the difference still
+    // reaches the film all the way down. It is a blend on a DESCENDANT that an
+    // opacity would have isolated.
+    const f = Math.max(0, Math.min(1, (1 - p) / 0.15));
+    if (cue && this.cueShown) cue.style.opacity = String(f);
+    const desat = document.querySelector('.cue-desat') as HTMLElement | null;
+    // The pad carries no type, so it just goes with the words — a patch of
+    // desaturated film left sitting there alone would be worse than nothing.
+    if (desat && this.cueShown) desat.style.opacity = String(f);
     this.sizeReel();
   }
 

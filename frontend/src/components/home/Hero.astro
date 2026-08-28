@@ -46,6 +46,7 @@ const cueWord = (w: string) => w.split('');
       </div>
     </div>
 
+    <div class="cue-desat" aria-hidden="true"></div>
     <div class="cue" data-ref="cue" data-screen-label="Scroll cue">
       <div class="cue-row">
         <span class="grp" data-g="1" data-br="-1"
@@ -165,6 +166,14 @@ const cueWord = (w: string) => w.split('');
     right: 0;
     bottom: 38px;
     z-index: 6;
+    /* On `.cue`, NOT on the row inside it. `z-index` here makes `.cue` a
+       stacking context, and a stacking context isolates its DESCENDANTS — so a
+       blend on the row blended against nothing and rendered flat white, which
+       is precisely the case this was meant to fix (white lettering vanishing on
+       a white frame). An element's own stacking context does not isolate the
+       element itself, so the blend belongs at this level, where it reaches the
+       reel sitting below in `.sticky`. */
+    mix-blend-mode: difference;
     display: flex;
     justify-content: center;
     cursor: pointer;
@@ -173,6 +182,32 @@ const cueWord = (w: string) => w.split('');
     font-size: 11px;
     color: var(--aoin-cool-white);
     opacity: 0;
+  }
+  /* Legibility over the reel, which is full-bleed colour by the time the cue
+     matters. `difference` alone inverts the RGB underneath, so white lettering
+     over a warm shot comes back cyan — readable, but it reads as a colour cast
+     rather than as type. So the backdrop is desaturated FIRST and the type
+     differences against that: the result is only ever black or white, whatever
+     the film is doing.
+
+     Two elements rather than one because a single element cannot both filter
+     its backdrop and blend with the filtered result — the pad paints the
+     greyscale, the row differences against it.
+
+     The pad is feathered with a mask; a hard rectangle of desaturated video
+     sitting under the words was worse than the colour cast it fixes. */
+  .cue-desat {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 12px;
+    height: 66px;
+    z-index: 5;
+    backdrop-filter: grayscale(1);
+    -webkit-backdrop-filter: grayscale(1);
+    -webkit-mask-image: radial-gradient(115% 150% at 50% 50%, #000 38%, transparent 100%);
+    mask-image: radial-gradient(115% 150% at 50% 50%, #000 38%, transparent 100%);
+    pointer-events: none;
   }
   .cue-row {
     display: flex;
