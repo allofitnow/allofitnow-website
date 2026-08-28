@@ -64,6 +64,8 @@ def cmd_verify(args):
             if len(parts) < 4:
                 continue
             key = parts[3].rstrip("\n")
+            if args.prefix and key.startswith(args.prefix):
+                key = key[len(args.prefix):]
             if key.startswith("archive/") or key.startswith("manifests/"):
                 continue
             bucket_live.add(key)
@@ -102,6 +104,8 @@ def main():
     v = sub.add_parser("verify")
     v.add_argument("--manifest", required=True)
     v.add_argument("--bucket-list", required=True)
+    v.add_argument("--prefix", default="",
+                   help="scratch prefix the listing was taken under (stripped before compare)")
     v.set_defaults(fn=cmd_verify)
     args = p.parse_args()
     sys.exit(args.fn(args))

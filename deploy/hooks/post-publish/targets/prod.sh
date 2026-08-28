@@ -264,7 +264,7 @@ VERIFY_RC=0
 BUCKET_LIST="/tmp/prod-bucketlist-$PUBLISH_ID.txt"
 aws_retry verify s3 ls "s3://$BUCKET/${PREFIX}" --recursive >"$BUCKET_LIST" || VERIFY_RC=1
 if [ "$VERIFY_RC" -eq 0 ]; then
-  "$PY" "$LIB/manifest.py" verify --manifest "$LOCAL_MAN" --bucket-list "$BUCKET_LIST"
+  "$PY" "$LIB/manifest.py" verify --manifest "$LOCAL_MAN" --bucket-list "$BUCKET_LIST" --prefix "$PREFIX"
   VRC=$?
   if [ "$VRC" -ne 0 ]; then
     if [ "$DRY_RUN" -eq 1 ]; then
