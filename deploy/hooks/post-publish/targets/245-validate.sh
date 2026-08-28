@@ -2,6 +2,9 @@
 # Tier-1 validation target (.245 only; other hosts skip exit 0).
 # m2 check against the local origin; green -> baseline advances (re-pin);
 # missing baseline on first run -> bootstrap pin (no false alert on day one).
+# If the hooks venv is not provisioned yet on this host, SKIP (exit 0):
+# provisioning is an ops step, never something a publish should attempt, and
+# a missing interpreter must not raise daily no-op failures on .245.
 set -uo pipefail
 
 while [ $# -gt 0 ]; do
@@ -19,6 +22,11 @@ if [ "$TAG" != "245" ]; then
 fi
 
 VENV=/opt/aoin-hooks-venv/bin/python3
+if [ ! -x "$VENV" ]; then
+  echo "245-validate: hooks venv not provisioned on this host yet; skipping (ops provisioning pending)"
+  exit 0
+fi
+
 M2=deploy/hooks/post-publish/lib/m2.py
 DICT=deploy/tracking-dictionary.yaml
 BASE=/opt/aoin-tracking/baselines/245.json
