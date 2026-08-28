@@ -25,7 +25,7 @@ if [ ! -d "$STAGING" ]; then
   exit 2
 fi
 
-PATTERN='http://192\.168\.30\.245/media/'
+PATTERN='http://192\.168\.30\.(245|246)/media/'
 
 if [ "$GATE_ONLY" -eq 0 ]; then
   if ! command -v rsync >/dev/null 2>&1; then
