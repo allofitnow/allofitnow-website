@@ -102,8 +102,9 @@ aws_retry() {  # aws_retry <phase> <args...>
   shift
   while [ "$n" -le "$ATTEMPTS" ]; do
     ATTEMPT_SEEN=$n
-    if aws "${EP[@]}" "${CLI_OPTS[@]}" "$@"; then rc=0; break; fi
+    aws "${EP[@]}" "${CLI_OPTS[@]}" "$@"
     rc=$?
+    if [ "$rc" -eq 0 ]; then break; fi
     if [ "$n" -ge "$ATTEMPTS" ]; then break; fi
     local backoff=5
     [ "$n" -eq 2 ] && backoff=15
@@ -198,7 +199,7 @@ if [ -d "$MEDIA_SRC" ]; then
     while IFS= read -r k; do
       [ -n "$k" ] || continue
       if live_has "media/$k"; then
-        aws_retry archive cp s3 cp "s3://$BUCKET/${PREFIX}media/$k" "s3://$BUCKET/${PREFIX}archive/$PUBLISH_ID/media/$k" || MEDIA_RC=1
+        aws_retry archive-media s3 cp "s3://$BUCKET/${PREFIX}media/$k" "s3://$BUCKET/${PREFIX}archive/$PUBLISH_ID/media/$k" || MEDIA_RC=1
       fi
     done < <(written_keys media)
   fi
@@ -210,8 +211,8 @@ if [ -d "$MEDIA_SRC" ]; then
     if [ "$DRY_RUN" -eq 1 ]; then
       echo "prod: [dryrun] tombstone media/$k -> archive/$PUBLISH_ID/media/$k"
     elif live_has "media/$k"; then
-      aws_retry tombstone cp s3 cp "s3://$BUCKET/${PREFIX}media/$k" "s3://$BUCKET/${PREFIX}archive/$PUBLISH_ID/media/$k" \
-        && aws_retry tombstone rm s3api delete-object --bucket "$BUCKET" --key "${PREFIX}media/$k" || MEDIA_RC=1
+      aws_retry tombstone-copy s3 cp "s3://$BUCKET/${PREFIX}media/$k" "s3://$BUCKET/${PREFIX}archive/$PUBLISH_ID/media/$k" \
+        && aws_retry tombstone-rm s3api delete-object --bucket "$BUCKET" --key "${PREFIX}media/$k" || MEDIA_RC=1
     fi
     TOMB_N=$((TOMB_N + 1))
   done < <(tombstone_keys)
@@ -233,7 +234,7 @@ if [ "$DRY_RUN" -ne 1 ]; then
     case "$k" in
       *.html) continue ;;
     esac
-    aws_retry archive cp s3 cp "s3://$BUCKET/${PREFIX}$k" "s3://$BUCKET/${PREFIX}archive/$PUBLISH_ID/$k" || ASSET_RC=1
+    aws_retry archive-obj s3 cp "s3://$BUCKET/${PREFIX}$k" "s3://$BUCKET/${PREFIX}archive/$PUBLISH_ID/$k" || ASSET_RC=1
   done < <(written_keys tree)
 fi
 echo "phase: assets done rc=$ASSET_RC"
@@ -247,12 +248,12 @@ if [ "$DRY_RUN" -ne 1 ]; then
   while IFS= read -r k; do
     [ -n "$k" ] || continue
     case "$k" in
-      *.html) aws_retry archive cp s3 cp "s3://$BUCKET/${PREFIX}$k" "s3://$BUCKET/${PREFIX}archive/$PUBLISH_ID/$k" || HTML_RC=1 ;;
+      *.html) aws_retry archive-obj s3 cp "s3://$BUCKET/${PREFIX}$k" "s3://$BUCKET/${PREFIX}archive/$PUBLISH_ID/$k" || HTML_RC=1 ;;
     esac
   done < <(written_keys tree)
-  aws_retry manifest s3 cp "$LOCAL_MAN" "s3://$BUCKET/${PREFIX}manifests/$PUBLISH_ID.json" || HTML_RC=1
+  aws_retry manifest-put s3 cp "$LOCAL_MAN" "s3://$BUCKET/${PREFIX}manifests/$PUBLISH_ID.json" || HTML_RC=1
   printf '%s' "$PUBLISH_ID" >"/tmp/prod-CURRENT-$PUBLISH_ID"
-  aws_retry current s3 cp "/tmp/prod-CURRENT-$PUBLISH_ID" "s3://$BUCKET/${PREFIX}manifests/CURRENT" || HTML_RC=1
+  aws_retry current-put s3 cp "/tmp/prod-CURRENT-$PUBLISH_ID" "s3://$BUCKET/${PREFIX}manifests/CURRENT" || HTML_RC=1
 fi
 echo "phase: html done rc=$HTML_RC (manifest=$PUBLISH_ID)"
 note_phase html "$HTML_RC" "$ATTEMPTS"
