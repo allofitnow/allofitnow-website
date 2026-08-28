@@ -677,10 +677,6 @@ export class HomeController {
     // opacity would have isolated.
     const f = Math.max(0, Math.min(1, (1 - p) / 0.15));
     if (cue && this.cueShown) cue.style.opacity = String(f);
-    const desat = document.querySelector('.cue-desat') as HTMLElement | null;
-    // The pad carries no type, so it just goes with the words — a patch of
-    // desaturated film left sitting there alone would be worse than nothing.
-    if (desat && this.cueShown) desat.style.opacity = String(f);
     this.sizeReel();
   }
 
