@@ -1,0 +1,31 @@
+version: 1
+# Machine SSOT for the 25 tracking points. Human-readable snapshot + provenance:
+# Zaraz spec wiki page (M1 Dictionary). Changes are HITL-gated (Tier 3).
+# variance: structural = fixed count, drift escalates; content = count moves with
+# designer curation, only 0-count (MISSING) escalates.
+rows:
+  - {id: 1,  page: /,          selector: '.slide',                trigger: click,      event: carousel_project_click, params: [data-title, data-slug, data-caps], variance: content}
+  - {id: 2,  page: /,          selector: '.work-cue',             trigger: click,      event: cta_work_click,         params: [],                       variance: structural}
+  - {id: 3,  page: /,          selector: '#services',             trigger: visibility, event: view_services,          params: [],                       variance: structural}
+  - {id: 4,  page: /,          selector: '.aoin-clients',         trigger: visibility, event: view_clients,           params: [],                       variance: structural}
+  - {id: 5,  page: /,          selector: '#contact',              trigger: visibility, event: view_footer,            params: [],                       variance: structural}
+  - {id: 6,  page: /work/,     selector: '.tile',                 trigger: click,      event: work_item_click,        params: [data-slug, data-cap, aria-label], variance: content}
+  - {id: 7,  page: /work/,     selector: '#grid',                 trigger: visibility, event: view_work_grid,         params: [],                       variance: structural}
+  - {id: 8,  page: /work/,     selector: '[data-pane="list"]',    trigger: visibility, event: view_work_list,         params: [],                       variance: structural}
+  - {id: 9,  page: /work/,     selector: '.back',                 trigger: click,      event: back_to_home,           params: [],                       variance: structural}
+  - {id: 10, page: /services/, selector: '#real-time-content',    trigger: visibility, event: view_svc_realtime,      params: [],                       variance: structural}
+  - {id: 11, page: /services/, selector: '#screens-production',   trigger: visibility, event: view_svc_screens,       params: [],                       variance: structural}
+  - {id: 12, page: /services/, selector: '#mixed-reality',        trigger: visibility, event: view_svc_mixed,         params: [],                       variance: structural}
+  - {id: 13, page: /services/, selector: '#equipment-rental',     trigger: visibility, event: view_svc_equipment,     params: [],                       variance: structural}
+  - {id: 14, page: /studio/,   selector: '.statement',            trigger: visibility, event: view_studio_statement,  params: [],                       variance: structural}
+  - {id: 15, page: /studio/,   selector: '.team',                 trigger: visibility, event: view_studio_team,       params: [],                       variance: structural}
+  - {id: 16, page: /work/*/,   selector: '.pp__gallery',          trigger: visibility, event: view_project_gallery,   params: [],                       variance: structural}
+  - {id: 17, page: /work/*/,   selector: '.pp__stats',            trigger: visibility, event: view_project_stats,     params: [],                       variance: structural}
+  - {id: 18, page: /work/*/,   selector: '.pp__credits',          trigger: visibility, event: view_project_credits,   params: [],                       variance: structural}
+  - {id: 19, page: /work/*/,   selector: 'a[href^="/work/"]:not(.tile):not(.slide)', trigger: click, event: project_next_click, params: [href], variance: content}
+  - {id: 20, page: all,        selector: '.im__panel',            trigger: visibility, event: inquiry_open,           params: [],                       variance: structural}
+  - {id: 21, page: all,        selector: '.im__send',             trigger: click,      event: inquiry_send,           params: [subject],               variance: structural}
+  - {id: 22, page: all,        selector: '.im__close',            trigger: click,      event: inquiry_close,          params: [],                       variance: structural}
+  - {id: 23, page: all,        selector: '.aoin-nav__menu-btn',   trigger: click,      event: nav_menu_open,          params: [],                       variance: structural}
+  - {id: 24, page: all,        selector: 'a[data-aoin-logo]',     trigger: click,      event: nav_home_click,         params: [],                       variance: structural}
+  - {id: 25, page: /work/*/,   selector: '.pbar__icon',           trigger: click,      event: back_to_work,           params: [],                       variance: structural}
