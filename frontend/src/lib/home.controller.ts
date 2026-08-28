@@ -378,11 +378,24 @@ export class HomeController {
   private runCue() {
     const cue = this.ref('cue');
     if (!cue) return;
-    const inners = this.refs('[data-ref="cue"] [data-gi]');
+    // Both layers, or the twin sits in its final position while the real cue
+    // slides up and the two are visibly out of register for the whole intro.
+    const inners = this.refs('[data-ref="cue"] [data-gi], [data-ref="cueSat"] [data-gi]');
+    // Blink is the ONE thing that stays on the real cue only. The twin is there
+    // to remove saturation, and it has none to begin with — blackening its
+    // letters would change nothing and only risk the two falling out of step.
     const glyphs = this.refs('[data-ref="cue"] [data-l]');
     const track = this.cfg.cueTracking;
-    cue.style.fontSize = this.cfg.cueSize + 'px';
-    cue.style.letterSpacing = 'normal';
+    // Metrics go on BOTH containers. The twin is drawn directly on top of the
+    // cue, so a font-size or tracking set on only one puts the two out of
+    // register — and a saturation layer that does not line up with the type it
+    // is desaturating is worse than none at all.
+    const satRoot = this.ref('cueSat');
+    for (const root of [cue, satRoot]) {
+      if (!root) continue;
+      root.style.fontSize = this.cfg.cueSize + 'px';
+      root.style.letterSpacing = 'normal';
+    }
     inners.forEach((el) => {
       el.style.letterSpacing = track + 'em';
       el.style.marginRight = -track + 'em';
@@ -413,14 +426,21 @@ export class HomeController {
       }, tick);
     };
     this.cueReady = true;
-    if (reducedMotion()) {
+    // Reveal is per-layer: the twin has to come up with the cue or the type
+    // shows its inverted colour for as long as the twin is still transparent.
+    const sat = this.ref('cueSat');
+    const show = () => {
       cue.style.opacity = '1';
+      if (sat) sat.style.opacity = '1';
+    };
+    if (reducedMotion()) {
+      show();
       return;
     }
     const delay = this.cfg.cueIntroDelay;
     const stagger = this.cfg.cueIntroStagger;
     const dur = 520;
-    cue.style.opacity = '1';
+    show();
     inners.forEach((g, i) => {
       const t0 = delay + i * stagger;
       g.animate(
@@ -448,9 +468,13 @@ export class HomeController {
   private setBrackets(px: number) {
     const cue = this.ref('cue');
     if (!cue || !this.cueReady) return;
-    cue.querySelectorAll<HTMLElement>('[data-br]').forEach((el) => {
-      el.style.transform = 'translateX(' + px * Number(el.getAttribute('data-br')) + 'px)';
-    });
+    const sat = this.ref('cueSat');
+    for (const root of [cue, sat]) {
+      if (!root) continue;
+      root.querySelectorAll<HTMLElement>('[data-br]').forEach((el) => {
+        el.style.transform = 'translateX(' + px * Number(el.getAttribute('data-br')) + 'px)';
+      });
+    }
   }
 
   // - Nav reveal handoff -
@@ -677,6 +701,10 @@ export class HomeController {
     // opacity would have isolated.
     const f = Math.max(0, Math.min(1, (1 - p) / 0.15));
     if (cue && this.cueShown) cue.style.opacity = String(f);
+    // The twin fades with it. Left up on its own it would keep desaturating a
+    // patch of film with nothing written in it.
+    const cueSat = this.ref('cueSat');
+    if (cueSat && this.cueShown) cueSat.style.opacity = String(f);
     this.sizeReel();
   }
 

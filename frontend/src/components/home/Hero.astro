@@ -65,6 +65,43 @@ const cueWord = (w: string) => w.split('');
         >
       </div>
     </div>
+
+    {/* The same lettering again, purely to strip the colour out of the copy
+        below it. `saturation` takes the SOURCE's saturation — zero, since this
+        is grey — with the backdrop's luminosity, so the differenced glyphs
+        underneath come back black-or-white instead of the cyan that
+        differencing raw colour gives.
+
+        It has to be a SIBLING of `.cue`, not a child: `.cue` has a z-index and
+        so is a stacking context, which would isolate anything inside it. Being
+        painted after `.cue` is what lets it see the differenced result.
+
+        Glyph-shaped, so there is no box — only the letters are touched.
+
+        aria-hidden and pointer-events:none: it is an effect, not content. The
+        readable, clickable cue is the one above.
+
+        NB: the two runs of markup have to stay identical or they drift apart on
+        screen. Change one, change the other. */}
+    <div class="cue-sat" data-ref="cueSat" aria-hidden="true">
+      <div class="cue-row">
+        <span class="grp" data-g="1" data-br="-1"
+          ><span data-gi="1"><span data-l="1" data-b="1">[</span></span></span
+        >
+        <span class="sp"></span>
+        <span class="grp" data-g="1"
+          ><span data-gi="1">{cueWord('SCROLL').map((c) => <span data-l="1">{c}</span>)}</span></span
+        >
+        <span class="sp"></span>
+        <span class="grp" data-g="1"
+          ><span data-gi="1">{cueWord('DOWN').map((c) => <span data-l="1">{c}</span>)}</span></span
+        >
+        <span class="sp"></span>
+        <span class="grp" data-g="1" data-br="1"
+          ><span data-gi="1"><span data-l="1" data-b="1">]</span></span></span
+        >
+      </div>
+    </div>
   </div>
 </div>
 
@@ -159,66 +196,77 @@ const cueWord = (w: string) => w.split('');
     pointer-events: none;
   }
 
-  .cue {
+  /* The two layers are laid out identically and must stay that way — one is
+     drawn straight on top of the other. */
+  .cue,
+  .cue-sat {
     position: absolute;
-    /* The box is the LETTERING, not the full width, and that is what makes the
-       desaturation invisible: `backdrop-filter` filters the element's own box,
-       so a full-width cue put a grey band across the film. Hugging the type
-       confines it to the glyphs, where the difference blend covers it anyway. */
+    /* The box hugs the lettering rather than spanning the viewport. Nothing
+       filters a backdrop any more, but a full-width blended layer is still a
+       full-width layer, and there is no reason for it to be one. */
     left: 50%;
     transform: translateX(-50%);
     bottom: 38px;
-    z-index: 6;
-    /* On `.cue`, NOT on the row inside it. `z-index` here makes `.cue` a
-       stacking context, and a stacking context isolates its DESCENDANTS — so a
-       blend on the row blended against nothing and rendered flat white, which
-       is precisely the case this was meant to fix (white lettering vanishing on
-       a white frame). An element's own stacking context does not isolate the
-       element itself, so the blend belongs at this level, where it reaches the
-       reel sitting below in `.sticky`. */
-    /* Both on the same element, and they compose: `backdrop-filter` builds a
-       filtered backdrop, then `mix-blend-mode` blends against THAT. So the film
-       is desaturated first and the type differences against grey — the result
-       is only ever black or white, never the cyan that differencing raw colour
-       gives (white type over a gold frame came back blue).
-
-       It must sit here rather than on the row inside: `z-index` makes `.cue` a
-       stacking context, and a stacking context isolates its DESCENDANTS, so the
-       same rule one level down blended against nothing and rendered flat white
-       — failing on exactly the bright frames it was added for. An element's own
-       stacking context does not isolate the element itself. */
-    backdrop-filter: grayscale(1);
-    -webkit-backdrop-filter: grayscale(1);
-    mix-blend-mode: difference;
     display: flex;
     justify-content: center;
-    cursor: pointer;
     font-family: var(--font-mono);
     font-weight: var(--weight-mono);
     font-size: 11px;
-    color: var(--aoin-cool-white);
     opacity: 0;
   }
+
+  /* Layer 1 — the readable cue. `difference` puts it against any frame of the
+     film, but on colour it inverts the RGB: white type over a gold shot comes
+     back blue. Layer 2 takes that colour back out.
+
+     The blend sits here and not on `.cue-row` inside: `z-index` makes this a
+     stacking context, and a stacking context isolates its DESCENDANTS, so the
+     same rule one level down blended against nothing and rendered flat white —
+     failing on exactly the bright frames it exists for. An element's own
+     stacking context does not isolate the element itself. */
+  .cue {
+    z-index: 6;
+    mix-blend-mode: difference;
+    cursor: pointer;
+    color: var(--aoin-cool-white);
+  }
+
+  /* Layer 2 — the twin, above and grey. `saturation` composites the source's
+     saturation with the backdrop's luminosity and hue; grey has none, so the
+     glyphs below come back monochrome. Only where its own letters are, which
+     is why this leaves no box behind. */
+  .cue-sat {
+    z-index: 7;
+    mix-blend-mode: saturation;
+    color: #808080;
+    pointer-events: none;
+  }
+
   .cue-row {
     display: flex;
     align-items: flex-end;
   }
-  .cue .grp {
+  .cue .grp,
+  .cue-sat .grp {
     display: inline-block;
     overflow: hidden;
   }
-  .cue [data-br] {
+  .cue [data-br],
+  .cue-sat [data-br] {
     transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
-  .cue [data-gi] {
+  .cue [data-gi],
+  .cue-sat [data-gi] {
     display: inline-block;
     white-space: nowrap;
     transform: translateY(110%);
   }
-  .cue [data-l] {
+  .cue [data-l],
+  .cue-sat [data-l] {
     display: inline-block;
   }
-  .cue .sp {
+  .cue .sp,
+  .cue-sat .sp {
     display: inline-block;
     width: 1.1em;
   }
