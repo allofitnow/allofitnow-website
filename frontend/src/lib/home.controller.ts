@@ -68,6 +68,7 @@ export class HomeController {
   private atmoOn = false;
   private cueReady = false;
   private cueShown = false;
+  private reelRetry?: () => void;
   private onScroll!: () => void;
   private onResize!: () => void;
   private footScroll?: () => void;
@@ -170,6 +171,7 @@ export class HomeController {
 
     this.wireCue();
     this.wireWorkCue();
+    this.wireReel();
     this.updateHero();
     this.setNavReveal();
     this.startAtmosphere();
@@ -378,11 +380,24 @@ export class HomeController {
   private runCue() {
     const cue = this.ref('cue');
     if (!cue) return;
-    const inners = this.refs('[data-ref="cue"] [data-gi]');
+    // Both layers, or the twin sits in its final position while the real cue
+    // slides up and the two are visibly out of register for the whole intro.
+    const inners = this.refs('[data-ref="cue"] [data-gi], [data-ref="cueSat"] [data-gi]');
+    // Blink is the ONE thing that stays on the real cue only. The twin is there
+    // to remove saturation, and it has none to begin with — blackening its
+    // letters would change nothing and only risk the two falling out of step.
     const glyphs = this.refs('[data-ref="cue"] [data-l]');
     const track = this.cfg.cueTracking;
-    cue.style.fontSize = this.cfg.cueSize + 'px';
-    cue.style.letterSpacing = 'normal';
+    // Metrics go on BOTH containers. The twin is drawn directly on top of the
+    // cue, so a font-size or tracking set on only one puts the two out of
+    // register — and a saturation layer that does not line up with the type it
+    // is desaturating is worse than none at all.
+    const satRoot = this.ref('cueSat');
+    for (const root of [cue, satRoot]) {
+      if (!root) continue;
+      root.style.fontSize = this.cfg.cueSize + 'px';
+      root.style.letterSpacing = 'normal';
+    }
     inners.forEach((el) => {
       el.style.letterSpacing = track + 'em';
       el.style.marginRight = -track + 'em';
@@ -413,14 +428,21 @@ export class HomeController {
       }, tick);
     };
     this.cueReady = true;
-    if (reducedMotion()) {
+    // Reveal is per-layer: the twin has to come up with the cue or the type
+    // shows its inverted colour for as long as the twin is still transparent.
+    const sat = this.ref('cueSat');
+    const show = () => {
       cue.style.opacity = '1';
+      if (sat) sat.style.opacity = '1';
+    };
+    if (reducedMotion()) {
+      show();
       return;
     }
     const delay = this.cfg.cueIntroDelay;
     const stagger = this.cfg.cueIntroStagger;
     const dur = 520;
-    cue.style.opacity = '1';
+    show();
     inners.forEach((g, i) => {
       const t0 = delay + i * stagger;
       g.animate(
@@ -448,9 +470,13 @@ export class HomeController {
   private setBrackets(px: number) {
     const cue = this.ref('cue');
     if (!cue || !this.cueReady) return;
-    cue.querySelectorAll<HTMLElement>('[data-br]').forEach((el) => {
-      el.style.transform = 'translateX(' + px * Number(el.getAttribute('data-br')) + 'px)';
-    });
+    const sat = this.ref('cueSat');
+    for (const root of [cue, sat]) {
+      if (!root) continue;
+      root.querySelectorAll<HTMLElement>('[data-br]').forEach((el) => {
+        el.style.transform = 'translateX(' + px * Number(el.getAttribute('data-br')) + 'px)';
+      });
+    }
   }
 
   // - Nav reveal handoff -
@@ -499,6 +525,45 @@ export class HomeController {
         Math.round(Math.random() * gs) + 'px ' + Math.round(Math.random() * gs) + 'px';
       tile.style.opacity = '0.04';
     }, 42);
+  }
+
+  // - Reel playback -
+  // `autoplay muted playsinline` is supposed to be enough, and usually is. It is
+  // not enough in Low Power Mode, under Chrome's "never autoplay" site setting,
+  // or when the tab is restored in the background — and when the browser refuses,
+  // it draws its OWN play badge over the film. That badge was unreachable: the
+  // video is `pointer-events: none` so the pinned hero stays a scroll surface,
+  // which left the reel stopped with a button that could not be pressed.
+  //
+  // So: ask again at each point the answer can change, and if the answer is still
+  // no, hand the pointer back to the video so the badge the browser drew is
+  // actually clickable. `data-reel-blocked` is the whole of that state.
+  private wireReel() {
+    const v = this.ref<HTMLVideoElement>('reelVideo');
+    if (!v) return; // Vimeo embed — the iframe player owns its own playback
+
+    const frame = this.ref('reelFrame');
+    const blocked = (on: boolean) => frame?.toggleAttribute('data-reel-blocked', on);
+
+    const attempt = () => {
+      if (!v.paused) return blocked(false);
+      const p = v.play();
+      if (!p) return;
+      p.then(() => blocked(false)).catch(() => blocked(true));
+    };
+
+    // The retry points, in the order they tend to fire.
+    this.reelRetry = attempt;
+    v.addEventListener('loadeddata', attempt);
+    v.addEventListener('canplay', attempt);
+    v.addEventListener('play', () => blocked(false));
+    // A blocked video only needs one real gesture anywhere on the page to be
+    // allowed to start — including the cue click, which is the gesture someone
+    // who wants past the reel makes anyway.
+    document.addEventListener('pointerdown', attempt, { passive: true });
+    document.addEventListener('keydown', attempt);
+    document.addEventListener('visibilitychange', this.reelRetry);
+    attempt();
   }
 
   // - Reel sizing (cover-crop a 16:9 player) -
@@ -552,10 +617,16 @@ export class HomeController {
     const cmax =
       parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--content-max')) || 1920;
     const frameGutter = Math.max(0, (clientW - cmax) / 2);
-    const cue = this.ref('cue');
-    if (cue) {
-      cue.style.fontSize = (m ? 10 : 11) + 'px';
-      cue.style.bottom = (m ? 30 : 38) + 'px';
+    // BOTH cue layers, for the same reason runCue() writes metrics to both: the
+    // twin is drawn directly on top of the cue to take the colour out of it, so
+    // a font-size or offset set on only one separates them. Setting it here on
+    // `cue` alone put the twin 8px high and a pixel large at <=720 — which is
+    // half-screen on a laptop, not a phone — and the offset desaturation read
+    // as a grey box beside the opening bracket.
+    for (const root of [this.ref('cue'), this.ref('cueSat')]) {
+      if (!root) continue;
+      root.style.fontSize = (m ? 10 : 11) + 'px';
+      root.style.bottom = (m ? 30 : 38) + 'px';
     }
     const about = this.ref('about');
     if (about) {
@@ -666,7 +737,21 @@ export class HomeController {
     box.style.transform = 'translateY(' + reelY + '%)';
     if (icon) icon.style.transform = 'translate(-50%, calc(-50% - ' + Math.round(iconY) + 'px))';
     const cue = this.ref('cue');
-    if (cue && this.cueShown) cue.style.opacity = String(Math.max(0, 1 - p / 0.06));
+    // The cue used to fade over the FIRST 6% of the pin, so it was gone after a
+    // nudge of the wheel — while the reel was still pinned and filling the
+    // screen, which is exactly when a reader needs telling there is a way past
+    // it. It now holds for the whole hero and goes only as the pin releases.
+    //
+    // Opacity is safe to fade even though `.cue` blends: opacity groups the
+    // element and the group is what gets blended, so the difference still
+    // reaches the film all the way down. It is a blend on a DESCENDANT that an
+    // opacity would have isolated.
+    const f = Math.max(0, Math.min(1, (1 - p) / 0.15));
+    if (cue && this.cueShown) cue.style.opacity = String(f);
+    // The twin fades with it. Left up on its own it would keep desaturating a
+    // patch of film with nothing written in it.
+    const cueSat = this.ref('cueSat');
+    if (cueSat && this.cueShown) cueSat.style.opacity = String(f);
     this.sizeReel();
   }
 
@@ -1367,6 +1452,11 @@ export class HomeController {
   destroy() {
     window.removeEventListener('scroll', this.onScroll);
     window.removeEventListener('resize', this.onResize);
+    if (this.reelRetry) {
+      document.removeEventListener('pointerdown', this.reelRetry);
+      document.removeEventListener('keydown', this.reelRetry);
+      document.removeEventListener('visibilitychange', this.reelRetry);
+    }
     if (this.footScroll) window.removeEventListener('scroll', this.footScroll);
     cancelAnimationFrame(this.raf);
     cancelAnimationFrame(this.preRaf);

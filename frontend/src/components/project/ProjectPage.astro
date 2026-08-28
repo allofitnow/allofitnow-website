@@ -82,9 +82,9 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
       <div class="pp__meta" data-unit>
         <div class="pp__metaCols">
           {metaCols.map((col) => (
-            <div class="pp__metaCol" data-flow={col.values.length > 4 ? 'two' : null}>
+            <div class="pp__metaCol" data-flow={col.values.length > 4 ? '' : null}>
               <div class="pp__metaLabel">{col.label}</div>
-              <div class="pp__metaVals">
+              <div class="pp__metaVals" data-pp-metavals>
                 {col.values.map((v) => <div>{v}</div>)}
               </div>
             </div>
@@ -150,6 +150,26 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
       <button class="pp__cue pp__cue--back" data-pp-cue="close" type="button">«««&nbsp;&nbsp;SWIPE FOR {CUE_WORK}&nbsp;&nbsp;«««</button>
       <div class="pp__notesLabel">[ PRODUCTION NOTES ]</div>
       <div class="pp__notesRich" data-cols={project.writeupColumns} set:html={renderWriteup(project.writeupBlocks, project.writeup)}></div>
+      {/* Coverage. Rendered only when there is any — an empty [ PRESS ] label
+          reads as something failing to load. Outside .pp__notesRich on purpose:
+          that block is two-column on a long write-up, and the press list should
+          not be pulled into the second column halfway down. */}
+      {project.press.length > 0 && (
+        <div class="pp__press">
+          <div class="pp__notesLabel">[ PRESS ]</div>
+          <ul class="pp__pressList">
+            {project.press.map((item) => (
+              <li class="pp__pressItem">
+                <a href={item.url} target="_blank" rel="noopener noreferrer">
+                  <span class="pp__pressPub">{item.publication}</span>
+                  {item.title && <span class="pp__pressTitle">{item.title}</span>}
+                </a>
+                {item.date && <span class="pp__pressDate">{item.date}</span>}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
     </div>
   </aside>
 </main>
@@ -218,6 +238,13 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     display: block;
     white-space: nowrap;
     max-width: 100%;
+  }
+  /* The fit script breaks the name across two lines rather than shrink it past
+     a floor (see fit() in lib/project-page.ts). `balance` so the two lines come
+     out even instead of a long line over an orphan. */
+  [data-pp-lines='2'] .pp__title span {
+    white-space: normal;
+    text-wrap: balance;
   }
   [data-expanded='true'] .pp__title span {
     max-width: calc(49cqw - 24px);
@@ -336,38 +363,74 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     break-inside: avoid;
   }
   /* A long SERVICES list is the one meta column that can run away with the
-     block: five entries push it well past the summary beside it and leave a
-     tall ragged edge. Past four, the list flows into two columns — balanced by
-     the browser, so five reads as 3 + 2 and the markup never says where the
-     break goes.
+     block. Thirteen entries ran 441px deep beside a YEAR of 27px and a
+     COLLABORATOR of 45px — the column stopped reading as one item in a row of
+     three and became the row.
 
-     The numbers here are measured off the live page, not guessed. The longest
-     service name sets a 206px column, so YEAR + COLLABORATOR + two service
-     columns + gaps come to 734px — and the block's own 40% is 730px at 1920.
-     Four pixels short, which is enough to wrap "Previsualization Suite" onto a
-     second line and undo the point of the exercise. So the block takes a floor
-     of 740px when a column flows, which still leaves a 263px gutter before the
-     summary at 1920 and 85px at the container-query threshold.
+     The list now gets a ROW BUDGET instead of a column count. It flows into as
+     many columns as the width actually affords (auto-fill, so 1 / 2 / 3 / 4
+     falls out of the measurement rather than out of a breakpoint), and once
+     the budget is spent the rest scrolls. Grid rather than `columns` on
+     purpose: multi-column with a constrained height overflows SIDEWAYS — the
+     box measures 1180px of scrollWidth and nothing scrolls down — whereas a
+     row-flowed grid grows downward, which is the axis a scrollbar can take.
 
-     That threshold is where the arithmetic stops working: below it the meta
-     block cannot hold 740px without running into the summary, so the list
-     stays in one column rather than colliding. */
+     206px is the measured width of the longest service name at 12px/0.14em
+     ("Previsualization Suite"); min() lets a track fall below it rather than
+     overflow when the column itself is narrower than one name. */
+  .pp__metaCol[data-flow] {
+    /* Take the width the other two columns leave, instead of only what the
+       longest entry asks for. min-width:0 so it can also give width back. */
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .pp__metaCol[data-flow] .pp__metaVals {
+    --pp-meta-rows: 5;
+    --pp-svc-col: 206px;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--pp-svc-col)), 1fr));
+    column-gap: 22px;
+    row-gap: 0;
+    max-height: calc(var(--pp-meta-rows) * 1.5em); /* line-height is 1.5 */
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    scrollbar-width: none; /* the fade below is the affordance, not a bar */
+  }
+  .pp__metaCol[data-flow] .pp__metaVals::-webkit-scrollbar {
+    display: none;
+  }
+  /* Cut the last visible line off softly, and ONLY when something is actually
+     below it — a permanent fade would dim the final entry of a list that fits.
+     [data-pp-more] is set from the script by measurement. */
+  .pp__metaCol[data-flow] .pp__metaVals[data-pp-more] {
+    -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%);
+    mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%);
+  }
+
+  /* The block widens to pay for those columns, out of the gutter between the
+     meta and the summary — 263px of dead space at 1920 on the old 40%. It only
+     widens where there is width to take: below this the meta block cannot grow
+     without running into the summary, so the list stays narrow and scrolls. */
+  @container (min-width: 1200px) {
+    .pp__metaCols:has(.pp__metaCol[data-flow]) {
+      width: 48%;
+    }
+  }
   @container (min-width: 1500px) {
-    .pp__metaCol[data-flow='two'] .pp__metaVals {
-      columns: 2;
-      column-gap: 22px;
-    }
-    .pp__metaCols:has(.pp__metaCol[data-flow='two']) {
-      width: max(40%, 740px);
+    .pp__metaCols:has(.pp__metaCol[data-flow]) {
+      width: max(48%, 740px);
     }
   }
-  /* With the write-up open the meta block is down to 49% and there is no room
-     for a second column, so it goes back to one. */
-  [data-expanded='true'] .pp__metaCol[data-flow='two'] .pp__metaVals {
-    columns: 1;
-  }
-  [data-expanded='true'] .pp__metaCols:has(.pp__metaCol[data-flow='two']) {
+  /* With the write-up open the meta block is down to 49% of the page, but it
+     is 100% of that — enough for two or three tracks, so the grid keeps
+     flowing. The budget tightens because the panel beside it is the thing
+     being read. */
+  [data-expanded='true'] .pp__metaCols:has(.pp__metaCol[data-flow]) {
     width: 100%;
+  }
+  [data-expanded='true'] .pp__metaCol[data-flow] .pp__metaVals {
+    --pp-meta-rows: 4;
   }
   .pp__desc {
     width: 45%;
@@ -629,6 +692,78 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     letter-spacing: 0.3em;
     color: var(--aoin-cool-white-45);
   }
+  /* ---- press ----
+     Sits under the write-up in the panel and borrows the credits block's
+     shape — mono label over a Denim line — so the panel reads as one column of
+     the same material rather than two unrelated lists. */
+  .pp__press {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    /* The write-up's own gap is 24px; press is a different section, not another
+       paragraph, so it sits further off and takes a rule. */
+    margin-top: 20px;
+    padding-top: 28px;
+    border-top: 1px solid rgba(217, 225, 234, 0.16);
+  }
+  .pp__pressList {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+  .pp__pressItem {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 16px;
+  }
+  .pp__pressItem a {
+    color: inherit;
+    text-decoration: none;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+  }
+  .pp__pressPub {
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--aoin-cool-white-45);
+    text-transform: uppercase;
+  }
+  .pp__pressTitle {
+    font-family: var(--font-headline);
+    font-weight: var(--weight-body);
+    font-size: 15px;
+    line-height: 1.3;
+    letter-spacing: 0.02em;
+    color: var(--aoin-cool-white);
+    text-transform: none; /* a headline reads as written, like the write-up */
+    /* The underline is on the headline alone, so the masthead above it stays a
+       label rather than looking like part of the link target. */
+    border-bottom: 1px solid rgba(217, 225, 234, 0.28);
+    /* Only as wide as the words, so the rule stops with the text. */
+    align-self: flex-start;
+    transition: border-color 220ms ease, color 220ms ease;
+  }
+  .pp__pressItem a:hover .pp__pressTitle {
+    border-bottom-color: var(--aoin-cool-white);
+  }
+  .pp__pressDate {
+    flex: 0 0 auto;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    color: var(--aoin-cool-white-45);
+    white-space: nowrap;
+  }
+
   /* Rendered write-up (rich text), set in Denim; the first paragraph reads as
      the lede. NB: the content is injected via set:html, so Astro's scoped
      selectors can't tag it — set the base type on the (scoped) container so the
@@ -873,10 +1008,12 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     .pp__desc {
       width: 100% !important;
     }
-    /* Belt and braces with the container query above: a phone never has the
-       1400px that would turn this on. */
-    .pp__metaCol[data-flow='two'] .pp__metaVals {
-      columns: 1;
+    /* A phone gets one track, so the budget is the only thing holding the list
+       down — and it can be looser here, because on mobile the meta block has
+       the full width to itself and nothing sits beside it competing. */
+    .pp__metaCol[data-flow] .pp__metaVals {
+      --pp-meta-rows: 8;
+      --pp-svc-col: 100%;
     }
     .pp__desc {
       margin-top: 4px;
@@ -1129,6 +1266,35 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     new ResizeObserver(measure).observe(text);
   };
 
+  // The SERVICES list is capped to a row budget and scrolls past it. Whether it
+  // IS past it is a measured question — the same thirteen entries are four rows
+  // at 1920 and thirteen on a phone — so the bottom fade that says "there is
+  // more" is applied only when the box is genuinely overflowing, and re-checked
+  // whenever the geometry can have moved: the panel opening reflows the block,
+  // and a resize re-flows the grid into a different number of tracks.
+  const initMetaOverflow = () => {
+    const boxes = [...document.querySelectorAll<HTMLElement>('[data-pp-metavals]')];
+    if (!boxes.length) return;
+    const measure = () =>
+      boxes.forEach((b) =>
+        // Distance still BELOW the viewport, not total overflow — so the fade
+        // lifts once the reader reaches the end instead of permanently dimming
+        // whatever the last row happens to be. 1px of slack because sub-pixel
+        // row heights round scrollHeight a hair over clientHeight on lists that
+        // actually fit, which would fade the last entry of every list.
+        b.toggleAttribute('data-pp-more', b.scrollHeight - b.clientHeight - b.scrollTop > 1)
+      );
+    measure();
+    // Re-measure while the 620ms reflow runs, not just at the end of it.
+    const root = document.querySelector<HTMLElement>('[data-pp]');
+    if (root && !root.dataset.ppMetaWired) {
+      root.dataset.ppMetaWired = '1';
+      new ResizeObserver(measure).observe(root);
+      boxes.forEach((b) => b.addEventListener('scroll', measure, { passive: true }));
+    }
+    if (document.fonts?.ready) document.fonts.ready.then(measure);
+  };
+
   const boot = () => {
     const root = document.querySelector<HTMLElement>('[data-pp]');
     // Same reason as the fold's guard below: boot runs twice on a hard load,
@@ -1139,6 +1305,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     }
     fitWriteupVideos();
     initSummaryFold();
+    initMetaOverflow();
   };
 
   boot();

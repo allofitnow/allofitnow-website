@@ -92,9 +92,38 @@ export function initProjectPage(root: HTMLElement) {
     // On mobile the write-up is a screen-slide, not a compress, so the title
     // never narrows — always fit to the row (no scaling as screens slide).
     const avail = !mobile && expanded ? 0.49 * frameW - 24 : titleRow.clientWidth;
-    const target = Math.floor(Math.min(base, avail / ratio));
+
+    // One line is the preference, not the rule. Shrinking had no floor, so a
+    // long name on a narrow column kept getting smaller until it was set at
+    // half the size of the tour line beside it — "Encanto At The Hollywood
+    // Bowl" at a half-width window is the case that showed it. Past the floor
+    // the name breaks to two lines instead, where it can be read.
+    //
+    // FLOOR is a fraction of the size this breakpoint would otherwise give the
+    // name, not an absolute px: the whole title scale is container-relative, so
+    // an absolute floor would mean something different at every width.
+    const FLOOR = 0.62;
+    // Two lines carry the same run of text, so each holds about half of it —
+    // but only about: the break lands on a word, not at the midpoint. The
+    // margin keeps the longer of the two lines inside the column.
+    const BALANCE = 0.92;
+    const oneLine = avail / ratio;
+    const twoLines = oneLine * 2 * BALANCE;
+    const lines = oneLine < base * FLOOR ? 2 : 1;
+    const target = Math.floor(Math.min(base, lines === 2 ? twoLines : oneLine));
+
     const px = `${target}px`;
     if (h1.style.fontSize !== px) h1.style.fontSize = px;
+
+    // The row's CSS height is one line at the breakpoint's clamp, deliberately
+    // independent of the fitted size so the page does not shift as the name
+    // scales. Wrapping is the one case that has to override it — and it takes
+    // the height the text ACTUALLY came out at rather than assuming two lines,
+    // because where the break lands is the browser's call, not ours.
+    const wantLines = String(lines);
+    if (titleRow.dataset.ppLines !== wantLines) titleRow.dataset.ppLines = wantLines;
+    const h = lines === 2 ? `${Math.ceil(titleSpan.getBoundingClientRect().height)}px` : '';
+    if (titleRow.style.height !== h) titleRow.style.height = h;
   }
 
   /* ----------------------------------------------------- the 900ms follow loop */

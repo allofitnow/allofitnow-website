@@ -738,24 +738,25 @@ class ServicesController {
       list.forEach((t) => { probe.textContent = t; w = Math.max(w, probe.getBoundingClientRect().width); });
       return w;
     });
-    const measure = (list) => {
-      let w = 0;
-      list.forEach((t) => { probe.textContent = t; w = Math.max(w, probe.getBoundingClientRect().width); });
-      return w;
-    };
-    const targets = slots.map((sl) => sl.__target || sl.textContent || '');
     const applyProbe = () => { probe.style.fontSize = fs + 'px'; probe.style.letterSpacing = ls + 'em'; };
     applyProbe();
     let ws = widest();
     let sum = ws.reduce((a, b) => a + b, 0);
     if (sum > avail) {
-      ws = targets.map((t) => measure([t]));
-      sum = ws.reduce((a, b) => a + b, 0);
+      // Shrink against `cands` — the widest label each slot can EVER show — not
+      // against the labels it happens to be showing right now. Fitting the
+      // current text is what made the bar overlap itself: the widths below are
+      // written as fixed px, the labels are nowrap, and scrolling into the next
+      // section scrambles in a longer sub than the one that was measured, which
+      // then runs straight into its neighbour. Which viewports it happened on
+      // depended on which pair of services you crossed between, which is why it
+      // read as intermittent. `cands` is already built for exactly this, and the
+      // comment above it already claimed this guarantee.
       for (let k = 0; k < 160 && sum > avail && (ls > lsFloor || fs > 8); k++) {
         if (ls > lsFloor) ls = Math.max(lsFloor, ls - 0.02);
         else fs -= 0.5;
         applyProbe();
-        ws = targets.map((t) => measure([t]));
+        ws = widest();
         sum = ws.reduce((a, b) => a + b, 0);
       }
       if (sum > avail) {
@@ -1179,14 +1180,39 @@ class ServicesController {
       // keep their plain inline color until playIntro() unwraps them, then the shine takes over.
       if (b.firstElementChild) return;
       const r = b.getBoundingClientRect();
+      // Hovered label: drop the shine entirely and burn it in at full strength.
+      // The sweep is a DARKENING mask (see below), so a label caught under the
+      // band was being read through a hole in itself — the one moment you most
+      // want it legible is the moment you are pointing at it.
+      if (b.__hov) {
+        if (b.__sw !== 2) {
+          b.__sw = 2;
+          b.__bg = null;
+          b.style.backgroundImage = 'none';
+          b.style.backgroundColor = 'transparent';
+          b.style.backgroundClip = '';
+          b.style.webkitBackgroundClip = '';
+          b.style.webkitTextFillColor = '';
+          b.style.color = 'rgb(217,225,234)';
+          b.style.textShadow = '0 0 18px rgba(217,225,234,0.45)';
+        }
+        return;
+      }
       if (b.__sw !== 1) {
         b.__sw = 1;
+        b.style.textShadow = 'none';
+        // The shine is a black gradient clipped to the glyphs, so every stop is
+        // subtracting light. At 0.88 the leading band took the label down to
+        // 0.03 effective alpha — it read as a word blinking out rather than as
+        // a sheen crossing it, and on the four hero labels that is most of the
+        // time. Halved peaks, and the bands narrowed from ~24% of the sweep to
+        // ~14%, so the dark passes over a label instead of sitting on it.
         b.style.backgroundImage = 'linear-gradient(90deg,' +
           ' rgba(0,0,0,0) 0%,' +
-          ' rgba(0,0,0,0.88) 22%,' +
-          ' rgba(0,0,0,0) 46%,' +
-          ' rgba(0,0,0,0.5) 68%,' +
-          ' rgba(0,0,0,0) 92%,' +
+          ' rgba(0,0,0,0.40) 12%,' +
+          ' rgba(0,0,0,0) 26%,' +
+          ' rgba(0,0,0,0.22) 58%,' +
+          ' rgba(0,0,0,0) 72%,' +
           ' rgba(0,0,0,0) 100%)';
         b.style.backgroundRepeat = 'repeat-x';
         b.style.backgroundClip = 'text';
@@ -1194,7 +1220,7 @@ class ServicesController {
         b.style.color = 'transparent';
         b.style.webkitTextFillColor = 'transparent';
       }
-      const want = b.__hov ? 'rgb(217,225,234)' : 'rgba(217,225,234,' + base + ')';
+      const want = 'rgba(217,225,234,' + base + ')';
       if (b.__bg !== want) { b.__bg = want; b.style.backgroundColor = want; }
       b.style.backgroundSize = band + 'px 100%';
       b.style.backgroundPosition = Math.round(x - r.left) + 'px 0';
@@ -1210,6 +1236,7 @@ class ServicesController {
       b.__bg = null;
       b.style.backgroundImage = 'none';
       b.style.backgroundColor = 'transparent';
+      b.style.color = '';
       b.style.textShadow = 'none';
       b.style.backgroundClip = '';
       b.style.webkitBackgroundClip = '';

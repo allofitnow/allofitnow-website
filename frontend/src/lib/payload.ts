@@ -50,6 +50,28 @@ export function mapPayloadProject(doc: any): Project {
     })),
   }));
 
+  // A row is only worth rendering if it goes somewhere, so URL-less rows are
+  // dropped here rather than rendered as dead text. The publication falls back
+  // to the link's host so a row is never nameless.
+  const press = (doc.press ?? [])
+    .map((r: any) => {
+      const url = typeof r?.url === 'string' ? r.url.trim() : '';
+      if (!url) return null;
+      let host = '';
+      try {
+        host = new URL(url).hostname.replace(/^www\./, '').toUpperCase();
+      } catch {
+        host = '';
+      }
+      return {
+        publication: (r?.publication ?? '').trim() || host,
+        title: r?.title ?? '',
+        url,
+        date: r?.date ?? '',
+      };
+    })
+    .filter((r: any): r is NonNullable<typeof r> => r !== null);
+
   return {
     slug: doc.slug,
     title: doc.title,
@@ -70,6 +92,7 @@ export function mapPayloadProject(doc: any): Project {
     gallery,
     stats: doc.stats ?? [],
     credits,
+    press,
     // Rich text (Slate node array) passed straight through; rendered by
     // renderRichText in the project page.
     writeup: doc.writeup ?? [],

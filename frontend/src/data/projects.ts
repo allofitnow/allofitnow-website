@@ -61,6 +61,9 @@ export interface Project {
   /** Credit groups. Each entry renders TITLE | NAME with the name linking out
    *  to the social `url`. */
   credits: { title: string; entries: { title: string; name: string; url: string }[] }[];
+  /** Coverage links, listed at the foot of the PROJECT INFO panel. Empty for
+   *  most projects — the section is dropped entirely when it is. */
+  press: { publication: string; title: string; url: string; date: string }[];
   /** The expandable write-up panel — rich text (Slate nodes).
    *  Superseded by `writeupBlocks`; kept for projects not migrated yet. */
   writeup: RichText;

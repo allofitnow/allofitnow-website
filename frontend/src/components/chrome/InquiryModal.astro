@@ -52,13 +52,25 @@ const {
   subjectPlaceholder = 'ARENA TOUR — REAL-TIME CONTENT',
 } = Astro.props as Props;
 
+// The addresses are NOT shipped as plaintext. There is no form endpoint behind
+// this modal — the send button hands the message to the visitor's own mail
+// client via mailto: — so there is nothing here a bot can submit. What there IS
+// to attack is the three role addresses themselves: printed in the markup they
+// are free inbox targets for any crawler that greps a page for an @ sign, which
+// is where address-harvested spam comes from.
+//
+// Base64 is not encryption and is not meant to be: it defeats the crawlers that
+// pattern-match the HTML, which is most of them, and costs one atob() at
+// runtime. Anything that runs our JS can still read them, and that is fine —
+// the addresses are public, we just decline to publish them pre-chewed.
 const emails = tabs.map((t) => t.email);
+const emailsEnc = emails.map((e) => Buffer.from(e, 'utf8').toString('base64'));
 ---
 
 <dialog
   class="im"
   data-inquiry
-  data-emails={JSON.stringify(emails)}
+  data-emails={JSON.stringify(emailsEnc)}
   data-subject-prefix={subjectPrefix}
   aria-label="Contact"
 >
@@ -90,7 +102,10 @@ const emails = tabs.map((t) => t.email);
         </div>
         <p class="im__to">
           <span class="im__to-key">TO</span>
-          <span class="im__to-val" data-im-to>{emails[0].toUpperCase()}</span>
+          {/* Filled by the script from the encoded list — see the note above.
+              The modal is opened by JS and never renders without it, so there
+              is no no-JS state to keep readable here. */}
+          <span class="im__to-val" data-im-to></span>
         </p>
       </div>
 
@@ -456,7 +471,13 @@ const emails = tabs.map((t) => t.email);
   // ClientRouter swap — bind exactly once, guarded in case the module re-runs.
   if (dlg && !dlg.dataset.bound) {
     dlg.dataset.bound = '1';
-    const emails: string[] = JSON.parse(dlg.dataset.emails || '[]');
+    const emails: string[] = (JSON.parse(dlg.dataset.emails || '[]') as string[]).map((e) => {
+      try {
+        return atob(e);
+      } catch (_) {
+        return '';
+      }
+    });
     const prefix = (dlg.dataset.subjectPrefix || '').trim();
     const track = dlg.querySelector<HTMLElement>('[data-im-track]')!;
     const thumb = dlg.querySelector<HTMLElement>('[data-im-thumb]')!;
@@ -466,6 +487,12 @@ const emails = tabs.map((t) => t.email);
     const message = dlg.querySelector<HTMLTextAreaElement>('[data-im-message]')!;
     const send = dlg.querySelector<HTMLButtonElement>('[data-im-send]')!;
     let active = 0;
+
+    // The markup ships the TO line empty (the address is encoded — see the
+    // frontmatter), so paint the first tab's address once, up front. Set
+    // directly rather than through scramble(): this is the resting state, not a
+    // change, and scrambling on open would read as the address loading.
+    to.textContent = (emails[0] || '').toUpperCase();
 
     /* Park the plate on the active tab, read out of layout so it resizes as it
        travels. Re-measured after fonts land and on resize. */

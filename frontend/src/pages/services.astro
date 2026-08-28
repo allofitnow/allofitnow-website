@@ -118,6 +118,10 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Services — All Of It Now</title>
+{/* This page is a full HTML document outside Base.astro, so every <head> tag
+    Base provides has to be repeated here — the icon was missing, which is why
+    /services was the one page showing the browser's default favicon. */}
+<link rel="icon" href="/assets/aoin-icon.svg" type="image/svg+xml" />
 {/* Preloader count face — its @font-face is block, and the count animates from
     the first frame, so preload it or the numbers show blank until it loads. */}
 <link rel="preload" href="/fonts/OOTheran-Light.woff2" as="font" type="font/woff2" crossorigin />
