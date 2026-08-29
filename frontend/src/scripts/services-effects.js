@@ -143,7 +143,7 @@ export function mountEffects(ctrl) {
   const reparks = [];
   buildRealtime(root, master, reparks);
   buildScreens(root, master, reparks);
-  const orbit = buildMixed(root); // { setBoost, assemble, show(v) }
+  const orbit = buildMixed(root); // { resize, setBoost, assemble, show(v) }
   const equip = initEquipment(root);
   master.to({ v: 0 }, { v: 1, duration: 0.001 }, 0.999); // pin master duration to 1 (progress == time)
 
@@ -359,6 +359,7 @@ export function mountEffects(ctrl) {
     // gsap.set calls and one timeline render; the expensive part, ScrollTrigger
     // re-measuring the scroll distances, stays debounced below.
     resync(st.progress);
+    orbit.resize();
     clearTimeout(reFit);
     reFit = setTimeout(() => { ScrollTrigger.refresh(); }, 220); // onRefresh re-applies the dissolve
   });
@@ -431,13 +432,43 @@ function buildScreens(root, master, reparks) {
 /* ---- MIXED REALITY — mwg_061 orbit: assembles, self-runs, scroll drives speed --- */
 function buildMixed(root) {
   const el = root.querySelector('.mwg_effect061');
-  if (!el) return { setBoost() {}, assemble() {}, show() {} };
+  if (!el) return { resize() {}, setBoost() {}, assemble() {}, show() {} };
   const container = el.querySelector('.container');
   const medias = [...el.querySelectorAll('img, video')];  // orbit slots can be video (webm) too
   const angle = 360 / medias.length;
   // Ring centred at the container origin (no push-back). The camera is inside the ring — see the
   // ORBIT_* constants. Each image sits at translateZ(-50vw) rotated to its slot.
-  medias.forEach((m, i) => gsap.set(m, { z: '-50vw', rotationY: angle * i }));
+  //
+  // The geometry is four quantities that only work while they agree, and on a
+  // resize they stop agreeing. Measured at 1440 and then read at 1920:
+  //
+  //   perspective (CSS, on the panel)        720 -> 960   recomputed by the browser
+  //   translateZ  (kept as the string -50vw) 720 -> 960   resolved by the browser
+  //   transform-origin x  (inline, by GSAP)  223  ->  223   FROZEN, should be 298
+  //   transform-origin z  (GSAP's zOrigin)   720  ->  720   FROZEN, should be 960
+  //
+  // services.css sets `transform-origin: 50% 0 50vw`, but GSAP writes its own
+  // INLINE transform-origin the first time it touches the transform -- resolved
+  // to pixels, and with the z stashed in its own cache rather than in the
+  // inline value. That inline rule then wins over the stylesheet's for the rest
+  // of the page's life. So the camera stays where it was when the ring was
+  // built while everything around it moves, and the ring skews and clips.
+  //
+  // Restating transformOrigin is what forces GSAP to re-parse it; setting z or
+  // rotationY alone does not, which is why re-applying only those changed
+  // nothing.
+  //
+  // In PIXELS, not '50vw'. GSAP does not resolve viewport units inside
+  // transformOrigin -- it takes the number and drops the unit, so '50% 0 50vw'
+  // gives a z origin of 50px and the ring collapses. Both the origin and the
+  // radius are therefore resolved here, from the same number, on every call.
+  const sizeRing = () => {
+    const r = window.innerWidth * ORBIT_R_VW; // the 50vw ring radius, in px
+    medias.forEach((m, i) =>
+      gsap.set(m, { transformOrigin: `50% 0 ${r}px`, z: -r, rotationY: angle * i })
+    );
+  };
+  sizeRing();
   gsap.set(el, { autoAlpha: 0 });
 
   // Reused per-frame scratch: opacities + the video-slot indices (for the decode cap).
@@ -490,6 +521,8 @@ function buildMixed(root) {
   el.addEventListener('touchmove', (e) => { if (e.touches && e.touches[0]) tilt(e.touches[0].clientX); }, { passive: true });
 
   return {
+    // Re-resolve the ring radius against the current viewport — see sizeRing.
+    resize: sizeRing,
     setBoost(p, vel) {
       // Only RAISE the target from scroll speed (inside the mixed section); the
       // ticker eases it back down. vel arrives as 0 during programmatic jumps,
