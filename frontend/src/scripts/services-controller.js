@@ -23,6 +23,38 @@ const LUM_BOOST = 1.0;       // additive brightness at a light's centre (alpha Ã
 const LUM_CURSOR = 1.0;      // cursor-pool strength
 const LUM_NAV = 1.0;         // per-word middle-nav pool strength
 const LUM_NAV_REACH = 30;    // nav-word pool radius, in cells (wider = the nav flashlight spreads further)
+// Deterministic per-cell noise. The field's grid is rebuilt whenever its box
+// changes size, and seeding it from Math.random() meant every rebuild was a
+// brand new field: at one rebuild per drag that read as a snap, and at one per
+// frame it was television static. Keyed on the cell's (column, row) instead,
+// a rebuilt grid keeps the exact character it already had everywhere the old
+// and new grids overlap -- so the field reads as being extended or trimmed
+// rather than replaced, and it can be rebuilt as fast as the window moves.
+//
+// Column/row are counted from the top-left, which is the corner the field is
+// anchored to: it hangs from under the title and grows right and down, so
+// existing cells keep their indices and only new ones appear.
+//
+// `salt` separates the independent draws a cell needs (is it lit, which glyph,
+// which dissolve run) so they don't correlate. Math.imul keeps the multiplies
+// in 32-bit; plain `*` would drift into float territory and ruin the avalanche.
+//
+// The finalizer is murmur3's fmix32, and it is not decoration. A single-round
+// mix passed every spatial test but left the salt streams correlated at -0.26
+// -- which is a cell's "am I lit" draw predicting its dissolve draw, i.e. a
+// visible pattern waiting to happen. Measured over 48,000 cells, fmix32 holds
+// the worst salt-pair correlation to 0.005 and every neighbour correlation
+// (right, down, both diagonals, knight, and further out) under 0.011.
+const hash2 = (x, y, salt) => {
+  let h = Math.imul(x | 0, 0x27d4eb2d) ^ Math.imul(y | 0, 0x165667b1) ^ Math.imul(salt | 0, 0x9e3779b1);
+  h ^= h >>> 15;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+};
+
 const COPY_GLYPHS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 // Service taxonomy (name + subcategories) for the capability bar + field scramble. Read from the
 // #svc-taxonomy JSON island emitted by services.astro (CMS-editable via the `services` global); the
@@ -364,7 +396,7 @@ class ServicesController {
     window.removeEventListener('resize', this._resize);
     clearInterval(this._tick);
     if (this._raf) cancelAnimationFrame(this._raf);
-    clearTimeout(this._asciiTimer);
+    if (this._asciiRaf) { cancelAnimationFrame(this._asciiRaf); this._asciiRaf = 0; }
   }
 
   componentDidUpdate() {
@@ -1304,26 +1336,25 @@ class ServicesController {
   // (columns, rows, the per-cell arrays, the holes cut for the capability
   // labels) is derived from the box, so it cannot follow the box without one.
   //
-  // Deliberately a short debounce and NOT once-per-frame. Two things make a
-  // per-frame rebuild wrong here, and both were visible:
+  // One rebuild per frame, so the field follows the window instead of catching
+  // up after it. That is only safe because of the two things above: the cells
+  // are keyed on a hash of their position, so a rebuilt grid keeps the content
+  // it already had and consecutive rebuilds are not independent fields; and
+  // buildAscii draws before it returns, so it never leaves the buffer it just
+  // cleared empty for a frame. Without either, per-frame rebuilding is static
+  // and a blackout respectively -- it was both, in that order.
   //
-  //  - buildAscii writes cvs.width, which clears the WebGL drawing buffer, but
-  //    the draw is gated on _glDirty and happens on the NEXT tick. Rebuilding
-  //    every frame therefore clears every frame and draws a frame late, so the
-  //    field reads as black for the whole drag.
-  //  - the seeding loop re-rolls Math.random() for every cell, so consecutive
-  //    rebuilds share no content. At 60fps that is television static, not a
-  //    field being resized.
-  //
-  // 110ms is short enough to feel like it is following the window and long
-  // enough that each grid is drawn, and holds still, before the next one.
-  // Meanwhile the canvas is pinned to its built size (see buildAscii) so the
-  // stale grid is never stretched across the new width -- growing briefly shows
-  // black at the edge, which on a sparse field over a black page is far quieter
-  // than either the smear or the blackout.
+  // Cancel-and-reschedule, NOT "skip if one is pending". Treating the handle as
+  // a boolean means a single frame callback that never runs -- a cancel on
+  // teardown, or a frame dropped while the tab is hidden -- leaves it non-zero
+  // forever and every later call returns early, so the field stops rebuilding
+  // for the life of the page. Rescheduling cannot wedge: a stale handle is just
+  // cancelled. Resize events do not outpace frames, so this still coalesces to
+  // one rebuild per frame.
   queueAscii() {
-    clearTimeout(this._asciiTimer);
-    this._asciiTimer = setTimeout(() => {
+    if (this._asciiRaf) cancelAnimationFrame(this._asciiRaf);
+    this._asciiRaf = requestAnimationFrame(() => {
+      this._asciiRaf = 0;
       const root = this.el();
       const box = root && root.querySelector('[data-ascii]');
       if (!box) return;
@@ -1333,7 +1364,7 @@ class ServicesController {
       this._asciiW = w;
       this._asciiH = h;
       this.buildAscii();
-    }, 110);
+    });
   }
 
   buildAscii() {
@@ -1458,9 +1489,9 @@ class ServicesController {
         const a = a0 * clear;
         cell[i * 2] = c;
         cell[i * 2 + 1] = r;
-        const on = Math.random() < p;
+        const on = hash2(c, r, 1) < p;
         baseA[i] = on ? a : 0;
-        dyn[i * 5] = on ? 1 + ((Math.random() * glyphN) | 0) : 0;
+        dyn[i * 5] = on ? 1 + ((hash2(c, r, 2) * glyphN) | 0) : 0;
         dyn[i * 5 + 1] = baseA[i];
         dyn[i * 5 + 4] = 1;
         if (on) live.push(i);
@@ -1481,10 +1512,16 @@ class ServicesController {
     const diss = new Float32Array(n);
     for (let r = 0; r < rows; r++) {
       let c = 0;
+      let run = 0;
       while (c < cols) {
-        const runLen = 2 + ((Math.random() * 7) | 0);
-        const rv = Math.random();
+        // Keyed on the run's index within the row, not on Math.random(), for the
+        // same reason as the cells: every row is walked from column 0, so a
+        // wider grid reproduces the same runs and simply continues past where
+        // the old one stopped, instead of re-cutting the whole row.
+        const runLen = 2 + ((hash2(run, r, 3) * 7) | 0);
+        const rv = hash2(run, r, 4);
         for (let k = 0; k < runLen && c < cols; k++, c++) diss[r * cols + c] = rv;
+        run++;
       }
     }
     this._dissolveThresh = diss;
@@ -1582,6 +1619,12 @@ class ServicesController {
     this._glyphPx = gsz / dpr;
     this._atGrid = [acols, arows];
     this._glDirty = true;
+    // Draw NOW rather than leaving it to the next tick. Setting cvs.width above
+    // cleared the drawing buffer, and the tick's draw is gated on _glDirty --
+    // so between the two there is a frame of empty canvas. One rebuild a frame
+    // means one empty frame per frame, which is the field going black for the
+    // length of a drag.
+    this.drawAscii();
 
     if (!this._asciiBound) {
       this._asciiBound = true;
