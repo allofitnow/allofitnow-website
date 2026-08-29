@@ -1,50 +1,39 @@
-# Zaraz Worker Fallback (gate-conditional, never eager)
+# zaraz-worker-fallback/ -> 46009 routing layer (issue #50)
 
-Status: DORMANT. Deploys ONLY if the section 7 empirical gate fails.
+Status: REQUIRED routing layer (was: DORMANT fallback). Promoted 2026-08-29
+by issue #50: R2 custom domains do not resolve directory or extensionless
+URLs to index.html, so clean URLs 404 without this worker. Also the vehicle
+for Zaraz injection (#32 Phase C) since serving now sits behind a zone route.
 
-## Decision gate (production-delivery spec section 7)
+## What it does
 
-The check is empirical: after zone ACTIVE + `46009.someofitlater.com` attached,
-fetch a real HTML page through the proxied custom domain and look for Zaraz
-script injection (a `<script>` tag whose src host is `system.cloudflare.com`
-or `zaraz.cloudflarelabs.com`, or any script whose src contains `/zaraz/i`).
+- GET/HEAD only; everything else 405.
+- Directory URLs (/ and any trailing-slash path) -> `<path>index.html`.
+- Extensionless paths (Astro hrefs like /work/bad-bunny) -> retry
+  `<path>/index.html` on miss. One retry, no fallback chains.
+- Unknown paths stay 404 (site 404.html served where present).
+- No body mutation, ever. ETag/304 passthrough. html=no-cache, assets 1d.
 
-- Injection present -> direct R2 custom domain serving is final. Delete this
-  directory's deploy intent; keep it as reference.
-- Injection absent -> activate this Worker (below). The route intercepts all
-  custom-domain traffic, passes it to the bucket, and lets the edge inject.
+## Deploy / verify (issue #50 ACs)
 
-## Activation steps (operator, ~5 min)
+    cd deploy/zaraz-worker-fallback
+    npx wrangler@3 deploy            # routes 46009.someofitlater.com/* on zone someofitlater.com
 
-1. `cd deploy/zaraz-worker-fallback`
-2. `npx wrangler deploy` (uses `wrangler.toml`: route `46009.someofitlater.com/*`,
-   R2 binding ASSETS -> bucket `46009`)
-3. Verify: `curl -sI https://46009.someofitlater.com/ | grep -i x-46009-worker`
-   -> header `x-46009-worker: v1` proves the Worker is in the path.
-4. Re-check Zaraz injection (same grep as the gate). Worker-in-path + edge
-   features on the route -> injection should now fire.
-5. Record outcome in the tracking ledger issue + `deploy/logs/` note.
+AC battery (run from anywhere with curl):
 
-## Why not always-on
-
-Minimal-infra ethos: direct R2 custom domain serving is the cheapest path
-(zero compute, zero worker invocations). The Worker adds a per-request compute
-hop and a second surface to maintain. It exists as a ready artifact so the
-gate decision is a 5-minute activation, not a build project.
-
-## Cost note
-
-Workers free tier: 100k req/day. Portfolio traffic profile (NYC B2B, 6,854
-events/90d default events -> low RPS) is far below. Paid plan not required.
-
-## Headers policy
-
-- HTML: `cache-control: no-cache` (frequent publishes, small set)
-- Assets/media: `public, max-age=86400` (hashed assets re-validate via ETag;
-  media immutable in practice; 24h cap bounds staleness after tombstones)
-- `x-46009-worker: v1` on every response - the in-path proof header.
+    H=https://46009.someofitlater.com
+    curl -s $H/ -o /tmp/root.html -w "%{http_code}\n"      # AC1: 200, md5 == /index.html md5
+    curl -s $H/index.html -o /tmp/idx.html -w "%{http_code}\n" # AC3 explicit still works
+    curl -s $H/work/ -o /dev/null -w "%{http_code}\n"      # AC2
+    curl -s $H/work/bad-bunny -o /dev/null -w "%-headers\n"    # AC2 extensionless
+    curl -s $H/nonexistent-$RANDOM/ -o /dev/null -w "%{http_code}\n" # AC4: 404
+    md5sum /tmp/root.html /tmp/idx.html                    # AC5: equal
 
 ## Rollback
 
-Remove the route from the dashboard (or `wrangler delete`), traffic falls
-back to direct R2 custom domain. Nothing else changes.
+`npx wrangler@3 delete` or remove the route; bucket custom domain serving
+resumes directly (index.html URLs keep working without the worker).
+
+## Binding
+
+R2 binding ASSETS -> bucket 46009. No body rewrite. No secrets.
