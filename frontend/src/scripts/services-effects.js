@@ -291,6 +291,21 @@ export function mountEffects(ctrl) {
   // ---- the single trigger ----------------------------------------------------------
   // We scrub the master timeline MANUALLY from self.progress (already smoothed by Lenis) so the
   // galleries, field dissolve, orbit speed, and chrome all share one synced source of truth.
+  // Put every still back at the distance the CURRENT viewport makes off-stage,
+  // then let anything mid-flight overwrite that with its own re-read values.
+  // Called from onRefresh, and directly on each resize event -- see there.
+  const resync = (p) => {
+    reparks.forEach((repark) => repark());
+    master.invalidate();
+    // progress() does not render when handed the value it already holds, which
+    // after a resize is the common case, so the invalidated tweens would never
+    // re-read anything. The hair's-breadth nudge forces it; both writes land in
+    // the same frame so nothing is painted at the nudged value, and
+    // suppressEvents stops the trip past it firing callbacks.
+    master.progress(p > 0 ? Math.max(0, p - 1e-4) : 1e-4, true);
+    master.progress(p, true);
+  };
+
   let govRaf = 0;
   const st = ScrollTrigger.create({
     trigger: scrollDist,
@@ -308,24 +323,7 @@ export function mountEffects(ctrl) {
       }
     },
     onRefresh: (self) => {
-      const p = self.progress;
-      // Re-park everything at the NEW viewport's off-stage distance. A still
-      // that has not reached its tween yet shows the position written by the
-      // build-time gsap.set(), which is not on the timeline and so survives
-      // invalidate() untouched: widen the window and eleven of the sixteen RTC
-      // stills slid into frame behind the capability bar, still sitting at the
-      // distance that was off-screen for the OLD width.
-      reparks.forEach((repark) => repark());
-      // Then let anything actually mid-flight overwrite that. invalidate()
-      // drops the recorded from/to so the function-based values are re-read,
-      // but only on the next RENDER -- and progress() does not render when
-      // handed the value it already holds, which after a resize is the common
-      // case. The hair's-breadth nudge forces it. Both writes land in the same
-      // frame so nothing is painted at the nudged value, and suppressEvents
-      // stops the trip past it firing anything.
-      master.invalidate();
-      master.progress(p > 0 ? Math.max(0, p - 1e-4) : 1e-4, true);
-      master.progress(p, true);
+      resync(self.progress);
       if (ctrl.dissolveField) ctrl.dissolveField(dissState.t);
     },
   });
@@ -353,6 +351,14 @@ export function mountEffects(ctrl) {
   let reFit = null;
   window.addEventListener('resize', () => {
     if (bar) bar.style.top = lastSection < 0 ? '52vh' : activeTop() + 'px';
+    // Re-park on EVERY resize event, not only when the debounced refresh lands.
+    // A still's off-stage distance is a function of the viewport, so leaving it
+    // until the drag stops means the whole drag is spent with the stills at the
+    // distance that was off-screen for the old size -- which is them sitting
+    // visibly in frame the entire time you are dragging. This is a handful of
+    // gsap.set calls and one timeline render; the expensive part, ScrollTrigger
+    // re-measuring the scroll distances, stays debounced below.
+    resync(st.progress);
     clearTimeout(reFit);
     reFit = setTimeout(() => { ScrollTrigger.refresh(); }, 220); // onRefresh re-applies the dissolve
   });

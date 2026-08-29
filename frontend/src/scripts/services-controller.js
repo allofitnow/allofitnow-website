@@ -364,7 +364,7 @@ class ServicesController {
     window.removeEventListener('resize', this._resize);
     clearInterval(this._tick);
     if (this._raf) cancelAnimationFrame(this._raf);
-    if (this._asciiRaf) { cancelAnimationFrame(this._asciiRaf); this._asciiRaf = 0; }
+    clearTimeout(this._asciiTimer);
   }
 
   componentDidUpdate() {
@@ -1300,28 +1300,30 @@ class ServicesController {
     if (!v) this._glDirty = true;
   }
 
-  // Rebuild the field at most once a frame, and only when its box has actually
-  // changed size. The grid (columns, rows, the per-cell arrays, the holes cut
-  // for the capability labels) is derived from the box, so it has to be rebuilt
-  // when the box is -- and until it is, the canvas backing store keeps its old
-  // dimensions while CSS stretches it to fill, which is the smear you get while
-  // dragging a window edge.
+  // Rebuild the field when its box changes size, and only then. The grid
+  // (columns, rows, the per-cell arrays, the holes cut for the capability
+  // labels) is derived from the box, so it cannot follow the box without one.
   //
-  // This used to be a 220ms trailing debounce, i.e. the whole drag was spent
-  // looking at the stale grid. A rebuild measures 2.2ms at 1440x674, so it fits
-  // a frame with room to spare; rAF coalescing keeps it to one per frame however
-  // fast the resize events arrive, and naturally backs off if a frame runs long.
+  // Deliberately a short debounce and NOT once-per-frame. Two things make a
+  // per-frame rebuild wrong here, and both were visible:
+  //
+  //  - buildAscii writes cvs.width, which clears the WebGL drawing buffer, but
+  //    the draw is gated on _glDirty and happens on the NEXT tick. Rebuilding
+  //    every frame therefore clears every frame and draws a frame late, so the
+  //    field reads as black for the whole drag.
+  //  - the seeding loop re-rolls Math.random() for every cell, so consecutive
+  //    rebuilds share no content. At 60fps that is television static, not a
+  //    field being resized.
+  //
+  // 110ms is short enough to feel like it is following the window and long
+  // enough that each grid is drawn, and holds still, before the next one.
+  // Meanwhile the canvas is pinned to its built size (see buildAscii) so the
+  // stale grid is never stretched across the new width -- growing briefly shows
+  // black at the edge, which on a sparse field over a black page is far quieter
+  // than either the smear or the blackout.
   queueAscii() {
-    // Cancel-and-reschedule, NOT "skip if one is pending". Treating the handle
-    // as a boolean means a single frame callback that never runs -- a cancel on
-    // teardown, a frame dropped while the tab is hidden -- leaves it non-zero
-    // forever and every later call returns early, so the field stops rebuilding
-    // for the life of the page. Rescheduling cannot wedge: a stale handle is
-    // simply cancelled. Resize events do not outpace frames, so this still
-    // coalesces to one rebuild per frame.
-    if (this._asciiRaf) cancelAnimationFrame(this._asciiRaf);
-    this._asciiRaf = requestAnimationFrame(() => {
-      this._asciiRaf = 0;
+    clearTimeout(this._asciiTimer);
+    this._asciiTimer = setTimeout(() => {
       const root = this.el();
       const box = root && root.querySelector('[data-ascii]');
       if (!box) return;
@@ -1331,7 +1333,7 @@ class ServicesController {
       this._asciiW = w;
       this._asciiH = h;
       this.buildAscii();
-    });
+    }, 110);
   }
 
   buildAscii() {
@@ -1351,6 +1353,13 @@ class ServicesController {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     cvs.width = Math.floor(w * dpr);
     cvs.height = Math.floor(h * dpr);
+    // Pin the element to the size this grid was built for rather than leaving it
+    // at width/height:100%. Between the box changing and the rebuild landing,
+    // 100% stretches the old backing store across the new width -- the smear.
+    // At a fixed size it simply stops short (black, over a black page) or is
+    // clipped by the box's overflow:hidden, neither of which reads as a fault.
+    cvs.style.width = w + 'px';
+    cvs.style.height = h + 'px';
     const gl = this._gl || cvs.getContext('webgl2', { alpha: true, antialias: false, premultipliedAlpha: false });
     if (!gl) return;
     this._gl = gl;
