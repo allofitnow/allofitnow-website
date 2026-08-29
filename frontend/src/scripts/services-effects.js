@@ -136,8 +136,13 @@ export function mountEffects(ctrl) {
 
   // Build the scrubbed galleries onto one master timeline; Mixed/Equip reveal on entry.
   const master = gsap.timeline({ paused: true });
-  buildRealtime(root, master);
-  buildScreens(root, master);
+  // Off-stage parking positions are derived from the viewport, and the value a
+  // still sits at BEFORE its tween starts is written by a gsap.set() at build
+  // time -- which is not on the timeline, so master.invalidate() cannot reach
+  // it. Each gallery registers how to re-park itself; onRefresh replays them.
+  const reparks = [];
+  buildRealtime(root, master, reparks);
+  buildScreens(root, master, reparks);
   const orbit = buildMixed(root); // { setBoost, assemble, show(v) }
   const equip = initEquipment(root);
   master.to({ v: 0 }, { v: 1, duration: 0.001 }, 0.999); // pin master duration to 1 (progress == time)
@@ -303,8 +308,24 @@ export function mountEffects(ctrl) {
       }
     },
     onRefresh: (self) => {
+      const p = self.progress;
+      // Re-park everything at the NEW viewport's off-stage distance. A still
+      // that has not reached its tween yet shows the position written by the
+      // build-time gsap.set(), which is not on the timeline and so survives
+      // invalidate() untouched: widen the window and eleven of the sixteen RTC
+      // stills slid into frame behind the capability bar, still sitting at the
+      // distance that was off-screen for the OLD width.
+      reparks.forEach((repark) => repark());
+      // Then let anything actually mid-flight overwrite that. invalidate()
+      // drops the recorded from/to so the function-based values are re-read,
+      // but only on the next RENDER -- and progress() does not render when
+      // handed the value it already holds, which after a resize is the common
+      // case. The hair's-breadth nudge forces it. Both writes land in the same
+      // frame so nothing is painted at the nudged value, and suppressEvents
+      // stops the trip past it firing anything.
       master.invalidate();
-      master.progress(self.progress);
+      master.progress(p > 0 ? Math.max(0, p - 1e-4) : 1e-4, true);
+      master.progress(p, true);
       if (ctrl.dissolveField) ctrl.dissolveField(dissState.t);
     },
   });
@@ -339,7 +360,7 @@ export function mountEffects(ctrl) {
 }
 
 /* ---- REAL-TIME CONTENT — mwg_083 fly-across (scrubbed R→L, parallax depth) ------- */
-function buildRealtime(root, master) {
+function buildRealtime(root, master, reparks) {
   const el = root.querySelector('.mwg_effect083');
   if (!el) return;
   const medias = [...el.querySelectorAll('.media')];
@@ -358,12 +379,13 @@ function buildRealtime(root, master) {
     const fromX = () => window.innerWidth * L.reach + 140;
     const toX = () => -window.innerWidth * L.reach - 140;
     gsap.set(m, { top: top.toFixed(2) + '%', yPercent: -50, zIndex: L.z, scale, x: fromX });
+    if (reparks) reparks.push(() => gsap.set(m, { x: fromX }));
     master.fromTo(m, { x: fromX }, { x: toX, ease: 'none', duration: RTC.travel }, RTC.start + i * RTC.stag);
   });
 }
 
 /* ---- SCREENS PRODUCTION — mwg_051 (scrubbed bottom→top, parallax spread, stills may bleed off-edge) --- */
-function buildScreens(root, master) {
+function buildScreens(root, master, reparks) {
   const el = root.querySelector('.mwg_effect051');
   if (!el) return;
   const medias = [...el.querySelectorAll('.media')];
@@ -395,6 +417,7 @@ function buildScreens(root, master) {
     const fromY = () => window.innerHeight * L.reach + 120;
     const toY = () => -window.innerHeight * L.reach - 120;
     gsap.set(m, { left: left.toFixed(2) + '%', zIndex: L.z, scale, y: fromY });
+    if (reparks) reparks.push(() => gsap.set(m, { y: fromY }));
     master.fromTo(m, { y: fromY }, { y: toY, ease: 'none', duration: SCR.travel }, SCR.start + i * SCR.stag);
   });
 }
