@@ -64,7 +64,7 @@ def page_rules(pathspec):
     val = "^(" + "|".join(alts) + ")/?$"
     return [{"match": "{{ client.system.page.url.pathname }}", "op": "MATCH_REGEX", "value": val}]
 
-CLICK_WAIT = 500
+CLICK_WAIT = 0  # >0 makes Zaraz swallow+re-dispatch clicks -> double-fires menu toggle
 SHIM_JS = (
     "try{(function(){function bind(){var b=document.querySelector('.im__send');"
     "var s=document.querySelector('input[data-im-subject]');"
