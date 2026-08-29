@@ -59,3 +59,17 @@ Zone someofitlater.com is ACTIVE; serving is behind the zone route
 3. E2E walk per note 14918 with ?_zaraz_debug (HITL-gated send
    marker subject GA4E2E-<epoch>)
 
+## 4. Pre-entry validation (2026-08-29, agent-run)
+
+All 25 selectors validated against LIVE DOM (post-worker launch, all pages
+fetched from 46009.someofitlater.com edge, lxml cssselect):
+
+- 25/25 selectors matched. Zero missing. Zero malformed.
+- Notable counts: .slide x24 on /, .tile x23 on /work/
+- "all"-page selectors (im__panel/im__send/im__close, nav btn, logo,
+  input[data-im-subject]) present on every probed page (5/5) - the inquiry
+  modal IS server-rendered; dialog top-layer is a visibility nuance only.
+- Evidence: /tmp/domcheck/report.txt (session) - re-run via the dictionary
+  + lxml cssselect on any page fetch.
+
+Entry can proceed with zero selector risk.
