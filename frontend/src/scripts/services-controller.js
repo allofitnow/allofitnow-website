@@ -1236,7 +1236,14 @@ class ServicesController {
       b.__bg = null;
       b.style.backgroundImage = 'none';
       b.style.backgroundColor = 'transparent';
-      b.style.color = '';
+      // NOT `color` — leave it exactly as it was found. setActiveService() sets
+      // the resting colours and THEN the hero->section boundary calls
+      // setBarInteractive(false), which lands here: clearing colour at this
+      // point deletes the inline declaration that was just written, and the
+      // slots fall back to an inherited black. Returning to the hero repaints
+      // via sweep() (which owns colour in gradient mode), and the hover burn-in
+      // is overwritten by setActiveService on the way into a section, so there
+      // is nothing here that needs resetting.
       b.style.textShadow = 'none';
       b.style.backgroundClip = '';
       b.style.webkitBackgroundClip = '';
