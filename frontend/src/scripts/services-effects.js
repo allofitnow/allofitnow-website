@@ -154,6 +154,9 @@ export function mountEffects(ctrl) {
     if (!tr) return 200;
     return Math.round(tr.getBoundingClientRect().bottom - root.getBoundingClientRect().top + 20);
   };
+  // The bar's resting BOTTOM — activeTop is its resting top. The equipment cell
+  // hangs off this so it never overlaps the sub-service names.
+  const equipBarBottom = () => activeTop() + (bar ? bar.offsetHeight : 0);
   const descOf = (i) => panels[i] && panels[i].querySelector('[data-desc]');
   const equipEl = panels[3] && panels[3].querySelector('.equip');
 
@@ -324,6 +327,7 @@ export function mountEffects(ctrl) {
     },
     onRefresh: (self) => {
       resync(self.progress);
+      if (equip && equip.layout) equip.layout(equipBarBottom());
       if (ctrl.dissolveField) ctrl.dissolveField(dissState.t);
     },
   });
@@ -336,6 +340,7 @@ export function mountEffects(ctrl) {
   driveReveal(0);
 
   ScrollTrigger.refresh();
+  if (equip && equip.layout) equip.layout(equipBarBottom());
   initNav(ctrl, lenis, st);
 
   // Lock scroll while the on-load intro plays (unless we're deep-linking straight in).
@@ -360,6 +365,7 @@ export function mountEffects(ctrl) {
     // re-measuring the scroll distances, stays debounced below.
     resync(st.progress);
     orbit.resize();
+    if (equip && equip.layout) equip.layout(equipBarBottom());
     clearTimeout(reFit);
     reFit = setTimeout(() => { ScrollTrigger.refresh(); }, 220); // onRefresh re-applies the dissolve
   });
@@ -581,63 +587,87 @@ function initEquipment(root) {
     for (let i = 0; i < rows.length; i++) { const d = Math.abs(centerOf(i) - cp); if (d < bd) { bd = d; best = i; } }
     return best;
   };
-  // ---- plate scale -----------------------------------------------------------------
-  // The plate is a square box between the sub-service marquee above it and the fleet marquee below,
-  // and --plate-scale (services.css) sizes it against the cell. The renders carry black margin in
-  // the frame, so the box is grown past the cell and the surplus clipped, which reads as a bigger
-  // render. How much margin there is to take varies per clip, though, and one of the seven has
-  // none to give: renderstream is framed tight to its subject — measured, it spans .031-.979 of
-  // its frame across, so anything above ~1.05x eats the hardware — and it stays at 1.
+  // ---- plate fit ------------------------------------------------------------------
+  // Every render is fitted by its SUBJECT, not by its frame, so a rack and a
+  // circuit board come out the same size on screen even though their frames do
+  // not agree on shape or on how much black they carry around the hardware.
   //
-  // So it is per clip, and each is the largest that keeps that whole subject inside the cell.
-  // Derived from the subject's measured box — the union of every sampled frame, x..r across the
-  // frame and y..b down it — plus a NUDGE that slides the render sideways first so the subject,
-  // not the frame, is on the cell's centre line. That nudge is what the sizes are worth: scaled
-  // about the cell's middle, an off-centre subject runs its near side into the edge while the far
-  // side still has margin going spare, and the rack is 3.6% off — which was costing it a tenth of
-  // its size. Recentred, the limits are:
+  // What this replaces fitted the frame into a SQUARE of the cell's smaller axis
+  // and then multiplied by a hand-measured constant. Two things went wrong with
+  // that. A square of the smaller axis throws away the whole of a wide cell: at
+  // 1504x560 the box was 560 on a side and 944px of width went unused. And
+  // `contain` fits the FRAME, so a tall subject inside a 16:9 frame gets fitted
+  // by the frame's width and lands tiny -- the rack's subject came out 308px
+  // tall in a 560px cell, which is the "why is it so small" of it.
   //
-  //   across  1/(r-x)      down  min(1/(1-2y), 1/(2b-1)) / f      f = picture height / box side
+  // Now: fit the frame to the cell to learn the picture's real size, read the
+  // subject out of it with the measured box, and scale until the SUBJECT fills
+  // PLATE_FILL of the cell on whichever axis binds first. Then slide the
+  // subject's centre onto the cell's centre, which also retires the old nudge.
   //
-  // and the scale is the smaller, less ~2.5% for measurement error. Down is left un-nudged: it
-  // only ever binds renderstream, and centring the others vertically would move the render off
-  // where the frame puts it for a percent or two. Taking both axes is what makes one number per
-  // clip safe in a cell of ANY shape — a tall cell only relaxes the vertical limit and a wide one
-  // only the horizontal, so the smaller of the pair is under both, on any phone and on desktop.
+  // The subject can never be clipped, by construction rather than by tuning:
+  // k = FILL * min(W/sw, H/sh), so sw*k <= FILL*W and sh*k <= FILL*H on both
+  // axes at once, in a cell of any shape. The FRAME does overflow, and
+  // overflow:hidden takes the surplus -- that surplus is the black margin, which
+  // is the point.
   //
-  //     clip                          box across   box down    nudge    max     used
-  //     gx3 / x-series / silverdraft  .083-.927    .344-.875   -0.005   1.185   1.15
-  //     laptop                        .104-.864    .156-.864   +0.016   1.316   1.28
-  //     vfc                           .083-.959    .333-.656   -0.021   1.142   1.11
-  //     rack (16:9, f=0.5625)         .042-.886    .037-.889   +0.036   1.185   1.15
-  //     renderstream                  .031-.979    .208-1.00        0   1.000   1.00
-  //
-  // renderstream stays at 1: its subject runs to the very bottom EDGE of its frame (b = 1.0), so
-  // there is nothing to give and no nudge helps — that is a vertical limit, not a horizontal one.
-  //
-  // Keyed by slug because that is the only thing that separates them: six of the seven are
-  // 1000x1000, so the frame's shape says nothing about how tightly the render sits in it. Which
-  // makes this a list to revisit whenever the fleet changes — anything not in it stays at 1, whole
-  // and uncropped, until someone measures it. And these numbers are the ceiling, not a preference:
-  // every one is bounded by how much black the clip carries. Re-exporting the loose renders as
-  // tight as renderstream retires the table AND beats anything in it — gx3's subject is 53% of its
-  // frame's height, so a tight re-frame is worth ~1.9x down the long axis where a crop-free zoom
-  // tops out at 1.19x.
-  const PLATE = {
-    'disguise-gx3':            { scale: 1.15, nudge: -0.005 },
-    'x-series-servers':        { scale: 1.15, nudge: -0.005 },
-    'silverdraft-a6000-nodes': { scale: 1.15, nudge: -0.005 },
-    'laptop-flypacks':         { scale: 1.28, nudge: 0.016 },
-    'vfc-cards':               { scale: 1.11, nudge: -0.021 },
-    'custom-rack-builds':      { scale: 1.15, nudge: 0.036 },
-    'renderstream-hardware':   { scale: 1, nudge: 0 },
+  // PLATE_FILL is the one number to turn if these want to be bigger or smaller.
+  // It is margin INSIDE the cell, on top of the gaps the cell already keeps from
+  // the names above and the fleet marquee below, which is why it can sit this
+  // close to 1 without the render crowding either.
+  const PLATE_FILL = 0.96;
+
+  // Subject box as fractions of the frame: x..r across, y..b down. Measured off
+  // the renders (the union of every sampled frame). Keyed by slug because six of
+  // the seven are 1000x1000, so the frame's shape says nothing about how tightly
+  // the hardware sits inside it. Anything absent falls back to the whole frame,
+  // which simply means "contain it, with PLATE_FILL of margin" and is never
+  // wrong, only conservative -- so a new fleet item is safe before anyone
+  // measures it. Re-exporting a render tight to its subject makes its entry
+  // unnecessary rather than wrong.
+  const FULL_FRAME = { x: 0, r: 1, y: 0, b: 1 };
+  const SUBJECT = {
+    'disguise-gx3':            { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
+    'x-series-servers':        { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
+    'silverdraft-a6000-nodes': { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
+    'laptop-flypacks':         { x: 0.104, r: 0.864, y: 0.156, b: 0.864 },
+    'vfc-cards':               { x: 0.083, r: 0.959, y: 0.333, b: 0.656 },
+    'custom-rack-builds':      { x: 0.042, r: 0.886, y: 0.037, b: 0.889 },
+    'renderstream-hardware':   { x: 0.031, r: 0.979, y: 0.208, b: 1.000 },
   };
-  const setScale = (r) => {
+
+  let plateBox = FULL_FRAME;
+  const setScale = (r) => { plateBox = (r && SUBJECT[r.dataset.slug]) || FULL_FRAME; fitPlate(); };
+
+  // Recomputed from measured pixels every time the cell or the media can have
+  // changed, which is what makes it follow a resize instead of being baked once.
+  function fitPlate() {
     if (!plate) return;
-    const p = (r && PLATE[r.dataset.slug]) || { scale: 1, nudge: 0 };
-    plate.style.setProperty('--plate-scale', String(p.scale));
-    plate.style.setProperty('--plate-nudge', String(p.nudge));
-  };
+    const W = plate.clientWidth;
+    const H = plate.clientHeight;
+    if (!W || !H) return;
+    [img, vid].forEach((m) => {
+      if (!m) return;
+      const nw = m.naturalWidth || m.videoWidth || 0;
+      const nh = m.naturalHeight || m.videoHeight || 0;
+      if (!nw || !nh) return; // not decoded yet; the load handlers call back
+      const fit = Math.min(W / nw, H / nh);   // what object-fit:contain resolves to
+      const pw = nw * fit;
+      const ph = nh * fit;
+      const sw = (plateBox.r - plateBox.x) * pw;
+      const sh = (plateBox.b - plateBox.y) * ph;
+      if (sw <= 0 || sh <= 0) return;
+      const k = PLATE_FILL * Math.min(W / sw, H / sh);
+      const ox = ((plateBox.x + plateBox.r) / 2 - 0.5) * pw;
+      const oy = ((plateBox.y + plateBox.b) / 2 - 0.5) * ph;
+      m.style.transform =
+        'translate(' + (-ox * k).toFixed(1) + 'px,' + (-oy * k).toFixed(1) + 'px) scale(' + k.toFixed(4) + ')';
+    });
+  }
+
+  // A swapped src arrives with no dimensions; fit again once it has them.
+  if (img) img.addEventListener('load', fitPlate);
+  if (vid) vid.addEventListener('loadedmetadata', fitPlate);
 
   // Paint the plate for a row: real items show their image; placeholder items show a
   // labelled placeholder box (the data has no plate asset yet — pending the CMS).
@@ -761,7 +791,31 @@ function initEquipment(root) {
     if (on && plateIsVideo) { try { vid.currentTime = 0; } catch (_) {} vid.play && vid.play().catch(() => {}); }
     else if (!on) { vid.pause && vid.pause(); }
   };
-  return { setActive };
+  // Put the cell's top under the capability bar's RESTING position, and refit.
+  // The stylesheet's `top` is a guess that predates the bar being measured: at
+  // 1600x1000 the bar rests at 220..248 while the cell started at 200, so the
+  // cell opened ABOVE the sub-service names and the render, centred in it, sat
+  // high of the space it looked like it should be centred in. Taking the bar's
+  // own bottom is what makes the gap above the render equal the gap below it.
+  //
+  // `barBottom` is the RESTING bottom, passed in by the caller, not the bar's
+  // current one: while the page is still scrolling into the section the bar is
+  // mid-flight from 52vh, and reading it there would drop the cell down the
+  // screen and then walk it back up.
+  const layout = (barBottom) => {
+    if (typeof barBottom === 'number' && barBottom > 0) {
+      // The SAME gap the flex column already puts between the plate and the
+      // fleet marquee, read off the element so the two cannot drift apart.
+      // Equal gaps above and below the cell are what make the render, centred
+      // within it, land equidistant between the names and the marquee -- a
+      // separately chosen top gap would centre it in the cell but not on screen.
+      const gap = parseFloat(getComputedStyle(wrap).rowGap) || 24;
+      wrap.style.top = Math.round(barBottom + gap) + 'px';
+    }
+    fitPlate();
+  };
+
+  return { setActive, layout };
 }
 
 /* ---- Service nav + deep links (homepage → a section; intro labels → scroll) ----- */
