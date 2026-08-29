@@ -11,7 +11,7 @@ rows:
   - {id: 5,  page: /,          selector: '#contact',              trigger: visibility, event: view_footer,            params: [],                       variance: structural}
   - {id: 6,  page: /work/,     selector: '.tile',                 trigger: click,      event: work_item_click,        params: [data-slug, data-cap, aria-label], variance: content}
   - {id: 7,  page: /work/,     selector: '#grid',                 trigger: visibility, event: view_work_grid,         params: [],                       variance: structural}
-  - {id: 8,  page: /work/,     selector: '[data-pane="list"]',    trigger: visibility, event: view_work_list,         params: [],                       variance: structural}
+  - {id: 8,  page: /work/,     selector: '[data-pane=list]',       trigger: visibility, event: view_work_list,         params: [],                       variance: structural}
   - {id: 9,  page: /work/,     selector: '.back',                 trigger: click,      event: back_to_home,           params: [],                       variance: structural}
   - {id: 10, page: /services/, selector: '#real-time-content',    trigger: visibility, event: view_svc_realtime,      params: [],                       variance: structural}
   - {id: 11, page: /services/, selector: '#screens-production',   trigger: visibility, event: view_svc_screens,       params: [],                       variance: structural}

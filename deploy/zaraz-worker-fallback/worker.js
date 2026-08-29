@@ -37,6 +37,19 @@ function hasExt(key) {
   return last.includes(".");
 }
 
+const ZARAZ_TAG = '<script src="/cdn-cgi/zaraz/i.js"></script>';
+// v3b: also inject the inquiry shim (zaraz.track on .im__send with typed
+// subject). Zaraz custom-html tools are not delivered for Pageview-only
+// firing, so the worker carries this inline instead. zaraz is defined
+// synchronously by i.js which is injected immediately before this script.
+const SHIM = [
+  '<script>(function(){function bind(){var b=document.querySelector(\'.im__send\');',
+  'var s=document.querySelector(\'input[data-im-subject]\');',
+  'if(b&&!b.__aoinBound){b.__aoinBound=1;b.addEventListener(\'click\',function(){',
+  'try{zaraz.track(\'inquiry_send\',{subject:(s&&s.value)||\'\'});}catch(e){}});}}',
+  'bind();document.addEventListener(\'astro:page-load\',bind);})();</script>',
+].join("");
+
 export default {
   async fetch(request, env) {
     if (request.method !== "GET" && request.method !== "HEAD") {
@@ -59,18 +72,19 @@ export default {
     if (obj === null) {
       const notFound = await env.ASSETS.get("404.html");
       if (notFound !== null) {
-        return new Response(notFound.body, {
+        const buf = await notFound.arrayBuffer();
+        return new Response(injectZaraz(buf, "html"), {
           status: 404,
           headers: {
             "content-type": MIME.html,
             "cache-control": "no-cache",
-            "x-46009-worker": "v2",
+            "x-46009-worker": "v3",
           },
         });
       }
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v2" },
+        headers: { "x-46009-worker": "v3" },
       });
     }
 
@@ -78,7 +92,7 @@ export default {
     const headers = new Headers();
     headers.set("etag", obj.httpEtag);
     headers.set("content-type", MIME[ext] || "application/octet-stream");
-    headers.set("x-46009-worker", "v2");
+    headers.set("x-46009-worker", "v3");
     if (ext === "html") {
       headers.set("cache-control", "no-cache");
     } else {
@@ -87,6 +101,20 @@ export default {
     if (request.headers.get("if-none-match") === obj.httpEtag) {
       return new Response(null, { status: 304, headers });
     }
+    if (ext === "html") {
+      const buf = await obj.arrayBuffer();
+      return new Response(injectZaraz(buf, "html"), { status: 200, headers });
+    }
     return new Response(obj.body, { status: 200, headers });
   },
 };
+
+function injectZaraz(buf) {
+  const html = new TextDecoder().decode(buf);
+  if (html.includes("/cdn-cgi/zaraz/i.js")) return html; // idempotent
+  const tags = ZARAZ_TAG + SHIM;
+  if (html.includes("</head>")) {
+    return html.replace("</head>", tags + "</head>");
+  }
+  return tags + html; // headless markup: prepend
+}
