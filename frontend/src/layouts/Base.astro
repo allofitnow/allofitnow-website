@@ -40,7 +40,14 @@ const flightOrder = JSON.stringify(projects.map((p) => p.slug));
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="icon" href="/assets/aoin-icon.svg" type="image/svg+xml" />
+    {/* The browser asks for /favicon.ico on its own, whatever is declared here,
+        and it caches the answer hard. So the real mark has to live AT that path
+        rather than only being pointed to from one: what shipped before was the
+        Astro starter's logo sitting at /favicon.ico and /favicon.svg, which is
+        what the tab actually showed. Declaring the .ico as well keeps the two
+        in step. The SVG is listed second and wins wherever it is understood. */}
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 
     {/* Fonts are on the critical path — the preloader/intro is gated on
         document.fonts.ready, so avoid the FOIT that font-display:block causes. */}
