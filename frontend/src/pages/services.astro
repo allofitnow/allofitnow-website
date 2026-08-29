@@ -125,6 +125,17 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
 {/* Preloader count face — its @font-face is block, and the count animates from
     the first frame, so preload it or the numbers show blank until it loads. */}
 <link rel="preload" href="/fonts/OOTheran-Light.woff2" as="font" type="font/woff2" crossorigin />
+{/* The other three this page sets type in. The intro is gated on
+    document.fonts.ready — the title, the capability labels and the character
+    field are all measured before they are drawn, so they cannot start until the
+    metrics are final. Without these the browser only discovers the faces once it
+    has parsed the stylesheet, and that extra round trip is dead time with the
+    page showing nothing: the labels appear late, together. Base.astro preloads
+    the same four; this page is a full document outside it and has to repeat
+    them, the same way it repeats the icon. */}
+<link rel="preload" href="/fonts/SNJaMono-Light.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/fonts/DenimINKWD-Medium.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/fonts/DenimINKWD-Regular.woff2" as="font" type="font/woff2" crossorigin />
 </head>
 <body>
 {/* Covers the raw stacked section layers (which paint for a frame before the

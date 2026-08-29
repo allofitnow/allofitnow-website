@@ -568,18 +568,36 @@ class ServicesController {
       );
     };
     const lead = 260, stag = 90;
+    const SLOT_DUR = 820;
+    // Rise at the brightness the sweep is going to hand them, not the 0.45 the
+    // markup carries for the section state. sweep() refuses to touch a slot while
+    // the clip span is still wrapping its text (background-clip:text cannot map
+    // onto a descendant, it renders black), so a slot shows its plain colour
+    // until the span goes. Leaving that at 0.45 meant every slot jumped to 0.91
+    // the instant it was unwrapped: the labels arrived, sat flat for a moment,
+    // and then snapped on.
+    const navFill = 'rgba(217,225,234,' + Math.min(1, NAV_BRIGHTNESS / 100) + ')';
+    slots.forEach((s) => { s.style.color = navFill; });
+
     rise(a, lead, 900);
     rise(b, lead + stag, 900);
-    slots.forEach((s, i) => rise(s, lead + 2 * stag + i * stag, 820));
+    slots.forEach((s, i) => rise(s, lead + 2 * stag + i * stag, SLOT_DUR));
     const fieldDelay = lead + 3 * stag + slots.length * stag;
     if (field) field.animate([{ opacity: 0, easing: EASE }, { opacity: 1 }], { duration: 900, delay: fieldDelay, fill: 'both' });
-    // Once the links have risen: unwrap the clip inner span (so the sweep's background-clip:text
-    // renders instead of black) and drop the clip so hover letter-spacing isn't cut off.
-    setTimeout(() => slots.forEach((s) => {
-      const inner = s.querySelector('span');
-      if (inner) s.textContent = inner.textContent;
-      s.style.overflow = 'visible';
-    }), lead + 2 * stag + slots.length * stag + 900);
+
+    // Unwrap each slot as ITS OWN rise lands, not all four on one timer 170ms
+    // after the last of them. The clip has to go for two reasons -- the sweep
+    // needs the text to be a direct child, and hover letter-spacing would be cut
+    // off by the overflow -- but doing it in one go handed the shine to all four
+    // simultaneously, which is a single hard edge in the middle of an otherwise
+    // staggered entrance. Per slot, it inherits the same 90ms rhythm as the rise.
+    slots.forEach((s, i) => {
+      setTimeout(() => {
+        const inner = s.querySelector('span');
+        if (inner) s.textContent = inner.textContent;
+        s.style.overflow = 'visible';
+      }, lead + 2 * stag + i * stag + SLOT_DUR + 40);
+    });
     setTimeout(done, fieldDelay + 940);
   }
 
