@@ -7,7 +7,9 @@
 // (Zaraz, #32 Phase C) can act on HTML responses.
 //
 // Behavior: try path as-is; if miss and no file extension, retry
-// <path>/index.html. No body mutation ever (AC5). 404s stay 404s (AC4).
+// <path>/index.html. On miss with percent-encoded path, retry the decoded
+// key (R2 keys uploaded from CMS may contain literal spaces; URL.pathname
+// keeps %20 - issue #53). No body mutation ever (AC5). 404s stay 404s (AC4).
 
 const MIME = {
   html: "text/html; charset=utf-8",
@@ -60,6 +62,20 @@ export default {
     if (key === "" || key.endsWith("/")) key += "index.html";
 
     let obj = await env.ASSETS.get(key);
+    if (obj === null) {
+      // #53: R2 keys uploaded from CMS may contain literal spaces; URL.pathname
+      // keeps %20. Decode-on-miss only: zero change for clean keys.
+      try {
+        const dec = decodeURIComponent(key);
+        if (dec !== key) {
+          const o2 = await env.ASSETS.get(dec);
+          if (o2 !== null) {
+            key = dec;
+            obj = o2;
+          }
+        }
+      } catch (_) {} // malformed escape - fall through to 404 path
+    }
     if (obj === null && hasExt(key) === false) {
       // extensionless path (Astro hrefs): /work/bad-bunny -> /work/bad-bunny/index.html
       const retry = key + "/index.html";
@@ -78,13 +94,13 @@ export default {
           headers: {
             "content-type": MIME.html,
             "cache-control": "no-cache",
-            "x-46009-worker": "v3",
+            "x-46009-worker": "v3c",
           },
         });
       }
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3" },
+        headers: { "x-46009-worker": "v3c" },
       });
     }
 
@@ -92,7 +108,7 @@ export default {
     const headers = new Headers();
     headers.set("etag", obj.httpEtag);
     headers.set("content-type", MIME[ext] || "application/octet-stream");
-    headers.set("x-46009-worker", "v3");
+    headers.set("x-46009-worker", "v3c");
     if (ext === "html") {
       headers.set("cache-control", "no-cache");
     } else {
