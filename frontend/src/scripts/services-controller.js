@@ -337,8 +337,7 @@ class ServicesController {
     this._raf = requestAnimationFrame(loop);
     this._resize = () => {
       this.layout();
-      clearTimeout(this._reAscii);
-      this._reAscii = setTimeout(() => this.buildAscii(), 220);
+      this.queueAscii();
     };
     window.addEventListener('resize', this._resize);
     requestAnimationFrame(() => this.layout());
@@ -346,7 +345,6 @@ class ServicesController {
     const boot = () => { this.layout(); this.buildAscii(); if (this._introOnly) this.playIntro(); };
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(boot, 60));
     else setTimeout(boot, 400);
-    this._reAscii = null;
     this._tick = setInterval(() => this.clock(), 1000);
     this.clock();
     // Deep-link (panel-switch mode only): /services#<slug> opens that panel.
@@ -366,6 +364,7 @@ class ServicesController {
     window.removeEventListener('resize', this._resize);
     clearInterval(this._tick);
     if (this._raf) cancelAnimationFrame(this._raf);
+    if (this._asciiRaf) { cancelAnimationFrame(this._asciiRaf); this._asciiRaf = 0; }
   }
 
   componentDidUpdate() {
@@ -689,18 +688,25 @@ class ServicesController {
       let lsM = 0.14;
       const all = [];
       SERVICES.forEach((x) => { all.push(x.name); x.subs.forEach((y) => all.push(y)); });
+      // Same one-shot measurement as the desktop path below: this loop ran 80
+      // rounds over all 16 labels, which is 1280 layout reads on a phone that
+      // has just been rotated.
+      const REF_M = 100;
+      probeM.style.fontSize = REF_M + 'px';
+      probeM.style.letterSpacing = '0em';
+      const metricsM = all.map((t) => ({
+        w0: (probeM.textContent = t, probeM.getBoundingClientRect().width),
+        n: t.length,
+      }));
+      probeM.remove();
       const widestM = () => {
         let w = 0;
-        all.forEach((t) => { probeM.textContent = t; w = Math.max(w, probeM.getBoundingClientRect().width); });
+        metricsM.forEach((m) => { w = Math.max(w, (m.w0 * fsM) / REF_M + m.n * lsM * fsM); });
         return w;
       };
-      const applyM = () => { probeM.style.fontSize = fsM + 'px'; probeM.style.letterSpacing = lsM + 'em'; };
-      applyM();
       for (let k = 0; k < 80 && widestM() > availM && fsM > 11; k++) {
         if (lsM > 0.04) lsM = Math.max(0.04, lsM - 0.02); else fsM -= 0.5;
-        applyM();
       }
-      probeM.remove();
       this._fittedFs = fsM;
       bar.style.fontSize = fsM + 'px';
       slots.forEach((sl) => {
@@ -733,13 +739,30 @@ class ServicesController {
     const probe = document.createElement('span');
     probe.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;font-family:' + getComputedStyle(slots[0]).fontFamily + ';font-weight:300';
     bar.appendChild(probe);
-    const widest = () => cands.map((list) => {
+    // Measure every candidate ONCE, at a reference size with no tracking, and
+    // model the rest. Width is exactly linear in both: glyph advances scale
+    // with font-size, and letter-spacing adds ls*fs per character (CSS puts it
+    // after the last one too, which is what the -1em margin downstream undoes).
+    // Checked against live measurement over three sizes and two trackings --
+    // largest error 0.008px.
+    //
+    // Worth doing because the search below runs up to 160 rounds and each one
+    // used to read layout for every candidate. layout() calls this on every
+    // resize event, so dragging a window edge was spending ~5ms per event here
+    // -- a third of a frame before the browser does any work of its own.
+    const REF = 100;
+    probe.style.fontSize = REF + 'px';
+    probe.style.letterSpacing = '0em';
+    const metrics = cands.map((list) => list.map((t) => ({
+      w0: (probe.textContent = t, probe.getBoundingClientRect().width),
+      n: t.length,
+    })));
+    probe.remove();
+    const widest = () => metrics.map((list) => {
       let w = 0;
-      list.forEach((t) => { probe.textContent = t; w = Math.max(w, probe.getBoundingClientRect().width); });
+      list.forEach((m) => { w = Math.max(w, (m.w0 * fs) / REF + m.n * ls * fs); });
       return w;
     });
-    const applyProbe = () => { probe.style.fontSize = fs + 'px'; probe.style.letterSpacing = ls + 'em'; };
-    applyProbe();
     let ws = widest();
     let sum = ws.reduce((a, b) => a + b, 0);
     if (sum > avail) {
@@ -755,7 +778,6 @@ class ServicesController {
       for (let k = 0; k < 160 && sum > avail && (ls > lsFloor || fs > 8); k++) {
         if (ls > lsFloor) ls = Math.max(lsFloor, ls - 0.02);
         else fs -= 0.5;
-        applyProbe();
         ws = widest();
         sum = ws.reduce((a, b) => a + b, 0);
       }
@@ -764,7 +786,6 @@ class ServicesController {
         ws = ws.map((w) => w * k2);
       }
     }
-    probe.remove();
     this._fittedFs = fs;
     const barEl = bar;
     barEl.style.fontSize = fs + 'px';
@@ -796,11 +817,12 @@ class ServicesController {
       const asciiBox = root.querySelector('[data-ascii]');
       if (asciiBox) {
         const t = Math.round(tb + (this._compact ? 14 : 24));
-        if (asciiBox.style.top !== t + 'px') {
-          asciiBox.style.top = t + 'px';
-          clearTimeout(this._reAscii);
-          this._reAscii = setTimeout(() => this.buildAscii(), 60);
-        }
+        if (asciiBox.style.top !== t + 'px') asciiBox.style.top = t + 'px';
+        // queueAscii compares the box's measured size, so this covers a width
+        // change too. The old trigger fired only when `top` moved, which a
+        // width-only drag never does -- so the grid stayed as it was and the
+        // canvas's width:100% stretched it across the new width.
+        this.queueAscii();
       }
       const gapV = this._compact ? 16 : 44;
       const activeTop = Math.round(tb + gapV);
@@ -1278,6 +1300,40 @@ class ServicesController {
     if (!v) this._glDirty = true;
   }
 
+  // Rebuild the field at most once a frame, and only when its box has actually
+  // changed size. The grid (columns, rows, the per-cell arrays, the holes cut
+  // for the capability labels) is derived from the box, so it has to be rebuilt
+  // when the box is -- and until it is, the canvas backing store keeps its old
+  // dimensions while CSS stretches it to fill, which is the smear you get while
+  // dragging a window edge.
+  //
+  // This used to be a 220ms trailing debounce, i.e. the whole drag was spent
+  // looking at the stale grid. A rebuild measures 2.2ms at 1440x674, so it fits
+  // a frame with room to spare; rAF coalescing keeps it to one per frame however
+  // fast the resize events arrive, and naturally backs off if a frame runs long.
+  queueAscii() {
+    // Cancel-and-reschedule, NOT "skip if one is pending". Treating the handle
+    // as a boolean means a single frame callback that never runs -- a cancel on
+    // teardown, a frame dropped while the tab is hidden -- leaves it non-zero
+    // forever and every later call returns early, so the field stops rebuilding
+    // for the life of the page. Rescheduling cannot wedge: a stale handle is
+    // simply cancelled. Resize events do not outpace frames, so this still
+    // coalesces to one rebuild per frame.
+    if (this._asciiRaf) cancelAnimationFrame(this._asciiRaf);
+    this._asciiRaf = requestAnimationFrame(() => {
+      this._asciiRaf = 0;
+      const root = this.el();
+      const box = root && root.querySelector('[data-ascii]');
+      if (!box) return;
+      const w = box.clientWidth;
+      const h = box.clientHeight;
+      if (w === this._asciiW && h === this._asciiH) return;
+      this._asciiW = w;
+      this._asciiH = h;
+      this.buildAscii();
+    });
+  }
+
   buildAscii() {
     const root = this.el();
     const box = root && root.querySelector('[data-ascii]');
@@ -1309,6 +1365,7 @@ class ServicesController {
     const rows = Math.max(6, Math.floor(h / ch));
     const n = cols * rows;
     this._cw = cw; this._ch = ch; this._cols = cols; this._rows = rows; this._n = n;
+    this._asciiW = w; this._asciiH = h; // keep queueAscii's guard honest after a direct build
 
     const AT = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/';
     this._atIdx = {};
