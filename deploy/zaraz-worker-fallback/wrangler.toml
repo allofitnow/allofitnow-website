@@ -1,0 +1,11 @@
+name = "aoin-46009-fallback"
+main = "worker.js"
+compatibility_date = "2026-08-01"
+
+routes = [
+  { pattern = "46009.someofitlater.com/*", zone_name = "someofitlater.com" },
+]
+
+[[r2_buckets]]
+binding = "ASSETS"
+bucket_name = "46009"
