@@ -120,8 +120,9 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
 <script is:inline>
   (function () {
     var c = navigator.connection;
-    if (!c || !c.saveData) return;
-    document.documentElement.setAttribute('data-save-data', '1');
+    var light = c.saveData || /^(slow-)?2g$/.test(c.effectiveType || '');
+        if (!light) return;
+    if (c.saveData) document.documentElement.setAttribute('data-save-data', '1');
     function capAttrs(img) {
       var pairs = [['srcset', 'src'], ['data-lazysrcset', 'data-lazysrc']];
       for (var p = 0; p < pairs.length; p++) {
