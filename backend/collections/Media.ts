@@ -12,7 +12,24 @@ const Media: CollectionConfig = {
     // photographic still drops ~80–90% vs PNG at no visible quality loss. Applies to NEW uploads
     // only — existing media keep their original files until re-uploaded. Requires a Payload restart.
     formatOptions: { format: "webp", options: { quality: 82 } },
-  },
+    // Responsive size variants (six-rung ladder DECIDED 2026-08-29; #56): generated at upload
+    // time by Payload's native imageSizes. Variant filenames derive from base name + `-WxH` and
+    // are NOT dedup-protected (imageResizer.js unlink+overwrite on same name); uniqueness follows
+    // from unique base names (Payload dedups originals) + deterministic WxH suffix. Rungs wider
+    // than the source are NOT skipped by default (Payload omits only when BOTH target dims are set;
+    // width-only rungs upscale). withoutEnlargement:true caps them at source width instead -
+    // capped rungs re-emit the source dims (duplicate-width entries; frontend dedupes by width).
+    // Do not add upload hooks or
+    // renames here (#54 DECISION: filename = SSOT, never rename).
+    imageSizes: [
+      { name: "w400", width: 400, withoutEnlargement: true, formatOptions: { format: "webp", options: { quality: 78 } } },
+      { name: "w600", width: 600, withoutEnlargement: true, formatOptions: { format: "webp", options: { quality: 78 } } },
+      { name: "w800", width: 800, withoutEnlargement: true, formatOptions: { format: "webp", options: { quality: 78 } } },
+      { name: "w1000", width: 1000, withoutEnlargement: true, formatOptions: { format: "webp", options: { quality: 78 } } },
+      { name: "w1200", width: 1200, withoutEnlargement: true, formatOptions: { format: "webp", options: { quality: 78 } } },
+      { name: "w1600", width: 1600, withoutEnlargement: true, formatOptions: { format: "webp", options: { quality: 78 } } },
+    ],
+    },
   hooks: {
     // VIDEO counterpart to the image→WebP line above: any non-mp4 video upload is transcoded to a
     // downscaled, hardware-decodable web mp4 (see lib/transcodeVideo.js) BEFORE Payload stores it —
