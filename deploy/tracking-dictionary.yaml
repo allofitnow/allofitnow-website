@@ -3,6 +3,9 @@ version: 1
 # Zaraz spec wiki page (M1 Dictionary). Changes are HITL-gated (Tier 3).
 # variance: structural = fixed count, drift escalates; content = count moves with
 # designer curation, only 0-count (MISSING) escalates.
+# Filenames with spaces (#54 DECISION 2026-08-29): CMS accepts designer names
+# verbatim; R2 keys mirror disk paths (prod.sh s3 sync); worker v3c decodes
+# percent-encoded requests on miss. Never key R2 sync off media.url.
 rows:
   - {id: 1,  page: /,          selector: '.slide',                trigger: click,      event: carousel_project_click, params: [data-title, data-slug, data-caps], variance: content}
   - {id: 2,  page: /,          selector: '.work-cue',             trigger: click,      event: cta_work_click,         params: [],                       variance: structural}
