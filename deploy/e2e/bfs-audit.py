@@ -54,8 +54,10 @@ img_urls = sorted({u for v in imgs_per_page.values() for u in v})
 for u in img_urls:
     if u.startswith("data:"):
         continue
+    import urllib.parse
+    quoted = urllib.parse.quote(u, safe="/:")
     try:
-        req = urllib.request.Request(BASE + u if u.startswith("/") else u, headers={"User-Agent": REAL_UA})
+        req = urllib.request.Request(BASE + quoted if quoted.startswith("/") else quoted, headers={"User-Agent": REAL_UA})
         code = urllib.request.urlopen(req, timeout=30).status
     except urllib.error.HTTPError as e:
         code = e.code

@@ -6,7 +6,7 @@
 (3) optional: publish manifest verify green (shells out to lib/manifest.py
     verify --manifest <path>, run on the box holding the manifest).
 Usage: invariants.py [manifest.json]"""
-import subprocess, sys, urllib.request
+import re, subprocess, sys, urllib.request
 
 HOST = "46009.someofitlater.com"
 BASE = f"https://{HOST}"
@@ -28,17 +28,18 @@ if not live:
 
 for path in PAGES:
     code, _, body = get(BASE + path)
+    # invariant: no /cdn-cgi/ IMAGE urls (CF beacon scripts are expected)
+    img_cgi = len(re.findall(rb'<img[^>]+(?:src|srcset)="[^"]*/cdn-cgi/', body))
     n = body.count(b"/cdn-cgi/")
     imgs = body.count(b"<img")
-    print(f"{path:24} status={code} cdn-cgi refs={n} (<img tags: {imgs})")
+    print(f"{path:24} status={code} cdn-cgi img refs={img_cgi} (all cdn-cgi: {n}; <img tags: {imgs})")
     if code != 200:
         fails.append(f"{path}: HTTP {code}")
-    if n:
-        fails.append(f"{path}: {n} /cdn-cgi/ refs")
+    if img_cgi:
+        fails.append(f"{path}: {img_cgi} /cdn-cgi/ image refs")
 
 # sampled asset fetches carry the same stamp
 _, _, home = get(BASE + "/")
-import re
 assets = re.findall(rb'(?:src|href)="(/[^"]+\.(?:js|css|webp|woff2))"', home)[:6]
 for a in assets:
     url = BASE + a.decode()
@@ -58,7 +59,7 @@ if len(sys.argv) > 1:
     if r.returncode != 0:
         fails.append("manifest verify non-zero")
 
-print(f"\\nINVARIANTS: {'PASS' if not fails else 'FAIL'}")
+print(f"{chr(10)}INVARIANTS: {'PASS' if not fails else 'FAIL'}")
 for f in fails:
     print(" -", f)
 sys.exit(1 if fails else 0)
