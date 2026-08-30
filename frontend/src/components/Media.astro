@@ -28,7 +28,7 @@ interface Props {
 const { src, doc, alt = '', video, sizes, priority, class: className, ...rest } = Astro.props;
 const isVideo = video ?? (doc ? isVideoDoc(doc) : /\.(webm|mp4|m4v|mov)(\?|$)/i.test(src || ''));
 // Doc path: every URL from filename (SSOT). String path: legacy absolute src.
-const { src: docSrc, srcset } = doc ? buildSrcset(doc) : { src: src ?? '', srcset: '' };
+const { src: docSrc, srcset, width: docWidth, height: docHeight } = doc ? buildSrcset(doc) : { src: src ?? '', srcset: '', width: undefined, height: undefined };
 const finalSrc = docSrc || src || '';
 const finalAlt = alt || doc?.alt || '';
 const loadAttrs = priority
@@ -44,8 +44,8 @@ const loadAttrs = priority
     class={className}
     sizes={sizes}
     srcset={srcset || undefined}
-    width={doc?.width || undefined}
-    height={doc?.height || undefined}
+    width={docWidth || undefined}
+    height={docHeight || undefined}
     {...loadAttrs}
     {...rest}
   />
