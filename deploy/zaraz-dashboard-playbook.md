@@ -17,7 +17,7 @@ HOW to enter it. After entry, the export snapshot records what DOES exist.
 
 | Setting | Value |
 |---|---|
-| Measurement ID | G-39QYRW6J7J (stream 5363230222, property 382117345) |
+| Measurement ID | G-1TVWRSCCLN (stream 15524204247, property 552018344; repointed 2026-08-29 per #52; G-39QYRW6J7J (archived)) |
 | Consent mode | OFF this phase |
 | Debug flag | ?_zaraz_debug during E2E walk only |
 

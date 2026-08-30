@@ -8,7 +8,7 @@ Zone someofitlater.com is ACTIVE; serving is behind the zone route
 
 1. Dashboard > Zaraz > Enable on zone someofitlater.com
 2. GA4 forwarding BEFORE any trigger (playbook sec 1): measurement ID
-   G-39QYRW6J7J, consent mode OFF, no debug flag
+   G-1TVWRSCCLN (repointed 2026-08-29 per #52; G-39QYRW6J7J (archived)), consent mode OFF, no debug flag
 3. Create the ONE DOM variable first (needed by trigger 21):
    - type: DOM element, selector: input[data-im-subject],
      read attribute: value, name it im_subject
