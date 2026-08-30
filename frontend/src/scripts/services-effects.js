@@ -169,6 +169,8 @@ export function mountEffects(ctrl) {
   const loadMedia = (el) => {
     if (el && !el.getAttribute('src') && el.dataset.lazysrc) {
       el.setAttribute('src', el.dataset.lazysrc);
+      // #58: the responsive ladder rides the same swap — never before entry.
+      if (el.dataset.lazysrcset) el.setAttribute('srcset', el.dataset.lazysrcset);
       if (el.tagName === 'VIDEO') { try { el.load(); } catch (_) {} }
     }
   };

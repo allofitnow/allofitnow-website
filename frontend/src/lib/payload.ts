@@ -6,6 +6,7 @@ import type { Project } from '@/data/projects';
 import type { Equipment } from '@/data/equipment';
 import type { ServiceSection } from '@/data/services';
 import type { Reel } from '@/data/home';
+import { toMediaDoc } from '@/lib/media';
 
 const API_URL = import.meta.env.PAYLOAD_URL || 'http://192.168.30.245';
 
@@ -31,15 +32,20 @@ function formatCollaborator(c: unknown): string {
 
 /** Map a Payload projects REST doc to the frontend `Project` shape. */
 export function mapPayloadProject(doc: any): Project {
-  const gallery = (doc.gallery ?? []).map((row: any) => ({
-    layout: row?.layout ?? 'full',
+  const gallery = (doc.gallery ?? []).map((row: any) => {
     // Each row's images are an array of { image: media }. Tolerate the older
     // hasMany-relationship shape (bare media objects) too, so a build mid-migration
     // never blanks a gallery: use `it.image` when present, else `it` itself.
-    images: (row?.images ?? [])
-      .map((it: any) => mediaUrl(it?.image ?? it))
-      .filter((url: string) => url !== ''),
-  }));
+    // Map once to { url, doc } pairs, drop blanks, then split — keeps the
+    // images[] and docs[] arrays index-aligned by construction.
+    const pairs = (row?.images ?? [])
+      .map((it: any) => {
+        const media = it?.image ?? it;
+        return { url: mediaUrl(media), doc: it && typeof it === 'object' ? toMediaDoc(media) : null };
+      })
+      .filter((p: any) => p.url !== '');
+    return { layout: row?.layout ?? 'full', images: pairs.map((p: any) => p.url), docs: pairs.map((p: any) => p.doc) };
+  });
 
   const credits = (doc.credits ?? []).map((g: any) => ({
     title: g?.title ?? '',
@@ -77,6 +83,8 @@ export function mapPayloadProject(doc: any): Project {
     title: doc.title,
     year: doc.year,
     image: mediaUrl(doc.image),
+    // Populated doc for #58 srcset (mediaUrl string kept for seeds/flight refs).
+    imageDoc: toMediaDoc(doc.image),
     order: doc.order,
     featured: !!doc.featured,
     featuredOrder: typeof doc.featuredOrder === 'number' ? doc.featuredOrder : undefined,
@@ -196,6 +204,7 @@ export function mapPayloadEquipment(doc: any): Equipment {
     slug: doc.slug,
     label: doc.label ?? '',
     image: mediaUrl(doc.image),
+    imageDoc: toMediaDoc(doc.image),
     tip: doc.tip ?? '',
     order: typeof doc.order === 'number' ? doc.order : 0,
     center: !!doc.center,
@@ -226,6 +235,7 @@ export function mapPayloadServiceSection(row: any): ServiceSection {
     const media = it && it.image && typeof it.image === 'object' ? it.image
       : proj && proj.image && typeof proj.image === 'object' ? proj.image : null;
     const src = it && it.image ? mediaUrl(it.image) : proj ? mediaUrl(proj.image) : '';
+    const doc = toMediaDoc(media); // #58 srcset source (null for seed/static stills)
     const href = proj && proj.slug ? `/work/${proj.slug}` : undefined;
     // Project data for the hovercard — mirrors the home marquee (title / tour / capabilities).
     const caps = proj && Array.isArray(proj.capabilities) ? proj.capabilities.join('|') : undefined;
@@ -238,7 +248,7 @@ export function mapPayloadServiceSection(row: any): ServiceSection {
     const w = media && typeof media.width === 'number' ? media.width : 0;
     const h = media && typeof media.height === 'number' ? media.height : 0;
     const ar = wide && w > 0 && h > 0 ? `${w} / ${h}` : undefined;
-    return { src, href, slug: proj?.slug, title: proj?.title, tour: proj?.tour, caps, slot, video, wide, ar };
+    return { src, doc, href, slug: proj?.slug, title: proj?.title, tour: proj?.tour, caps, slot, video, wide, ar };
   }).filter((g: any) => g.src !== '');
   // Sub-service labels (array of { label }) — trimmed + de-blanked. Empty → the seed defaults win downstream.
   const subs = Array.isArray(row.subs)

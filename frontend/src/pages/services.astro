@@ -13,6 +13,7 @@
    controller's layout() never touches it. The page is a full HTML doc outside Base.astro
    but uses the shared site nav. */
 import '../styles/services.css';
+import { buildSrcset } from '../lib/media';
 import Nav from '../components/chrome/Nav.astro';
 import HoverCard from '../components/chrome/HoverCard.astro';
 import Preloader from '../components/home/Preloader.astro';
@@ -195,7 +196,7 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
               10 large videos at load. The engine loads + plays them only when Mixed is active. */}
           {MR.map((g) => g.video
             ? <video data-lazymedia data-lazysrc={g.src} muted loop playsinline preload="none" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps}></video>
-            : <img data-lazymedia data-lazysrc={g.src} alt="" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
+            : <img data-lazymedia data-lazysrc={g.doc ? buildSrcset(g.doc).src : g.src} data-lazysrcset={g.doc ? buildSrcset(g.doc).srcset : undefined} sizes="(max-width:480px) 65vw, 33vw" alt="" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
         </div>
       </div>
       <p class="svc-desc svc-desc--overlay" data-desc="">{services[2].desc}</p>
@@ -207,7 +208,7 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
     <section class="svc-panel svc-panel--equip" data-svc-panel="" data-i="3" id="equipment-rental">
       <div class="equip" data-fx="equip">
         <div class="equip-plate" data-equip-plate>
-          <img data-equip-img src={equipCenterVid ? undefined : equipCenter.image} alt="" style={equipCenterVid ? 'opacity:0' : undefined} />
+          <img data-equip-img src={equipCenterVid ? undefined : (equipCenter.imageDoc ? buildSrcset(equipCenter.imageDoc).src : equipCenter.image)} srcset={equipCenterVid || !equipCenter.imageDoc ? undefined : (buildSrcset(equipCenter.imageDoc).srcset || undefined)} sizes="(max-width:480px) 100vw, (max-width:900px) 85vw, 37vw" alt="" style={equipCenterVid ? 'opacity:0' : undefined} />
           <video data-equip-vid src={equipCenterVid ? equipCenter.image : undefined} muted loop playsinline preload="metadata" style={equipCenterVid ? undefined : 'opacity:0'}></video>
           <div class="equip-plate-ph" data-equip-ph aria-hidden="true"></div>
         </div>

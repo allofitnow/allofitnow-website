@@ -12,6 +12,8 @@ export interface Equipment {
   label: string;
   /** Absolute plate image URL (Payload media). Empty when `placeholder` is true. */
   image: string;
+  /** Populated media doc behind `image` (#58) — srcset source; null → plain src. */
+  imageDoc?: import('@/lib/media').MediaDoc | null;
   /** Body copy shown under the marquee when this item is centered. */
   tip: string;
   /** Marquee order, left→right (ascending). */

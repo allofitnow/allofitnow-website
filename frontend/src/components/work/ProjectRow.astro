@@ -1,5 +1,6 @@
 ---
 import type { Project } from '@/data/projects';
+import { buildSrcset } from '@/lib/media';
 interface Props {
   project: Project;
 }
@@ -8,7 +9,7 @@ const { project: p } = Astro.props;
 // image to morph). data-thumb feeds the cursor-following reveal in work-page.ts.
 ---
 
-<a class="row" href={`/work/${p.slug}`} data-cap={p.capabilities.join('|')} data-thumb={p.image}>
+<a class="row" href={`/work/${p.slug}`} data-cap={p.capabilities.join('|')} data-thumb={p.imageDoc ? buildSrcset(p.imageDoc).src : p.image} data-thumb-srcset={p.imageDoc ? buildSrcset(p.imageDoc).srcset : undefined}>
   <span class="row-year">{p.year}</span>
   <span class="row-name-cell"><span class="row-name">{p.title}</span></span>
   <span class="row-tour">{p.tour}</span>

@@ -54,6 +54,22 @@ const GALLERY_SLOTS: Record<string, number> = {
   'three-up': 3,
 };
 
+// #58 responsive hints per row layout (layout-audit table in issue #58). One
+// entry per SLOT when the slots differ (split rows), else one per row.
+const GALLERY_SIZES: Record<string, string> = {
+  full: '(max-width:480px) 90vw, 95vw',
+  'full-16-9': '(max-width:480px) 90vw, 95vw',
+  'full-2-1': '(max-width:480px) 90vw, 95vw',
+  'full-3-1': '(max-width:480px) 90vw, 95vw',
+  'full-19-5': '(max-width:480px) 90vw, 95vw',
+  'full-27-4': '(max-width:480px) 90vw, 95vw',
+  'two-up': '(max-width:480px) 90vw, 45vw',
+  'three-up': '(max-width:480px) 90vw, 28vw',
+  // split rows: slot1 carries the wider cell; measured both slots at once.
+  'split-8-4': '(max-width:480px) 90vw, 63vw',
+  'split-5-7': '(max-width:480px) 90vw, 56vw',
+};
+
 // Mobile swipe-cue copy — PLACEHOLDER labels, pending the naming call.
 const CUE_STORY = 'THE STORY'; // page 1 → write-up
 const CUE_WORK = 'THE WORK'; //   write-up → page 1
@@ -72,7 +88,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
 
     {/* ---- Hero: the flight landing/launch element ---- */}
     <div class="pp__hero" data-pp-hero data-slug={project.slug} data-flight>
-      <Media src={project.image} alt={project.title} />
+      <Media src={project.image} doc={project.imageDoc} alt={project.title} priority sizes="(max-width:480px) 90vw, 95vw" />
       <div class="pp__heroScrim"></div>
       <div class="pp__heroGrad"></div>
     </div>
@@ -106,7 +122,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
             <div class={`pp__gRow pp__gRow--${row.layout}`}>
               {row.images.slice(0, GALLERY_SLOTS[row.layout] ?? row.images.length).map((src, i) => (
                 <div class={`pp__g pp__g--slot${i + 1}`}>
-                  <Media src={src} alt="" loading="lazy" />
+                  <Media src={src} doc={row.docs?.[i] ?? null} alt="" loading="lazy" sizes={GALLERY_SIZES[row.layout] ?? '(max-width:480px) 90vw, 95vw'} />
                 </div>
               ))}
             </div>

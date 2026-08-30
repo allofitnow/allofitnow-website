@@ -49,7 +49,7 @@ const projects = await getHomeMarquee();
                 data-tour={p.tour}
                 data-caps={p.capabilities.join('|')}
               >
-                <Media src={p.image} alt={p.title} draggable="false" loading="lazy" />
+                <Media doc={p.imageDoc} src={p.image} alt={p.title} draggable="false" loading="lazy" sizes="(max-width:480px) 72vw, 39vw" />
               </a>
             ))
           }
@@ -70,7 +70,7 @@ const projects = await getHomeMarquee();
                   aria-hidden="true"
                   tabindex="-1"
                 >
-                  <Media src={p.image} alt="" draggable="false" loading="lazy" />
+                  <Media doc={p.imageDoc} src={p.image} alt="" draggable="false" loading="lazy" sizes="(max-width:480px) 72vw, 39vw" />
                 </a>
               ))
             }

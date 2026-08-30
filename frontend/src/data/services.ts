@@ -9,6 +9,8 @@
 export interface GalleryItem {
   /** Image URL, in scrub order. Absolute (Payload media) later; local for now. */
   src: string;
+  /** Populated media doc behind `src` (#58) — srcset source; null/undefined → plain src. */
+  doc?: import('@/lib/media').MediaDoc | null;
   /** If set, the still links to this project page (/work/<slug>); a static still otherwise. */
   href?: string;
   /** Project data for the cursor hovercard (only on project-linked stills — mirrors the home marquee). */

@@ -34,6 +34,9 @@ export interface Project {
   /** Absolute URL (Payload media). Serves as both the work-list thumbnail and
    *  the project hero (a single authored image). */
   image: string;
+  /** Populated media doc behind `image` (#58) — srcset source. Null when the
+   *  relation came back unpopulated (seed data / shallow fetch): plain src. */
+  imageDoc?: import('@/lib/media').MediaDoc | null;
   /** Manual sort nudge — now only a tiebreak within a year (default sort is
    *  chronological, newest first). */
   order: number;
@@ -55,7 +58,7 @@ export interface Project {
   summary: string;
   /** Gallery arrangements — an ordered list of rows; each row has a layout
    *  preset and the images that fill its slots. */
-  gallery: { layout: string; images: string[] }[];
+  gallery: { layout: string; images: string[]; docs?: (import('@/lib/media').MediaDoc | null)[] }[];
   /** Figure row under the gallery. */
   stats: { label: string; value: string }[];
   /** Credit groups. Each entry renders TITLE | NAME with the name linking out

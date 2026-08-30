@@ -229,11 +229,14 @@ export function initWorkPage(root: HTMLElement) {
     thumb.replaceChildren();
   }
 
-  function pushMedia(src: string) {
+  function pushMedia(src: string, srcset?: string) {
     const wrap = document.createElement('div');
     wrap.style.cssText = 'position:absolute;inset:0;overflow:hidden;transform:translateY(-100%)';
     const img = document.createElement('img');
     img.src = src;
+    // #58: hover-reveal thumbs ride the ladder too (dataset carries the srcset).
+    if (srcset) img.srcset = srcset;
+    img.sizes = '(max-width:480px) 90vw, 34vw';
     img.style.cssText =
       'position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:block;transform:translateY(90%)';
     wrap.appendChild(img);
@@ -261,7 +264,7 @@ export function initWorkPage(root: HTMLElement) {
     if (!row || row === lastRow) return;
     lastRow = row;
     thumb.style.visibility = 'visible';
-    pushMedia(row.dataset.thumb!);
+    pushMedia(row.dataset.thumb!, row.dataset.thumbSrcset);
     root.querySelectorAll<HTMLElement>('.row').forEach((r) => {
       r.style.opacity = r === row ? '1' : '0.35';
     });

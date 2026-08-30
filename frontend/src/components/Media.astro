@@ -1,23 +1,52 @@
 ---
-/* Media.astro — one media slot that renders an <img> OR a <video> from a single `src`, auto-detected
-   by the file extension (.webm/.mp4/.mov/.m4v ⇒ video). Any image or video added in Payload drops
-   into the same slot with no per-site wiring — swap `<img …/>` for `<Media …/>` once and future
-   media just works. Video plays as a silent looping "moving still" (autoplay + muted + loop +
-   playsinline). Every extra prop (class, style, data-*, loading, width, height, draggable…) passes
-   straight through to the rendered element. */
+/* Media.astro — one media slot that renders an <img> OR a <video> from either a
+   populated Payload media doc (#58) or a bare URL string (legacy seeds / static
+   stills). With a doc, the <img> carries a full responsive srcset built from
+   doc.sizes (#56/#57 ladder) so the browser selects the right variant per slot
+   x DPR; URLs derive from `filename` (SSOT — doc.url is untrusted on legacy
+   docs). Video plays as a silent looping "moving still" (autoplay + muted +
+   loop + playsinline). Extra props (class, style, data-*, loading, width,
+   height, draggable…) pass straight through; `sizes` is the responsive-hints
+   string, `priority` opts a hero slot out of lazy loading. */
+import { buildSrcset, isVideoDoc, mediaHref, type MediaDoc } from '@/lib/media';
+
 interface Props {
-  src: string;
+  /** Bare URL form (legacy/seed path — no srcset). */
+  src?: string;
+  /** Populated media doc form (#58): srcset from doc.sizes when present. */
+  doc?: MediaDoc | null;
   alt?: string;
-  /** Force the media kind; otherwise inferred from the src extension. */
+  /** Force the media kind; otherwise inferred (doc.mimeType or src extension). */
   video?: boolean;
+  /** Responsive source-size hints, e.g. "(max-width:480px) 90vw, 44vw". */
+  sizes?: string;
+  /** Hero/above-fold slot: eager + high fetch priority instead of lazy. */
+  priority?: boolean;
   class?: string;
   [key: string]: any;
 }
-const { src, alt = '', video, class: className, ...rest } = Astro.props;
-const isVideo = video ?? /\.(webm|mp4|m4v|mov)(\?|$)/i.test(src || '');
+const { src, doc, alt = '', video, sizes, priority, class: className, ...rest } = Astro.props;
+const isVideo = video ?? (doc ? isVideoDoc(doc) : /\.(webm|mp4|m4v|mov)(\?|$)/i.test(src || ''));
+// Doc path: every URL from filename (SSOT). String path: legacy absolute src.
+const { src: docSrc, srcset } = doc ? buildSrcset(doc) : { src: src ?? '', srcset: '' };
+const finalSrc = docSrc || src || '';
+const finalAlt = alt || doc?.alt || '';
+const loadAttrs = priority
+  ? { loading: 'eager', decoding: 'sync', fetchpriority: 'high' }
+  : { loading: 'lazy', decoding: 'async' };
 ---
 {isVideo ? (
-  <video src={src} class={className} autoplay muted loop playsinline preload="metadata" {...rest}></video>
+  <video src={finalSrc} class={className} autoplay muted loop playsinline preload="metadata" {...rest}></video>
 ) : (
-  <img src={src} alt={alt} class={className} decoding="async" {...rest} />
+  <img
+    src={finalSrc}
+    alt={finalAlt}
+    class={className}
+    sizes={sizes}
+    srcset={srcset || undefined}
+    width={doc?.width || undefined}
+    height={doc?.height || undefined}
+    {...loadAttrs}
+    {...rest}
+  />
 )}

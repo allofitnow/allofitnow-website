@@ -2,7 +2,12 @@
 /* One gallery still — an <img>, or a silently-looping <video> when the CMS media is a video
    (mimeType video/*). Both carry the `.media` class + the same data-* so the scrub effects
    (buildRealtime/buildScreens select `.media`), the click-to-project nav, and the hovercard
-   treat them identically. Video plays as a moving still: autoplay + muted + loop + playsinline. */
+   treat them identically. Video plays as a moving still: autoplay + muted + loop + playsinline.
+   #58: with a populated doc, the img carries data-lazysrcset — the scroll engine copies it
+   into srcset at load time (same moment as data-lazysrc -> src), so the browser picks the
+   right ladder rung for the slot instead of the full-res original. URLs derive from
+   filename (SSOT); video docs fall back to plain data-lazysrc (no rungs). */
+import { buildSrcset } from '@/lib/media';
 import type { GalleryItem } from '../../data/services';
 
 interface Props {
@@ -12,9 +17,12 @@ interface Props {
 }
 const { item, ar } = Astro.props;
 const { src, href, slug, title, tour, caps, video, ar: itemAr } = item;
-// A "full width" still carries its own natural aspect (item.ar); otherwise use the
-// section default passed in (16:9).
+// A "full width" still carries its own natural aspect (item.ar); otherwise use
+// the section default passed in (16:9).
 const finalAr = itemAr || ar;
+const parts = item.doc ? buildSrcset(item.doc) : null;
+const lazySrc = parts?.src || src;
+const lazySrcset = parts?.srcset || undefined;
 ---
 {/* Media is DEFERRED: the real URL lives in data-lazysrc, not src, so nothing loads
     until the scroll engine (services-effects.js) reaches this still's section and swaps
@@ -25,7 +33,7 @@ const finalAr = itemAr || ar;
     class="media"
     style={`aspect-ratio:${finalAr}`}
     data-lazymedia
-    data-lazysrc={src}
+    data-lazysrc={lazySrc}
     muted
     loop
     playsinline
@@ -41,7 +49,9 @@ const finalAr = itemAr || ar;
     class="media"
     style={`aspect-ratio:${finalAr}`}
     data-lazymedia
-    data-lazysrc={src}
+    data-lazysrc={lazySrc}
+    data-lazysrcset={lazySrcset}
+    sizes="(max-width:480px) 65vw, 33vw"
     alt=""
     data-href={href}
     data-slug={slug}

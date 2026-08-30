@@ -1,4 +1,5 @@
 import { mediaUrl } from '@/lib/payload';
+import { buildSrcset, mediaHref, toMediaDoc } from '@/lib/media';
 
 // Minimal serializer for Payload's Slate rich-text JSON → HTML string.
 //
@@ -100,7 +101,15 @@ function serializeUpload(node: SlateNode): string {
 
   const media = isVideo
     ? `<video src="${escapeHtml(src)}"${ratio} autoplay muted loop playsinline preload="metadata"></video>`
-    : `<img src="${escapeHtml(src)}"${ratio} alt="${escapeHtml(doc?.alt ?? '')}" loading="lazy" decoding="async">`;
+    : (() => {
+        // #58: filename is the SSOT — derive src + srcset from it (doc.url is
+        // untrusted on legacy docs). No rungs (video-adjacent/legacy doc) → plain src.
+        const mdoc = toMediaDoc({ ...doc, url: undefined });
+        const p = mdoc ? buildSrcset(mdoc) : null;
+        const imgSrc = p && p.srcset ? p.src : src;
+        const srcset = p && p.srcset ? ` srcset="${escapeHtml(p.srcset)}" sizes="(max-width:480px) 90vw, 60vw"` : '';
+        return `<img src="${escapeHtml(imgSrc)}"${srcset}${ratio} alt="${escapeHtml(doc?.alt ?? '')}" loading="lazy" decoding="async">`;
+      })();
 
   const cap = caption ? `<figcaption>${escapeHtml(caption)}</figcaption>` : '';
   return `<figure class="rt-fig rt-fig--${span}">${media}${cap}</figure>`;
