@@ -58,7 +58,7 @@ const flightOrder = JSON.stringify(projects.map((p) => p.slug));
               var seg = part.trim().match(/^(\S+)\s+(\d+)w$/);
               if (!seg) return;
               var w = +seg[2];
-              if (w <= maxW) keep.push(seg[0] + ' ' + seg[2] + 'w');
+              if (w <= maxW) keep.push(seg[0]);
               if (!best || w < best.w) best = { w: w, u: seg[1] };
             });
             if (!keep.length && best) keep = [best.u + ' ' + best.w + 'w'];

@@ -117,6 +117,52 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<script is:inline>
+  (function () {
+    var c = navigator.connection;
+    if (!c || !c.saveData) return;
+    document.documentElement.setAttribute('data-save-data', '1');
+    function capAttrs(img) {
+      var pairs = [['srcset', 'src'], ['data-lazysrcset', 'data-lazysrc']];
+      for (var p = 0; p < pairs.length; p++) {
+        var ssA = pairs[p][0], srcA = pairs[p][1];
+        var ss = img.getAttribute(ssA);
+        if (!ss || ss.indexOf('w') === -1) continue;
+        var hero = img.getAttribute('fetchpriority') === 'high';
+        var maxW = hero ? 600 : 400, keep = [], best = null;
+        ss.split(',').forEach(function (part) {
+          var seg = part.trim().match(/^(\S+)\s+(\d+)w$/);
+          if (!seg) return;
+          var w = +seg[2];
+          if (w <= maxW) keep.push(seg[0]);
+          if (!best || w < best.w) best = { w: w, u: seg[1] };
+        });
+        if (!keep.length && best) keep = [best.u + ' ' + best.w + 'w'];
+        if (keep.length) {
+          img.setAttribute(ssA, keep.join(', '));
+          var s = img.getAttribute(srcA);
+          if (s && /-\d+x\d+\./.test(s)) img.setAttribute(srcA, keep[keep.length - 1].split(' ')[0]);
+        }
+      }
+    }
+    function walk(n) {
+      if (n.nodeType !== 1) return;
+      if (n.tagName === 'IMG') capAttrs(n);
+      else if (n.querySelectorAll) {
+        var l = n.querySelectorAll('img');
+        for (var i = 0; i < l.length; i++) capAttrs(l[i]);
+      }
+    }
+    var cur = document.getElementsByTagName('img');
+    for (var i = 0; i < cur.length; i++) capAttrs(cur[i]);
+    new MutationObserver(function (muts) {
+      for (var m = 0; m < muts.length; m++) {
+        var add = muts[m].addedNodes;
+        for (var k = 0; k < add.length; k++) walk(add[k]);
+      }
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  })();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Services — All Of It Now</title>
 {/* This page is a full HTML document outside Base.astro, so every <head> tag
