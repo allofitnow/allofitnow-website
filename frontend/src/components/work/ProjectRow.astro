@@ -1,6 +1,5 @@
 ---
 import type { Project } from '@/data/projects';
-import { buildSrcset } from '@/lib/media';
 interface Props {
   project: Project;
 }
@@ -9,7 +8,7 @@ const { project: p } = Astro.props;
 // image to morph). data-thumb feeds the cursor-following reveal in work-page.ts.
 ---
 
-<a class="row" href={`/work/${p.slug}`} data-cap={p.capabilities.join('|')} data-thumb={p.imageDoc ? buildSrcset(p.imageDoc).src : p.image} data-thumb-srcset={p.imageDoc ? buildSrcset(p.imageDoc).srcset : undefined}>
+<a class="row" href={`/work/${p.slug}`} data-cap={p.capabilities.join('|')} data-thumb={p.image}>
   <span class="row-year">{p.year}</span>
   <span class="row-name-cell"><span class="row-name">{p.title}</span></span>
   <span class="row-tour">{p.tour}</span>
@@ -29,10 +28,6 @@ const { project: p } = Astro.props;
     padding: 26px 4px;
     min-width: 0;
     border-bottom: 1px solid var(--rule);
-    /* Hover dim/undim is driven by JS setting opacity (active row 1, rest .35).
-       This fast ease is what lights the row up — the intro-stagger's delayed
-       inline transition is cleared once the reveal lands (see work-page.ts). */
-    transition: opacity 0.2s ease;
   }
   .row:hover {
     color: var(--aoin-cool-white);

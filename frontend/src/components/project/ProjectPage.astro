@@ -17,9 +17,8 @@
  *    still lands on / launches from it.
  */
 import type { Project } from '@/data/projects';
-import Media from '@/components/Media.astro';
-import ProjectBar from '@/components/work/ProjectBar.astro';
-import { renderWriteup, renderInline } from '@/lib/richtext';
+import FootBar from '@/components/home/FootBar.astro';
+import { renderRichText } from '@/lib/richtext';
 
 interface Props {
   project: Project;
@@ -33,41 +32,25 @@ const { project, prev, next } = Astro.props;
 const metaCols: { label: string; values: string[] }[] = [
   { label: 'YEAR', values: [project.year] },
   { label: 'COLLABORATOR', values: [project.collaborator] },
-  { label: 'SERVICES', values: project.services },
+  { label: 'CAPABILITIES', values: project.capabilities },
 ];
 
-// Prev / next projects — the ProjectBar's NEXT cluster links to `next`; `prev`
-// stays in Props (page still computes wrap-around) but is unused here now.
+// Prev / next projects — passed as props from the page (wrap-around computed
+// there). Rendered as a two-up row: PREV pinned to the far left, NEXT to the
+// right edge (see .pp__next).
+const nav = [
+  { label: 'PREV', kind: 'prev', p: prev },
+  { label: 'NEXT', kind: 'next', p: next },
+];
 
 // Gallery arrangements — how many image slots each layout preset fills.
 // Extra images past the layout's slot count are ignored (never break the grid).
 const GALLERY_SLOTS: Record<string, number> = {
   full: 1,
   'two-up': 2,
-  'full-16-9': 1,
-  'full-2-1': 1,
-  'full-3-1': 1,
-  'full-19-5': 1,
-  'full-27-4': 1,
   'split-8-4': 2,
   'split-5-7': 2,
   'three-up': 3,
-};
-
-// #58 responsive hints per row layout (layout-audit table in issue #58). One
-// entry per SLOT when the slots differ (split rows), else one per row.
-const GALLERY_SIZES: Record<string, string> = {
-  full: '(max-width:480px) 90vw, 95vw',
-  'full-16-9': '(max-width:480px) 90vw, 95vw',
-  'full-2-1': '(max-width:480px) 90vw, 95vw',
-  'full-3-1': '(max-width:480px) 90vw, 95vw',
-  'full-19-5': '(max-width:480px) 90vw, 95vw',
-  'full-27-4': '(max-width:480px) 90vw, 95vw',
-  'two-up': '(max-width:480px) 90vw, 45vw',
-  'three-up': '(max-width:480px) 90vw, 28vw',
-  // split rows: slot1 carries the wider cell; measured both slots at once.
-  'split-8-4': '(max-width:480px) 90vw, 63vw',
-  'split-5-7': '(max-width:480px) 90vw, 56vw',
 };
 
 // Mobile swipe-cue copy — PLACEHOLDER labels, pending the naming call.
@@ -88,7 +71,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
 
     {/* ---- Hero: the flight landing/launch element ---- */}
     <div class="pp__hero" data-pp-hero data-slug={project.slug} data-flight>
-      <Media src={project.image} doc={project.imageDoc} alt={project.title} priority sizes="(max-width:480px) 90vw, 95vw" />
+      <img src={project.image} alt={project.title} />
       <div class="pp__heroScrim"></div>
       <div class="pp__heroGrad"></div>
     </div>
@@ -98,22 +81,13 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
       <div class="pp__meta" data-unit>
         <div class="pp__metaCols">
           {metaCols.map((col) => (
-            <div class="pp__metaCol" data-flow={col.values.length > 4 ? '' : null}>
+            <div class="pp__metaCol">
               <div class="pp__metaLabel">{col.label}</div>
-              <div class="pp__metaVals" data-pp-metavals>
-                {col.values.map((v) => <div>{v}</div>)}
-              </div>
+              {col.values.map((v) => <div>{v}</div>)}
             </div>
           ))}
         </div>
-        {/* The summary is the one authored block with no length limit, and a
-            long one lands as a wall of type beside the meta columns. It clamps
-            to four lines and folds out; the button only appears when there is
-            something folded, which only JS can know (see the script below). */}
-        <div class="pp__desc" data-pp-summary data-open="false">
-          <p class="pp__descText" set:html={renderInline(project.summary)} />
-          <button class="pp__more" type="button" hidden>READ MORE</button>
-        </div>
+        <p class="pp__desc">{project.summary}</p>
       </div>
 
       <div class="pp__galleryWrap">
@@ -122,7 +96,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
             <div class={`pp__gRow pp__gRow--${row.layout}`}>
               {row.images.slice(0, GALLERY_SLOTS[row.layout] ?? row.images.length).map((src, i) => (
                 <div class={`pp__g pp__g--slot${i + 1}`}>
-                  <Media src={src} doc={row.docs?.[i] ?? null} alt="" loading="lazy" sizes={GALLERY_SIZES[row.layout] ?? '(max-width:480px) 90vw, 95vw'} />
+                  <img src={src} alt="" loading="lazy" />
                 </div>
               ))}
             </div>
@@ -151,43 +125,51 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
         ))}
       </section>
 
+      <section class="pp__next" data-pp-next>
+        {nav.map((n) => (
+          <a
+            class={`pp__nextLink pp__nextLink--${n.kind}`}
+            href={`/work/${n.p.slug}`}
+            data-pp-next-link
+            data-open="false"
+          >
+            <span>{n.label}</span>
+            <span class="pp__nextPlate" data-pp-next-plate>
+              <span class="pp__nextPlateInner">
+                <span class="pp__nextMask"><span class="pp__nextLine" data-pp-next-line="0">{n.p.title}</span></span>
+                <span class="pp__nextMask"><span class="pp__nextLine" data-pp-next-line="1">{n.p.tour}</span></span>
+              </span>
+            </span>
+            <span>PROJECT</span>
+          </a>
+        ))}
+      </section>
+
+      <div class="pp__allwork">
+        <a href="/work">[&nbsp;&nbsp;ALL WORK&nbsp;&nbsp;]</a>
+      </div>
     </div>
   </div>
 
-  {/* ---- Fixed chrome (outside the container-type frame; aligned to it by JS) ----
-       The ProjectBar carries the write-up toggle (PROJECT INFO, [data-pp-toggle]),
-       ALL WORK (the tile) and NEXT — replacing the old fixed toggle + the foot's
-       prev/next + all-work block. project-page.ts still owns the open state. */}
-  <ProjectBar next={{ href: `/work/${next.slug}`, title: next.title, tour: next.tour }} />
+  {/* ---- Fixed chrome (outside the container-type frame; aligned to it by JS) ---- */}
+  <button
+    type="button"
+    class="pp__toggle"
+    data-pp-toggle
+    aria-expanded="false"
+    aria-controls="pp-writeup"
+  ><span data-pp-toggle-label>FULL WRITE-UP</span></button>
 
-  <aside class="pp__aside" id="pp-writeup" data-pp-aside data-lenis-prevent aria-hidden="true">
+  <aside class="pp__aside" id="pp-writeup" data-pp-aside aria-hidden="true">
     <div class="pp__notes" data-pp-notes>
       {/* Mobile-only swipe cue (top of the write-up) — tap or swipe back. */}
       <button class="pp__cue pp__cue--back" data-pp-cue="close" type="button">«««&nbsp;&nbsp;SWIPE FOR {CUE_WORK}&nbsp;&nbsp;«««</button>
       <div class="pp__notesLabel">[ PRODUCTION NOTES ]</div>
-      <div class="pp__notesRich" data-cols={project.writeupColumns} set:html={renderWriteup(project.writeupBlocks, project.writeup)}></div>
-      {/* Coverage. Rendered only when there is any — an empty [ PRESS ] label
-          reads as something failing to load. Outside .pp__notesRich on purpose:
-          that block is two-column on a long write-up, and the press list should
-          not be pulled into the second column halfway down. */}
-      {project.press.length > 0 && (
-        <div class="pp__press">
-          <div class="pp__notesLabel">[ PRESS ]</div>
-          <ul class="pp__pressList">
-            {project.press.map((item) => (
-              <li class="pp__pressItem">
-                <a href={item.url} target="_blank" rel="noopener noreferrer">
-                  <span class="pp__pressPub">{item.publication}</span>
-                  {item.title && <span class="pp__pressTitle">{item.title}</span>}
-                </a>
-                {item.date && <span class="pp__pressDate">{item.date}</span>}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <div class="pp__notesRich" set:html={renderRichText(project.writeup)}></div>
     </div>
   </aside>
+
+  <FootBar />
 </main>
 
 <style>
@@ -255,13 +237,6 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     white-space: nowrap;
     max-width: 100%;
   }
-  /* The fit script breaks the name across two lines rather than shrink it past
-     a floor (see fit() in lib/project-page.ts). `balance` so the two lines come
-     out even instead of a long line over an orphan. */
-  [data-pp-lines='2'] .pp__title span {
-    white-space: normal;
-    text-wrap: balance;
-  }
   [data-expanded='true'] .pp__title span {
     max-width: calc(49cqw - 24px);
   }
@@ -303,8 +278,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     min-height: 300px;
     transition-delay: 0ms;
   }
-  .pp__hero img,
-  .pp__hero video {
+  .pp__hero img {
     position: absolute;
     inset: 0;
     width: 100%;
@@ -374,80 +348,6 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
   .pp__metaLabel {
     color: var(--aoin-cool-white-45);
   }
-  .pp__metaVals > div {
-    /* An entry split across the column gap would read as two services. */
-    break-inside: avoid;
-  }
-  /* A long SERVICES list is the one meta column that can run away with the
-     block. Thirteen entries ran 441px deep beside a YEAR of 27px and a
-     COLLABORATOR of 45px — the column stopped reading as one item in a row of
-     three and became the row.
-
-     The list now gets a ROW BUDGET instead of a column count. It flows into as
-     many columns as the width actually affords (auto-fill, so 1 / 2 / 3 / 4
-     falls out of the measurement rather than out of a breakpoint), and once
-     the budget is spent the rest scrolls. Grid rather than `columns` on
-     purpose: multi-column with a constrained height overflows SIDEWAYS — the
-     box measures 1180px of scrollWidth and nothing scrolls down — whereas a
-     row-flowed grid grows downward, which is the axis a scrollbar can take.
-
-     206px is the measured width of the longest service name at 12px/0.14em
-     ("Previsualization Suite"); min() lets a track fall below it rather than
-     overflow when the column itself is narrower than one name. */
-  .pp__metaCol[data-flow] {
-    /* Take the width the other two columns leave, instead of only what the
-       longest entry asks for. min-width:0 so it can also give width back. */
-    flex: 1 1 auto;
-    min-width: 0;
-  }
-  .pp__metaCol[data-flow] .pp__metaVals {
-    --pp-meta-rows: 5;
-    --pp-svc-col: 206px;
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(min(100%, var(--pp-svc-col)), 1fr));
-    column-gap: 22px;
-    row-gap: 0;
-    max-height: calc(var(--pp-meta-rows) * 1.5em); /* line-height is 1.5 */
-    overflow-y: auto;
-    overflow-x: hidden;
-    overscroll-behavior: contain;
-    scrollbar-width: none; /* the fade below is the affordance, not a bar */
-  }
-  .pp__metaCol[data-flow] .pp__metaVals::-webkit-scrollbar {
-    display: none;
-  }
-  /* Cut the last visible line off softly, and ONLY when something is actually
-     below it — a permanent fade would dim the final entry of a list that fits.
-     [data-pp-more] is set from the script by measurement. */
-  .pp__metaCol[data-flow] .pp__metaVals[data-pp-more] {
-    -webkit-mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%);
-    mask-image: linear-gradient(180deg, #000 0, #000 calc(100% - 18px), transparent 100%);
-  }
-
-  /* The block widens to pay for those columns, out of the gutter between the
-     meta and the summary — 263px of dead space at 1920 on the old 40%. It only
-     widens where there is width to take: below this the meta block cannot grow
-     without running into the summary, so the list stays narrow and scrolls. */
-  @container (min-width: 1200px) {
-    .pp__metaCols:has(.pp__metaCol[data-flow]) {
-      width: 48%;
-    }
-  }
-  @container (min-width: 1500px) {
-    .pp__metaCols:has(.pp__metaCol[data-flow]) {
-      width: max(48%, 740px);
-    }
-  }
-  /* With the write-up open the meta block is down to 49% of the page, but it
-     is 100% of that — enough for two or three tracks, so the grid keeps
-     flowing. The budget tightens because the panel beside it is the thing
-     being read. */
-  [data-expanded='true'] .pp__metaCols:has(.pp__metaCol[data-flow]) {
-    width: 100%;
-  }
-  [data-expanded='true'] .pp__metaCol[data-flow] .pp__metaVals {
-    --pp-meta-rows: 4;
-  }
   .pp__desc {
     width: 45%;
     margin: 0;
@@ -455,71 +355,10 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     font-weight: var(--weight-body);
     font-size: clamp(18px, 1.5cqw, 32px);
     line-height: 1.25;
-    text-transform: none; /* summary reads as authored (sentence case), not the site-wide uppercase */
     text-box: trim-both cap alphabetic;
     text-wrap: pretty;
     transition: width var(--dl), font-size var(--dl);
     transition-delay: 140ms; /* stage 1 */
-  }
-  /* There is no italic cut of Denim INK WD — the family ships Regular and
-     Medium and nothing else — so an <em> would be browser-slanted, which on a
-     display face reads as a mistake. Emphasis takes the treatment the write-up
-     already gives <strong>: the real Medium cut, at full brightness. Getting
-     true italics needs an italic binary from the foundry, not a CSS rule. */
-  .pp__descText :global(em),
-  .pp__descText :global(strong),
-  .pp__notesRich :global(em) {
-    font-style: normal;
-    font-weight: var(--weight-headline);
-    color: var(--aoin-cool-white);
-  }
-  .pp__descText {
-    margin: 0;
-    /* Four lines, then the fold — keep in step with CLAMP_LINES in the script.
-       -webkit-line-clamp is the only form every engine here honours;
-       `line-clamp` rides alongside it for the day that changes. */
-    display: -webkit-box;
-    -webkit-box-orient: vertical;
-    -webkit-line-clamp: 4;
-    line-clamp: 4;
-    /* Clipped in BOTH states, not just when folded: the closing animation
-       shrinks the box while the text is still fully laid out inside it, and
-       anything visible would spill over the gallery on the way down. */
-    overflow: hidden;
-  }
-  /* Open is a BIGGER clamp, not no clamp. Unsetting it takes the element out
-     of -webkit-box layout, and `text-box: trim-both` then trims differently —
-     measured at 8.5px, which the eye catches as the copy jumping up the moment
-     the fold finishes closing. Staying in the same layout mode costs nothing
-     and moves nothing. */
-  [data-pp-summary][data-open='true'] .pp__descText,
-  /* Short enough not to be worth a button: it just runs. Set by measure(), so
-     the default stays clamped and nothing flashes at full height first. */
-  [data-pp-summary][data-fold='no'] .pp__descText {
-    -webkit-line-clamp: 9999;
-    line-clamp: 9999;
-  }
-  .pp__more {
-    margin-top: 14px;
-    padding: 0;
-    background: none;
-    border: 0;
-    border-bottom: 1px solid var(--rule);
-    color: var(--aoin-cool-white-45);
-    font-family: var(--font-mono);
-    font-weight: var(--weight-mono);
-    font-size: 11px;
-    letter-spacing: 0.3em;
-    text-transform: uppercase;
-    cursor: pointer;
-    transition: color 240ms var(--ease-brand), border-color 240ms var(--ease-brand);
-  }
-  .pp__more:hover {
-    color: var(--aoin-cool-white);
-    border-color: var(--aoin-cool-white);
-  }
-  .pp__more[hidden] {
-    display: none;
   }
   [data-expanded='true'] .pp__desc {
     width: 100%;
@@ -564,8 +403,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     overflow: hidden;
     border-radius: 10px;
   }
-  .pp__g img,
-  .pp__g video {
+  .pp__g img {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -574,14 +412,6 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
   /* Layout presets — fixed aspect ratios per slot, keeping the page's rhythm.
      The two asymmetric splits mirror the old a/b and c/d tiles. */
   .pp__gRow--full .pp__g { grid-column: 1 / -1; aspect-ratio: 16 / 7; }
-  /* The same full-width row at other heights, so an editor can match the row to
-     the picture instead of the picture being cropped to the row. */
-  .pp__gRow--full-16-9 .pp__g { grid-column: 1 / -1; aspect-ratio: 16 / 9; }
-  .pp__gRow--full-2-1 .pp__g  { grid-column: 1 / -1; aspect-ratio: 2 / 1; }
-  .pp__gRow--full-3-1 .pp__g  { grid-column: 1 / -1; aspect-ratio: 3 / 1; }
-  /* 19/5 is 3.8:1; 27/4 is 6.75:1 — for LED-canvas panoramas. */
-  .pp__gRow--full-19-5 .pp__g { grid-column: 1 / -1; aspect-ratio: 19 / 5; }
-  .pp__gRow--full-27-4 .pp__g { grid-column: 1 / -1; aspect-ratio: 27 / 4; }
   .pp__gRow--two-up .pp__g { grid-column: span 6; aspect-ratio: 4 / 3; }
   .pp__gRow--split-8-4 .pp__g--slot1 { grid-column: 1 / span 8; aspect-ratio: 16 / 9; }
   .pp__gRow--split-8-4 .pp__g--slot2 { grid-column: 9 / span 4; align-self: end; aspect-ratio: 1 / 1; }
@@ -643,7 +473,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     font-family: var(--font-headline);
     font-weight: var(--weight-headline);
     font-size: 2em;
-    letter-spacing: 0.01em; /* match the big Denim titles (artist name, NEXT PROJECT) */
+    letter-spacing: 0.1em;
     margin-bottom: 2px;
   }
   .pp__credit {
@@ -670,23 +500,118 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     border-bottom: 1px solid rgba(217, 225, 234, 0.28);
   }
 
-  /* ============================ fixed chrome (write-up aside) ============================
-     The action controls (write-up toggle, all-work, next) now live in the
-     ProjectBar; only the write-up panel remains as fixed chrome here. */
+  /* ---- prev / next projects ---- */
+  /* Stacked as two centred rows at every breakpoint — PREV over NEXT. Each row
+     owns a full line, so each plate opens freely along its own row on hover. */
+  .pp__next {
+    margin-top: 96px;
+    border-top: 2px solid var(--aoin-cool-white-45);
+    padding: 12vh 0 14vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8vh;
+  }
+  .pp__nextLink {
+    display: flex;
+    width: max-content;
+    max-width: 100%;
+    align-items: center;
+    font-family: var(--font-headline);
+    font-weight: var(--weight-headline);
+    font-size: clamp(40px, 9cqw, 150px);
+    line-height: 1;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    color: var(--aoin-cool-white);
+  }
+  .pp__nextPlate {
+    display: inline-flex;
+    justify-content: center;
+    overflow: hidden;
+    max-width: 0;
+    margin-inline: 1.6cqw;
+    transition:
+      max-width 420ms cubic-bezier(0.16, 1, 0.3, 1),
+      margin-inline 420ms cubic-bezier(0.16, 1, 0.3, 1);
+  }
+  .pp__nextLink[data-open='true'] .pp__nextPlate {
+    max-width: 30cqw;
+    margin-inline: 2.2cqw;
+  }
+  .pp__nextPlateInner {
+    display: flex;
+    flex-direction: column;
+    /* Stretch both lines to the width of the widest of the two strings, so the
+       title and tour read as one clean block instead of two staggered boxes. */
+    align-items: stretch;
+    gap: 0.18em;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    /* Caption under the big PREV/NEXT type. */
+    font-size: clamp(13px, 2.2cqw, 34px);
+    letter-spacing: 0.08em;
+    line-height: 1.35;
+    white-space: nowrap;
+  }
+  .pp__nextMask {
+    overflow: hidden;
+    display: block;
+  }
+  .pp__nextLine {
+    display: block;
+    background: var(--aoin-cool-white);
+    color: #000;
+    padding: 0.22em 0.55em;
+    text-align: center;
+    transform: translateY(110%); /* JS raises it on plate open */
+  }
+
+  /* ---- all work ---- */
+  .pp__allwork {
+    margin-top: 44px;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 12px;
+    letter-spacing: 0.28em;
+  }
+
+  /* ============================ fixed chrome ============================ */
+  .pp__toggle {
+    position: fixed;
+    top: var(--pp-title-top, 92px);
+    right: var(--pp-edge);
+    z-index: 30;
+    background: #000;
+    border: 1px solid rgba(217, 225, 234, 0.28);
+    color: var(--aoin-cool-white);
+    border-radius: 6px;
+    font-family: var(--font-headline);
+    font-weight: var(--weight-headline);
+    font-size: 15px;
+    letter-spacing: 0.06em;
+    padding: 9px 18px;
+    cursor: pointer;
+    animation: pp-blink 3.2s ease-in-out infinite;
+  }
+  [data-expanded='true'] .pp__toggle {
+    animation: none;
+  }
+  .pp__toggle:hover {
+    border-color: var(--aoin-cool-white);
+  }
+  @keyframes pp-blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.45; }
+  }
+
   .pp__aside {
     position: fixed;
     top: var(--pp-aside-top, 148px);
     right: var(--pp-edge);
     width: 0;
     max-height: var(--pp-aside-maxh, calc(100vh - 148px - 92px));
-    /* Height-capped, so a long write-up has to scroll inside the panel. overflow-x
-       stays hidden to clip the content while the width animates open; overscroll
-       keeps the wheel from chaining to the page behind once the panel bottoms out.
-       Lenis owns the wheel site-wide, so the aside also carries data-lenis-prevent
-       (see the markup) — without it Lenis eats the gesture and the panel never moves. */
-    overflow-x: hidden;
-    overflow-y: auto;
-    overscroll-behavior: contain;
+    overflow: hidden;
     box-sizing: border-box;
     z-index: 15;
     pointer-events: none;
@@ -715,109 +640,37 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     letter-spacing: 0.3em;
     color: var(--aoin-cool-white-45);
   }
-  /* ---- press ----
-     Sits under the write-up in the panel and borrows the credits block's
-     shape — mono label over a Denim line — so the panel reads as one column of
-     the same material rather than two unrelated lists. */
-  .pp__press {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-    /* The write-up's own gap is 24px; press is a different section, not another
-       paragraph, so it sits further off and takes a rule. */
-    margin-top: 20px;
-    padding-top: 28px;
-    border-top: 1px solid rgba(217, 225, 234, 0.16);
-  }
-  .pp__pressList {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 14px;
-  }
-  .pp__pressItem {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 16px;
-  }
-  .pp__pressItem a {
-    color: inherit;
-    text-decoration: none;
-    display: flex;
-    flex-direction: column;
-    gap: 4px;
-    min-width: 0;
-  }
-  .pp__pressPub {
-    font-family: var(--font-mono);
-    font-weight: var(--weight-mono);
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    color: var(--aoin-cool-white-45);
-    text-transform: uppercase;
-  }
-  .pp__pressTitle {
-    font-family: var(--font-headline);
-    font-weight: var(--weight-body);
-    font-size: 15px;
-    line-height: 1.3;
-    letter-spacing: 0.02em;
-    color: var(--aoin-cool-white);
-    text-transform: none; /* a headline reads as written, like the write-up */
-    /* The underline is on the headline alone, so the masthead above it stays a
-       label rather than looking like part of the link target. */
-    border-bottom: 1px solid rgba(217, 225, 234, 0.28);
-    /* Only as wide as the words, so the rule stops with the text. */
-    align-self: flex-start;
-    transition: border-color 220ms ease, color 220ms ease;
-  }
-  .pp__pressItem a:hover .pp__pressTitle {
-    border-bottom-color: var(--aoin-cool-white);
-  }
-  .pp__pressDate {
-    flex: 0 0 auto;
-    font-family: var(--font-mono);
-    font-weight: var(--weight-mono);
-    font-size: 11px;
-    letter-spacing: 0.14em;
-    color: var(--aoin-cool-white-45);
-    white-space: nowrap;
-  }
-
-  /* Rendered write-up (rich text), set in Denim; the first paragraph reads as
-     the lede. NB: the content is injected via set:html, so Astro's scoped
-     selectors can't tag it — set the base type on the (scoped) container so the
-     injected children inherit it, and use :global() for the per-element rules. */
+  /* Rendered write-up (rich text). Paragraphs default to the mono body look;
+     the first paragraph reads as the lede in the headline face. */
   .pp__notesRich {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    /* Opt out of the global uppercase — the write-up reads as authored. */
-    text-transform: none;
-    /* Base prose type — inherited by the injected content (Denim, not serif). */
-    font-family: var(--font-body);
-    font-weight: var(--weight-body);
-    font-size: 15px;
-    line-height: 1.7;
+  }
+  .pp__notesRich p {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 14px;
+    line-height: 1.85;
     color: var(--aoin-cool-white-45);
   }
-  .pp__notesRich :global(p) {
-    margin: 0;
-  }
-  .pp__notesRich :global(ul),
-  .pp__notesRich :global(ol) {
+  .pp__notesRich ul,
+  .pp__notesRich ol {
     margin: 0;
     padding-left: 1.2em;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 14px;
+    line-height: 1.85;
+    color: var(--aoin-cool-white-45);
   }
-  .pp__notesRich :global(h1),
-  .pp__notesRich :global(h2),
-  .pp__notesRich :global(h3),
-  .pp__notesRich :global(h4),
-  .pp__notesRich :global(h5),
-  .pp__notesRich :global(h6) {
+  .pp__notesRich h1,
+  .pp__notesRich h2,
+  .pp__notesRich h3,
+  .pp__notesRich h4,
+  .pp__notesRich h5,
+  .pp__notesRich h6 {
     margin: 4px 0 0;
     font-family: var(--font-headline);
     font-weight: var(--weight-headline);
@@ -825,100 +678,22 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     letter-spacing: 0.02em;
     color: var(--aoin-cool-white);
   }
-  .pp__notesRich :global(strong) {
+  .pp__notesRich strong {
     color: var(--aoin-cool-white);
-    font-weight: var(--weight-headline);
+    font-weight: var(--weight-body);
   }
-  .pp__notesRich :global(a) {
+  .pp__notesRich a {
     color: inherit;
     text-decoration: none;
     border-bottom: 1px solid rgba(217, 225, 234, 0.28);
   }
-  .pp__notesRich :global(p:first-of-type) {
+  .pp__notesRich > p:first-of-type {
+    font-family: var(--font-headline);
     font-weight: var(--weight-body);
     font-size: 20px;
     line-height: 1.45;
     color: var(--aoin-cool-white);
     text-wrap: pretty;
-  }
-
-  /* ---- two-column flow (writeupColumns on the project) ----
-     Multi-column, not grid: the copy has to FLOW between the columns. A grid
-     would make the editor decide, per block, which side each paragraph lands
-     on. The `300px 2` shorthand caps it at two columns and drops back to one
-     the moment they'd be narrower than 300px — which is what happens on the
-     mobile panel (100% wide) and on a small laptop, so no breakpoint needed. */
-  .pp__notesRich[data-cols='2'] {
-    display: block;
-    columns: 300px 2;
-    column-gap: 34px;
-  }
-  .pp__notesRich[data-cols='2'] :global(> *) {
-    /* the flex gap is gone with display:block — space the blocks by margin */
-    margin: 0 0 20px;
-    /* a paragraph broken across the column gap reads as two paragraphs */
-    break-inside: avoid;
-  }
-  .pp__notesRich[data-cols='2'] :global(p:first-of-type) {
-    /* the lede runs the full measure; the body breaks into columns under it */
-    column-span: all;
-    margin-bottom: 26px;
-  }
-
-  /* ---- inline media (an `upload` node in the write-up) ----
-     Serialized by lib/richtext.ts as <figure class="rt-fig rt-fig--full|half">.
-     Unlike the gallery these are NOT cropped to a fixed row: the figure takes
-     the media's own aspect ratio, because in prose the picture is an aside, not
-     a slot to be filled. */
-  .pp__notesRich :global(.rt-fig) {
-    margin: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
-    break-inside: avoid;
-  }
-  .pp__notesRich :global(.rt-fig img),
-  .pp__notesRich :global(.rt-fig video) {
-    display: block;
-    width: 100%;
-    height: auto;
-    border-radius: 10px; /* matches the gallery tiles */
-  }
-  .pp__notesRich :global(.rt-fig figcaption) {
-    font-family: var(--font-mono);
-    font-weight: var(--weight-mono);
-    font-size: 10px;
-    letter-spacing: 0.24em;
-    text-transform: uppercase;
-    color: var(--aoin-cool-white-35);
-  }
-  /* FULL breaks out across both columns; ONE COLUMN stays in the text flow.
-     With one column there is nothing to span, so ONE COLUMN just renders
-     narrower — the setting still means something either way. */
-  .pp__notesRich[data-cols='2'] :global(.rt-fig--full) {
-    column-span: all;
-  }
-  .pp__notesRich[data-cols='1'] :global(.rt-fig--half) {
-    width: 62%;
-  }
-
-  /* ---- the rest of the toolbar ---- */
-  .pp__notesRich :global(blockquote) {
-    margin: 0;
-    padding-left: 14px;
-    border-left: 1px solid rgba(217, 225, 234, 0.28);
-    color: var(--aoin-cool-white);
-  }
-  .pp__notesRich :global(.rt-indent) {
-    padding-left: 1.4em;
-  }
-  .pp__notesRich :global(s) {
-    opacity: 0.6;
-  }
-  .pp__notesRich :global(code) {
-    font-family: var(--font-mono);
-    font-weight: var(--weight-mono);
-    font-size: 0.92em;
   }
 
   /* ---- mobile swipe cue (desktop: hidden; shown in the mobile block) ---- */
@@ -938,7 +713,8 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
 
   /* ============================ reduced motion ============================ */
   @media (prefers-reduced-motion: reduce) {
-    .pp * {
+    .pp *,
+    .pp .pp__toggle {
       transition: none !important;
       animation: none !important;
     }
@@ -1031,13 +807,6 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     .pp__desc {
       width: 100% !important;
     }
-    /* A phone gets one track, so the budget is the only thing holding the list
-       down — and it can be looser here, because on mobile the meta block has
-       the full width to itself and nothing sits beside it competing. */
-    .pp__metaCol[data-flow] .pp__metaVals {
-      --pp-meta-rows: 8;
-      --pp-svc-col: 100%;
-    }
     .pp__desc {
       margin-top: 4px;
       font-size: clamp(18px, 5vw, 24px);
@@ -1069,6 +838,16 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     .pp__credit {
       grid-column: span 6;
     }
+    /* Two-row stack carries over from the base rule — just tighten the spacing
+       and type for the narrow frame. */
+    .pp__next {
+      gap: 5vh;
+      padding: 8vh 0 6vh;
+    }
+    .pp__nextLink {
+      font-size: clamp(28px, 10vw, 56px);
+    }
+
     /* Page 1 (the project content) slides off-left when the write-up opens —
        a clean linear screen-slide, like paging between two app screens. */
     .pp__frame {
@@ -1145,190 +924,20 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     .pp__notesRich > p:first-of-type {
       font-size: 18px;
     }
+
+    /* The swipe cues replace the bottom toggle button on mobile. */
+    .pp__toggle {
+      display: none;
+    }
   }
 </style>
 
 <script>
   import { initProjectPage } from '@/lib/project-page';
 
-  // Inline write-up video: the figure ships with a 16/9 placeholder ratio (see
-  // lib/richtext.ts — Payload stores no dimensions for video), so swap in the
-  // real one as soon as the metadata lands. A vertical clip would otherwise sit
-  // letterboxed in a landscape box for the life of the page.
-  const fitWriteupVideos = () => {
-    document.querySelectorAll<HTMLVideoElement>('.pp__notesRich .rt-fig video').forEach((v) => {
-      const apply = () => {
-        if (v.videoWidth && v.videoHeight) v.style.aspectRatio = `${v.videoWidth} / ${v.videoHeight}`;
-      };
-      if (v.readyState >= 1) apply();
-      else v.addEventListener('loadedmetadata', apply, { once: true });
-    });
-  };
-
-  // The summary's fold. Whether there is anything TO fold is a measured
-  // question, not an authored one: the same words are four lines at one width
-  // and nine at another, and the panel opening drops the type from 32px to
-  // 20px underneath it. So the button appears only when the clamped box is
-  // actually hiding something, and that is re-checked whenever the geometry
-  // can have changed.
-  const initSummaryFold = () => {
-    const box = document.querySelector<HTMLElement>('[data-pp-summary]');
-    const text = box?.querySelector<HTMLElement>('.pp__descText');
-    const button = box?.querySelector<HTMLButtonElement>('.pp__more');
-    if (!box || !text || !button) return;
-    // ClientRouter fires `astro:page-load` on the first load as well as on
-    // every soft navigation, and boot() is both called directly and bound to
-    // it — so on a hard load this ran twice and the button ended up with two
-    // click handlers. The first opened the fold; the second read the state the
-    // first had just written and closed it again. Net effect: a button that
-    // did nothing at all, silently.
-    //
-    // The flag lives on the element, not in module scope, because a soft-nav
-    // swap brings a genuinely new box that does need wiring up.
-    if (box.dataset.ppFold === 'ready') return;
-    box.dataset.ppFold = 'ready';
-
-    // Height cannot transition to or from `auto`, so the fold animates between
-    // two numbers measured either side of the clamp coming off. The page
-    // reflows around it for free, because the summary is in normal flow —
-    // the gallery below simply gets pushed.
-    //
-    // The curve is --bar-ease, the house 'glide' the bars and the contact
-    // modal already run on, and NOT --ease-brand. Sampled on the real 333px
-    // reveal, the brand curve is 49% done at 47ms and 81% at 92ms: built for
-    // flights, where a fast start reads as decisive, but on a block of text it
-    // reads as a snap with a long tail rather than as copy unfolding. The
-    // glide runs 13 / 36 / 61 / 80 / 94% across the same time, which is the
-    // shape the eye expects from something opening.
-    const OPEN_MS = 520;
-    // The clamped height, and it must match the `-webkit-line-clamp` below.
-    const CLAMP_LINES = 4;
-    // ...and the point past which folding earns its keep. A summary that spills
-    // two words onto a fifth line does not need a button — hiding a scrap
-    // behind a click is worse than the extra line, and the reader gets a READ
-    // MORE that reveals almost nothing. Anything up to seven lines simply runs;
-    // past that the density is the problem the fold was added for.
-    const FULL_MAX = 7;
-    let closedHeight = 0;
-
-    const animate = (from, to, settle?: () => void) => {
-      // Reduced motion: the site turns every transition off, so waiting for a
-      // transitionend that will never fire would leave the box stuck at an
-      // inline height.
-      if (matchMedia('(prefers-reduced-motion: reduce)').matches) {
-        settle?.();
-        text.style.height = '';
-        return;
-      }
-      text.style.height = `${from}px`;
-      void text.offsetHeight; // commit the start, or the browser sees one hop
-      text.style.transition = `height ${OPEN_MS}ms var(--bar-ease)`;
-      text.style.height = `${to}px`;
-
-      const done = () => {
-        text.removeEventListener('transitionend', done);
-        clearTimeout(timer);
-        // The clamp goes back on BEFORE the inline height is dropped, or the
-        // box flashes at full height for a frame on the way closed.
-        settle?.();
-        text.style.transition = '';
-        text.style.height = '';
-      };
-      // transitionend does not fire if the transition is interrupted or never
-      // starts; the timer is what stops that leaving an inline height behind.
-      const timer = setTimeout(done, OPEN_MS + 120);
-      text.addEventListener('transitionend', done);
-    };
-
-    const measure = () => {
-      // While open the clamp is off, so there is nothing to measure against —
-      // an open fold keeps its button regardless.
-      if (box.dataset.open === 'true') return;
-      const line = parseFloat(getComputedStyle(text).lineHeight) || 0;
-      if (!line) return;
-      // How long the summary really is. `scrollHeight` reads the whole content
-      // even while the clamp is on, and it overshoots the true height by a few
-      // pixels because `text-box` trims the leading above the first line and
-      // below the last — well under half a line, so rounding absorbs it.
-      // Measured rather than toggling the clamp off and back: this runs from a
-      // ResizeObserver, and changing the size inside it is a loop.
-      const lines = Math.round(text.scrollHeight / line);
-      const worthFolding = lines > FULL_MAX;
-      // `no` unclamps in CSS, so a summary that is merely a bit long simply
-      // runs its five or six lines instead of hiding two words behind a click.
-      box.dataset.fold = worthFolding ? 'yes' : 'no';
-      button.hidden = !worthFolding;
-      // Folded, the client box IS the clamped height — worth keeping, because
-      // by the time it is needed the clamp is off and it cannot be read again.
-      closedHeight = worthFolding ? text.clientHeight : 0;
-    };
-
-    button.addEventListener('click', () => {
-      const opening = box.dataset.open !== 'true';
-      button.textContent = opening ? 'READ LESS' : 'READ MORE';
-      const from = text.clientHeight;
-
-      if (opening) {
-        box.dataset.open = 'true'; // the clamp opens up; nothing is clipped now
-        // The natural height, read before any inline height is set — and NOT
-        // scrollHeight, which ignores the 9px `text-box` trim and would leave
-        // the box to settle back by that much at the end.
-        animate(from, text.getBoundingClientRect().height);
-      } else {
-        // Shrink first and re-clamp at the end: re-clamping now would snap the
-        // box shut and leave nothing to animate.
-        animate(from, closedHeight, () => {
-          box.dataset.open = 'false';
-        });
-      }
-    });
-
-    measure();
-    // Webfonts land after first paint and change the line count under us.
-    document.fonts?.ready.then(measure);
-    new ResizeObserver(measure).observe(text);
-  };
-
-  // The SERVICES list is capped to a row budget and scrolls past it. Whether it
-  // IS past it is a measured question — the same thirteen entries are four rows
-  // at 1920 and thirteen on a phone — so the bottom fade that says "there is
-  // more" is applied only when the box is genuinely overflowing, and re-checked
-  // whenever the geometry can have moved: the panel opening reflows the block,
-  // and a resize re-flows the grid into a different number of tracks.
-  const initMetaOverflow = () => {
-    const boxes = [...document.querySelectorAll<HTMLElement>('[data-pp-metavals]')];
-    if (!boxes.length) return;
-    const measure = () =>
-      boxes.forEach((b) =>
-        // Distance still BELOW the viewport, not total overflow — so the fade
-        // lifts once the reader reaches the end instead of permanently dimming
-        // whatever the last row happens to be. 1px of slack because sub-pixel
-        // row heights round scrollHeight a hair over clientHeight on lists that
-        // actually fit, which would fade the last entry of every list.
-        b.toggleAttribute('data-pp-more', b.scrollHeight - b.clientHeight - b.scrollTop > 1)
-      );
-    measure();
-    // Re-measure while the 620ms reflow runs, not just at the end of it.
-    const root = document.querySelector<HTMLElement>('[data-pp]');
-    if (root && !root.dataset.ppMetaWired) {
-      root.dataset.ppMetaWired = '1';
-      new ResizeObserver(measure).observe(root);
-      boxes.forEach((b) => b.addEventListener('scroll', measure, { passive: true }));
-    }
-    if (document.fonts?.ready) document.fonts.ready.then(measure);
-  };
-
   const boot = () => {
     const root = document.querySelector<HTMLElement>('[data-pp]');
-    // Same reason as the fold's guard below: boot runs twice on a hard load,
-    // and initProjectPage attaches seven listeners of its own.
-    if (root && root.dataset.ppReady !== '1') {
-      root.dataset.ppReady = '1';
-      initProjectPage(root);
-    }
-    fitWriteupVideos();
-    initSummaryFold();
-    initMetaOverflow();
+    if (root) initProjectPage(root);
   };
 
   boot();
