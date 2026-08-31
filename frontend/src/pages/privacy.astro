@@ -1,0 +1,253 @@
+---
+import Base from '@/layouts/Base.astro';
+
+/* /privacy (#78): published disclosure of the measured data surface.
+   Copy is the frozen issue text rendered verbatim, structure preserved
+   (h1 + intro + six h2 sections, one cookie table). Layout follows the
+   studio page's conventions: edge inset, mono overline section labels,
+   hairline rules. No client JS on purpose - a policy page renders (and
+   prints) statically. */
+---
+
+<Base
+  title="Privacy | All Of It Now"
+  description="How All Of It Now collects and uses visitor data."
+>
+  <main class="privacy">
+    <div class="measure">
+      <h1 class="title">Privacy</h1>
+      <p class="intro">
+        How allofitnow collects and uses visitor data. Questions: use the site contact path.
+      </p>
+
+      <section>
+        <h2><span>What we collect</span><span class="rule" aria-hidden="true"></span></h2>
+        <p>
+          Audience measurement via Google Analytics 4 (GA4): pages viewed, referrers,
+          approximate geography and device class, and on-site events (for example menu
+          opens and inquiry form submissions). We run no advertising cookies and share
+          data with no ad networks.
+        </p>
+      </section>
+
+      <section>
+        <h2><span>Jurisdiction behavior</span><span class="rule" aria-hidden="true"></span></h2>
+        <ul>
+          <li>
+            EU, EEA, UK, Switzerland: nothing non-essential loads until you choose. A
+            dialog offers equal Reject and Accept options; the recommended choice (Do Not
+            Track) receives initial keyboard focus.
+          </li>
+          <li>
+            Everywhere else: analytics run by default. You can switch analytics off at
+            any time with one click via "Cookie settings" in the footer - switching off
+            is exactly as easy as it was on.
+          </li>
+        </ul>
+      </section>
+
+      <section>
+        <h2><span>Cookies</span><span class="rule" aria-hidden="true"></span></h2>
+        <p>Today (served from the someofitlater.com zone):</p>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Cookie</th>
+                <th>Purpose</th>
+                <th>Writer</th>
+                <th>Retention</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td class="mono">_ga, _ga_1TVWRSCCLN</td>
+                <td>GA4 measurement</td>
+                <td>Google gtag.js</td>
+                <td>up to 2 years</td>
+              </tr>
+              <tr>
+                <td class="mono">cfz_google-analytics_v4, cfzs_google-analytics_v4</td>
+                <td>GA4 via Cloudflare Zaraz (pre-cutover only)</td>
+                <td>Zaraz tool</td>
+                <td>persistent / session</td>
+              </tr>
+              <tr>
+                <td class="mono">aoin_consent</td>
+                <td>stores your consent choice (strictly necessary)</td>
+                <td>this site</td>
+                <td>1 year</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+        <p>
+          After the cutover to allofitnow.com (cookies then scoped .allofitnow.com):
+          _ga* measurement cookies and the aoin_consent record remain; the Cloudflare
+          Zaraz cookies disappear with the zone change.
+        </p>
+      </section>
+
+      <section>
+        <h2><span>Where data goes</span><span class="rule" aria-hidden="true"></span></h2>
+        <p>
+          Google (script hosting googletagmanager.com; collection google-analytics.com)
+          and Cloudflare (edge hosting; pre-cutover Zaraz endpoint receives page
+          metadata - screen size, timezone, referrer, title). No other recipients.
+        </p>
+      </section>
+
+      <section>
+        <h2><span>Retention</span><span class="rule" aria-hidden="true"></span></h2>
+        <p>
+          GA4 measurement cookies up to 2 years; consent record 1 year; session cookies
+          end with the session. GA4 property data retention is at most 14 months.
+        </p>
+      </section>
+
+      <section>
+        <h2><span>Your rights and withdrawal</span><span class="rule" aria-hidden="true"></span></h2>
+        <p>
+          Change or withdraw consent anytime via "Cookie settings" in the footer. EU
+          visitors may request access, correction, or deletion of personal data via the
+          site contact path. Deleting cookies in your browser also clears your stored
+          choice.
+        </p>
+      </section>
+    </div>
+  </main>
+</Base>
+
+<style>
+  /* Clear the fixed Nav (top) and the site-wide FootBar (bottom) - Base
+     provides both, and this page scrolls under them (studio convention). */
+  .privacy {
+    max-width: var(--content-max);
+    margin: 0 auto;
+    padding: 0 var(--margin-edge) clamp(96px, 12vh, 160px);
+    box-sizing: border-box;
+  }
+  /* Policy is prose: cap the measure so 20px body text stays readable. */
+  .measure {
+    max-width: 780px;
+  }
+
+  .title {
+    margin: 0 0 24px;
+    padding-top: clamp(120px, 16vh, 220px);
+    font-family: var(--font-headline);
+    font-weight: var(--weight-headline);
+    font-size: clamp(40px, 6vw, 72px);
+    line-height: 1;
+    letter-spacing: var(--tracking-headline);
+    color: var(--text-primary);
+  }
+
+  .intro {
+    color: var(--text-secondary);
+  }
+
+  /* Section labels: the site's mono overline + 28% rule (studio convention). */
+  h2 {
+    display: flex;
+    align-items: center;
+    gap: 24px;
+    margin: clamp(56px, 7vw, 96px) 0 24px;
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 13px;
+    letter-spacing: var(--tracking-overline);
+    text-transform: uppercase;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+  h2 .rule {
+    flex: 1;
+    height: 1px;
+    background: rgba(217, 225, 234, 0.28);
+  }
+
+  p {
+    margin: 0 0 16px;
+    font-family: var(--font-body);
+    font-size: var(--size-body);
+    line-height: var(--leading-body);
+    color: var(--text-primary);
+  }
+
+  ul {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  li {
+    position: relative;
+    padding-left: 24px;
+    margin-bottom: 16px;
+    font-family: var(--font-body);
+    font-size: var(--size-body);
+    line-height: var(--leading-body);
+    color: var(--text-primary);
+  }
+  /* Brand dash marker - a 12px hairline, not a disc. */
+  li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.72em;
+    width: 12px;
+    height: 1px;
+    background: rgba(217, 225, 234, 0.45);
+  }
+
+  .table-wrap {
+    overflow-x: auto;
+    margin: 8px 0 24px;
+  }
+  table {
+    width: 100%;
+    min-width: 640px;
+    border-collapse: collapse;
+  }
+  th {
+    font-family: var(--font-mono);
+    font-weight: var(--weight-mono);
+    font-size: 12px;
+    letter-spacing: var(--tracking-overline);
+    text-transform: uppercase;
+    text-align: left;
+    color: var(--text-secondary);
+    padding: 10px 16px 10px 0;
+    border-bottom: 1px solid rgba(217, 225, 234, 0.28);
+  }
+  td {
+    font-family: var(--font-body);
+    font-size: 16px;
+    line-height: var(--leading-body);
+    color: var(--text-primary);
+    padding: 12px 16px 12px 0;
+    border-bottom: 1px solid var(--rule);
+    vertical-align: top;
+  }
+  td.mono {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  @media (max-width: 720px) {
+    .privacy {
+      padding: 0 var(--margin-edge-mobile) clamp(80px, 14vh, 140px);
+    }
+    .title {
+      font-size: clamp(36px, 11vw, 48px);
+    }
+    p,
+    li {
+      font-size: 16px;
+    }
+    td {
+      font-size: 14px;
+    }
+  }
+</style>
