@@ -1,5 +1,6 @@
 ---
 import type { Project } from '@/data/projects';
+import Media from '@/components/Media.astro';
 interface Props {
   project: Project;
 }
@@ -17,7 +18,7 @@ const { project: p } = Astro.props;
   data-cap={p.capabilities.join('|')}
   aria-label={p.title}
 >
-  <img class="tile-img" src={p.image} alt={p.title} draggable="false" loading="lazy" />
+  <Media class="tile-img" doc={p.imageDoc} src={p.image} alt={p.title} draggable="false" loading="lazy" sizes="(max-width:480px) 90vw, 44vw" />
   <span class="ovl">
     <span class="ovl-artist">{p.title}</span>
     <span class="ovl-tour">{p.tour}</span>
