@@ -1,8 +1,11 @@
 ---
 import { about } from '@/data/home';
-import { getProjects } from '@/data/projects';
+import { getHomeMarquee } from '@/data/projects';
+import Media from '@/components/Media.astro';
 
-const projects = await getProjects();
+// Curated homepage marquee: featured projects in featured-order, falling back to
+// all projects (chronological) until any are marked featured in the CMS.
+const projects = await getHomeMarquee();
 ---
 
 <section class="about" data-ref="about" data-screen-label="About" id="about">
@@ -37,8 +40,16 @@ const projects = await getProjects();
         <div class="track" data-ref="track">
           {
             projects.map((p) => (
-              <a class="slide" data-slide="1" href={`/work/${p.slug}`} data-slug={p.slug}>
-                <img src={p.image} alt={p.title} draggable="false" loading="lazy" />
+              <a
+                class="slide"
+                data-slide="1"
+                href={`/work/${p.slug}`}
+                data-slug={p.slug}
+                data-title={p.title}
+                data-tour={p.tour}
+                data-caps={p.capabilities.join('|')}
+              >
+                <Media doc={p.imageDoc} src={p.image} alt={p.title} draggable="false" loading="lazy" sizes="(max-width:480px) 72vw, 39vw" />
               </a>
             ))
           }
@@ -48,8 +59,18 @@ const projects = await getProjects();
           <div class="mirror" data-ref="mirror">
             {
               projects.map((p) => (
-                <a class="slide" data-slide="1" href={`/work/${p.slug}`} data-slug={p.slug} aria-hidden="true" tabindex="-1">
-                  <img src={p.image} alt="" draggable="false" loading="lazy" />
+                <a
+                  class="slide"
+                  data-slide="1"
+                  href={`/work/${p.slug}`}
+                  data-slug={p.slug}
+                  data-title={p.title}
+                  data-tour={p.tour}
+                  data-caps={p.capabilities.join('|')}
+                  aria-hidden="true"
+                  tabindex="-1"
+                >
+                  <Media doc={p.imageDoc} src={p.image} alt="" draggable="false" loading="lazy" sizes="(max-width:480px) 72vw, 39vw" />
                 </a>
               ))
             }
@@ -159,6 +180,14 @@ const projects = await getProjects();
     font-size: 1em;
     letter-spacing: 0.06em;
   }
+  /* The sitewide highlight (tokens.css) paints a cool-white plate with black
+     type — which is what the dropcap ALREADY looks like, so selecting it would
+     show nothing. It is the one inverted surface on the site, so it gets the
+     inverse highlight. */
+  .dropcap::selection {
+    background: var(--aoin-black);
+    color: var(--aoin-cool-white);
+  }
   /* built lines get their own [data-ai] masks via the controller */
   .stmt-wrap :global([data-ai]) {
     transform: translateY(110%);
@@ -201,7 +230,8 @@ const projects = await getProjects();
     border-radius: var(--radius-tile);
     background: rgba(217, 225, 234, 0.05); /* neutral fill until the still loads */
   }
-  .slide img {
+  .slide img,
+  .slide video {
     position: absolute;
     inset: 0;
     width: 100%;

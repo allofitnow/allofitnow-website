@@ -1,0 +1,227 @@
+{
+ "target": "46009.someofitlater.com",
+ "mode": "live",
+ "startedAt": "2026-08-31T06:09:12Z",
+ "gates": [
+  {
+   "name": "page /",
+   "ok": true,
+   "detail": "200"
+  },
+  {
+   "name": "ga4 /",
+   "ok": true,
+   "detail": "G-1TVWRSCCLN in HTML"
+  },
+  {
+   "name": "title /",
+   "ok": true,
+   "detail": "non-empty <title>"
+  },
+  {
+   "name": "description /",
+   "ok": true,
+   "detail": "meta name=\"description\""
+  },
+  {
+   "name": "og /",
+   "ok": false,
+   "detail": "og:* tags"
+  },
+  {
+   "name": "twitter /",
+   "ok": false,
+   "detail": "twitter:* tags"
+  },
+  {
+   "name": "canonical /",
+   "ok": false,
+   "detail": "canonical -> https://46009.someofitlater.com"
+  },
+  {
+   "name": "page /services",
+   "ok": true,
+   "detail": "200"
+  },
+  {
+   "name": "ga4 /services",
+   "ok": true,
+   "detail": "G-1TVWRSCCLN in HTML"
+  },
+  {
+   "name": "title /services",
+   "ok": true,
+   "detail": "non-empty <title>"
+  },
+  {
+   "name": "description /services",
+   "ok": false,
+   "detail": "meta name=\"description\""
+  },
+  {
+   "name": "og /services",
+   "ok": false,
+   "detail": "og:* tags"
+  },
+  {
+   "name": "twitter /services",
+   "ok": false,
+   "detail": "twitter:* tags"
+  },
+  {
+   "name": "canonical /services",
+   "ok": false,
+   "detail": "canonical -> https://46009.someofitlater.com"
+  },
+  {
+   "name": "page /work",
+   "ok": true,
+   "detail": "200"
+  },
+  {
+   "name": "ga4 /work",
+   "ok": true,
+   "detail": "G-1TVWRSCCLN in HTML"
+  },
+  {
+   "name": "title /work",
+   "ok": true,
+   "detail": "non-empty <title>"
+  },
+  {
+   "name": "description /work",
+   "ok": true,
+   "detail": "meta name=\"description\""
+  },
+  {
+   "name": "og /work",
+   "ok": false,
+   "detail": "og:* tags"
+  },
+  {
+   "name": "twitter /work",
+   "ok": false,
+   "detail": "twitter:* tags"
+  },
+  {
+   "name": "canonical /work",
+   "ok": false,
+   "detail": "canonical -> https://46009.someofitlater.com"
+  },
+  {
+   "name": "page /work/martin-garrix",
+   "ok": true,
+   "detail": "200"
+  },
+  {
+   "name": "ga4 /work/martin-garrix",
+   "ok": true,
+   "detail": "G-1TVWRSCCLN in HTML"
+  },
+  {
+   "name": "title /work/martin-garrix",
+   "ok": true,
+   "detail": "non-empty <title>"
+  },
+  {
+   "name": "description /work/martin-garrix",
+   "ok": true,
+   "detail": "meta name=\"description\""
+  },
+  {
+   "name": "og /work/martin-garrix",
+   "ok": false,
+   "detail": "og:* tags"
+  },
+  {
+   "name": "twitter /work/martin-garrix",
+   "ok": false,
+   "detail": "twitter:* tags"
+  },
+  {
+   "name": "canonical /work/martin-garrix",
+   "ok": false,
+   "detail": "canonical -> https://46009.someofitlater.com"
+  },
+  {
+   "name": "sitemap",
+   "ok": false,
+   "detail": "HTTP 404, urlset=False"
+  },
+  {
+   "name": "robots",
+   "ok": false,
+   "detail": "HTTP 200, 1248B, placeholder=True"
+  },
+  {
+   "name": "cut5 /project/melanie-martinez",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/trilogy"
+  },
+  {
+   "name": "cut5 /project/arcane-riot-undercity-nights",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/riot-x-arcane"
+  },
+  {
+   "name": "cut5 /project/linkin-park-from-zero",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/linkin-park"
+  },
+  {
+   "name": "cut5 /project/encanto-ar",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/encanto-at-the-hollywood-bowl"
+  },
+  {
+   "name": "cut5 /project/coldplay-bts-thevoice",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/coldplay-bts-ar"
+  },
+  {
+   "name": "cut5 /project/peso-pluma-exodo-tour",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/PESO-PLUMA-EXODO"
+  },
+  {
+   "name": "cut5-direct /project/martin-garrix",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/martin-garrix (want https://allofitnow.com/work/martin-garrix)"
+  },
+  {
+   "name": "cut5-direct /project/trilogy",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/trilogy (want https://allofitnow.com/work/trilogy)"
+  },
+  {
+   "name": "cut5-direct /project/riot-x-arcane",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/riot-x-arcane (want https://allofitnow.com/work/riot-x-arcane)"
+  },
+  {
+   "name": "hostname-pin deny",
+   "ok": true,
+   "detail": "Host: evil.example -> HTTP 403"
+  }
+ ],
+ "stages": [],
+ "finishedAt": "2026-08-31T06:09:15Z",
+ "exit": "FAIL",
+ "failed": [
+  "og /",
+  "twitter /",
+  "canonical /",
+  "description /services",
+  "og /services",
+  "twitter /services",
+  "canonical /services",
+  "og /work",
+  "twitter /work",
+  "canonical /work",
+  "og /work/martin-garrix",
+  "twitter /work/martin-garrix",
+  "canonical /work/martin-garrix",
+  "sitemap",
+  "robots"
+ ]
+}

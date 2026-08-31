@@ -1,3 +1,4 @@
+import type { WriteupBlock } from '@/lib/richtext';
 // Work / project content — served live from the Payload CMS at build time.
 //
 // This module exports the shared TYPE definitions (used across components and
@@ -29,16 +30,25 @@ export type RichText = unknown;
 export interface Project {
   slug: string;
   title: string;
-  /** Derived — see assignCodes below. Do not author. */
-  code: string;
   year: string;
   /** Absolute URL (Payload media). Serves as both the work-list thumbnail and
    *  the project hero (a single authored image). */
   image: string;
+  /** Populated media doc behind `image` (#58) — srcset source. Null when the
+   *  relation came back unpopulated (seed data / shallow fetch): plain src. */
+  imageDoc?: import('@/lib/media').MediaDoc | null;
+  /** Manual sort nudge — now only a tiebreak within a year (default sort is
+   *  chronological, newest first). */
   order: number;
+  /** Marks the project for the homepage bleed marquee. */
+  featured?: boolean;
+  /** Order within the homepage marquee (lower = earlier). */
+  featuredOrder?: number;
   // --- Work-page fields ----------------------------------------------------
-  /** Drives the filters + overlay tags + list chips + project meta. */
+  /** Indexing only — drives the work filters, tile overlay tags, list chips. */
   capabilities: Capability[];
+  /** Shown in the project-page meta block (replaces capabilities there). */
+  services: Capability[];
   /** Overlay + list secondary line, ALL CAPS, e.g. "WORLD TOUR". */
   tour: string;
   /** Overlay bottom line, e.g. "ALL OF IT NOW X PHNTM". */
@@ -48,14 +58,23 @@ export interface Project {
   summary: string;
   /** Gallery arrangements — an ordered list of rows; each row has a layout
    *  preset and the images that fill its slots. */
-  gallery: { layout: string; images: string[] }[];
+  gallery: { layout: string; images: string[]; docs?: (import('@/lib/media').MediaDoc | null)[] }[];
   /** Figure row under the gallery. */
   stats: { label: string; value: string }[];
   /** Credit groups. Each entry renders TITLE | NAME with the name linking out
    *  to the social `url`. */
   credits: { title: string; entries: { title: string; name: string; url: string }[] }[];
-  /** The expandable write-up panel — rich text (Slate nodes). */
+  /** Coverage links, listed at the foot of the PROJECT INFO panel. Empty for
+   *  most projects — the section is dropped entirely when it is. */
+  press: { publication: string; title: string; url: string; date: string }[];
+  /** The expandable write-up panel — rich text (Slate nodes).
+   *  Superseded by `writeupBlocks`; kept for projects not migrated yet. */
   writeup: RichText;
+  /** The block form of the same panel. When this has rows it wins over
+   *  `writeup` — see renderWriteup in lib/richtext. */
+  writeupBlocks: WriteupBlock[];
+  /** How that panel flows on desktop: 1 or 2 columns (mobile is always 1). */
+  writeupColumns: 1 | 2;
 }
 
-export { getProjects, getProject } from '@/lib/payload';
+export { getProjects, getRoutableProjects, getProject, getHomeMarquee } from '@/lib/payload';
