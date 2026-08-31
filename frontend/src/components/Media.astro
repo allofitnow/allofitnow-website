@@ -36,7 +36,7 @@ const loadAttrs = priority
   : { loading: 'lazy', decoding: 'async' };
 ---
 {isVideo ? (
-  <video src={finalSrc} class={className} autoplay muted loop playsinline preload="metadata" {...rest}></video>
+  <video src={finalSrc} class={className} autoplay loop playsinline preload="metadata" {...rest} muted></video>
 ) : (
   <img
     src={finalSrc}
