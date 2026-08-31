@@ -75,8 +75,8 @@ PYK
   echo "prod: FATAL $1 (ledger $LOGJSON)" >&2
 }
 
-note_phase() {  # note_phase <name> <rc> <attempts>
-  PHASES_JSON=$("$PY" -c 'import json,sys; p=json.loads(sys.argv[1]); p.append({"name":sys.argv[2],"exit":int(sys.argv[3]),"attempts":int(sys.argv[4])}); print(json.dumps(p))' "$PHASES_JSON" "$1" "$2" "$3")
+note_phase() {  # note_phase <name> <rc> <attempts> [duration_s]
+  PHASES_JSON=$("$PY" -c 'import json,sys; p=json.loads(sys.argv[1]); p.append({"name":sys.argv[2],"exit":int(sys.argv[3]),"attempts":int(sys.argv[4]),"duration":int(sys.argv[5] or 0)}); print(json.dumps(p))' "$PHASES_JSON" "$1" "$2" "$3" "${4:-0}")
 }
 
 # --- host / gate guard (live root only; rehearsals and dry-runs pass) -------
@@ -194,14 +194,19 @@ live_has() {  # live_has <key> : exit 0 when the object exists under the prefix
 echo "phase: media"
 MEDIA_RC=0
 TOMB_N=0
+PHASE_START=$(date +%s)
 if [ -d "$MEDIA_SRC" ]; then
   if [ "$DRY_RUN" -ne 1 ] && [ -n "$PREV_MAN" ]; then
-    while IFS= read -r k; do
-      [ -n "$k" ] || continue
-      if live_has "media/$k"; then
-        aws_retry archive-media s3 cp "s3://$BUCKET/${PREFIX}media/$k" "s3://$BUCKET/${PREFIX}archive/$PUBLISH_ID/media/$k" || MEDIA_RC=1
+    # #72: concurrent pre-archive via xargs -P (helper takes argv only).
+    # if-wrap: with pipefail, a bare `live_has && printf` makes the while loop
+    # exit 1 whenever the last key is not live -> false phase failure.
+    written_keys media | while IFS= read -r k; do
+      if [ -n "$k" ] && live_has "media/$k"; then
+        printf '%s\0' "$k" || :
       fi
-    done < <(written_keys media)
+    done | xargs -0 -r -n 1 -P "${AOIN_ARCHIVE_PARALLEL:-8}" \
+      "$LIB/archive-one.sh" "$R2_ENDPOINT" "$BUCKET" \
+      "${PREFIX}media/" "${PREFIX}archive/$PUBLISH_ID/media/" || MEDIA_RC=1
   fi
   DRYFLAG=()
   [ "$DRY_RUN" -eq 1 ] && DRYFLAG=(--dryrun)
@@ -220,49 +225,99 @@ if [ -d "$MEDIA_SRC" ]; then
 else
   echo "prod: media source missing: $MEDIA_SRC (skipping media sync)" >&2
 fi
-note_phase media "$MEDIA_RC" "$ATTEMPTS"
+note_phase media "$MEDIA_RC" "$ATTEMPTS" "$(( $(date +%s) - PHASE_START ))"
 
 # --- phase 2: assets (non-html tree; additive-only; self-archive) -----------
 echo "phase: assets"
 ASSET_RC=0
+PHASE_START=$(date +%s)
 DRYFLAG=()
 [ "$DRY_RUN" -eq 1 ] && DRYFLAG=(--dryrun)
 aws_retry assets s3 sync "$PROD_TREE" "s3://$BUCKET/${PREFIX}" --exclude "*.html" "${DRYFLAG[@]}" || ASSET_RC=1
 if [ "$DRY_RUN" -ne 1 ]; then
-  while IFS= read -r k; do
-    [ -n "$k" ] || continue
-    case "$k" in
-      *.html) continue ;;
-    esac
-    aws_retry archive-obj s3 cp "s3://$BUCKET/${PREFIX}$k" "s3://$BUCKET/${PREFIX}archive/$PUBLISH_ID/$k" || ASSET_RC=1
-  done < <(written_keys tree)
+  # #72: concurrent self-archive via xargs -P (helper takes argv only)
+  written_keys tree | while IFS= read -r k; do
+    if [ -n "$k" ]; then
+      case "$k" in *.html) : ;; *) printf '%s\0' "$k" || : ;; esac
+    fi
+  done | xargs -0 -r -n 1 -P "${AOIN_ARCHIVE_PARALLEL:-8}" \
+    "$LIB/archive-one.sh" "$R2_ENDPOINT" "$BUCKET" \
+    "${PREFIX}" "${PREFIX}archive/$PUBLISH_ID/" || ASSET_RC=1
 fi
 echo "phase: assets done rc=$ASSET_RC"
-note_phase assets "$ASSET_RC" "$ATTEMPTS"
+note_phase assets "$ASSET_RC" "$ATTEMPTS" "$(( $(date +%s) - PHASE_START ))"
 
 # --- phase 3: html (last writes; then manifest + CURRENT pointer) -----------
 echo "phase: html"
 HTML_RC=0
+PHASE_START=$(date +%s)
 aws_retry html s3 sync "$PROD_TREE" "s3://$BUCKET/${PREFIX}" --exclude "*" --include "*.html" "${DRYFLAG[@]}" || HTML_RC=1
 if [ "$DRY_RUN" -ne 1 ]; then
-  while IFS= read -r k; do
-    [ -n "$k" ] || continue
-    case "$k" in
-      *.html) aws_retry archive-obj s3 cp "s3://$BUCKET/${PREFIX}$k" "s3://$BUCKET/${PREFIX}archive/$PUBLISH_ID/$k" || HTML_RC=1 ;;
-    esac
-  done < <(written_keys tree)
+  # #72: concurrent self-archive via xargs -P (helper takes argv only)
+  written_keys tree | while IFS= read -r k; do
+    if [ -n "$k" ]; then
+      case "$k" in *.html) printf '%s\0' "$k" || : ;; esac
+    fi
+  done | xargs -0 -r -n 1 -P "${AOIN_ARCHIVE_PARALLEL:-8}" \
+    "$LIB/archive-one.sh" "$R2_ENDPOINT" "$BUCKET" \
+    "${PREFIX}" "${PREFIX}archive/$PUBLISH_ID/" || HTML_RC=1
   aws_retry manifest-put s3 cp "$LOCAL_MAN" "s3://$BUCKET/${PREFIX}manifests/$PUBLISH_ID.json" || HTML_RC=1
   printf '%s' "$PUBLISH_ID" >"/tmp/prod-CURRENT-$PUBLISH_ID"
   aws_retry current-put s3 cp "/tmp/prod-CURRENT-$PUBLISH_ID" "s3://$BUCKET/${PREFIX}manifests/CURRENT" || HTML_RC=1
 fi
 echo "phase: html done rc=$HTML_RC (manifest=$PUBLISH_ID)"
-note_phase html "$HTML_RC" "$ATTEMPTS"
+note_phase html "$HTML_RC" "$ATTEMPTS" "$(( $(date +%s) - PHASE_START ))"
 
 # --- phase 4: verify (reconciliation: manifest vs bucket) --------------------
 echo "phase: verify"
 VERIFY_RC=0
+PHASE_START=$(date +%s)
 BUCKET_LIST="/tmp/prod-bucketlist-$PUBLISH_ID.txt"
-aws_retry verify s3 ls "s3://$BUCKET/${PREFIX}" --recursive >"$BUCKET_LIST" || VERIFY_RC=1
+: >"$BUCKET_LIST"
+# #72: scoped listing - archive/ and manifests/ grow unboundedly per publish
+# and verify never reads them. List the root non-recursively (root objects +
+# PRE lines, which manifest.py ignores) plus each expected top-level dir
+# recursively; a delimiter probe guards against UNEXPECTED top-level prefixes
+# so completeness matches the old full --recursive listing.
+aws_retry verify-root s3 ls "s3://$BUCKET/${PREFIX}" >>"$BUCKET_LIST" || VERIFY_RC=1
+TOPGUARD=$(mktemp)
+aws_retry verify-guard s3api list-objects-v2 --bucket "$BUCKET" --prefix "${PREFIX:-}" --delimiter "/" \
+  --query "CommonPrefixes[].Prefix" --output text >"$TOPGUARD" || VERIFY_RC=1
+LIVE_DIRS=$("$PY" - "$LOCAL_MAN" "$TOPGUARD" "$PREFIX" <<'PYK'
+import json, sys
+man = json.load(open(sys.argv[1]))
+prefix = sys.argv[3]
+tops = {"media/"}
+for k in man["keys"]:
+    key = k["key"] if isinstance(k, dict) else k
+    if "/" in key:
+        tops.add(key.split("/", 1)[0] + "/")
+    # root files are covered by the non-recursive root listing
+guard = set()
+for g in open(sys.argv[2]).read().split():
+    if g.startswith(prefix):
+        g = g[len(prefix):]
+    guard.add(g)
+allowed = tops | {"archive/", "manifests/"}
+unexpected = sorted(guard - allowed)
+if unexpected:
+    print("UNEXPECTED:" + ",".join(unexpected))
+else:
+    for d in sorted(tops):
+        print(d)
+PYK
+)
+case "$LIVE_DIRS" in
+  UNEXPECTED:*)
+    echo "prod: verify top-level guard RED: unexpected prefixes ${LIVE_DIRS#UNEXPECTED:}" >&2
+    VERIFY_RC=1 ;;
+  *)
+    while IFS= read -r d; do
+      [ -n "$d" ] || continue
+      aws_retry "verify-${d%/}" s3 ls "s3://$BUCKET/${PREFIX}${d}" --recursive >>"$BUCKET_LIST" || VERIFY_RC=1
+    done <<<"$LIVE_DIRS" ;;
+esac
+rm -f "$TOPGUARD"
 if [ "$VERIFY_RC" -eq 0 ]; then
   "$PY" "$LIB/manifest.py" verify --manifest "$LOCAL_MAN" --bucket-list "$BUCKET_LIST" --prefix "$PREFIX"
   VRC=$?
@@ -273,22 +328,48 @@ if [ "$VERIFY_RC" -eq 0 ]; then
       VERIFY_RC=1
     fi
   fi
-else
-  echo "phase: verify listing failed"
 fi
 echo "phase: verify done rc=$VERIFY_RC"
-note_phase verify "$VERIFY_RC" "$ATTEMPTS"
+note_phase verify "$VERIFY_RC" "$ATTEMPTS" "$(( $(date +%s) - PHASE_START ))"
 
 # --- ledger + exit contract --------------------------------------------------
 FINISHED=$(date +%s)
-"$PY" - "$LOGJSON" "$PUBLISH_ID" "$MODE" "$PREFIX" "$STARTED" "$FINISHED" "$PHASES_JSON" "$LOCAL_MAN" <<'PYK'
+CHANGED_TREE=$("$PY" - "$LOCAL_MAN" "${PREV_MAN:-}" <<'PYK'
+import json, sys
+new = json.load(open(sys.argv[1])); prevp = sys.argv[2]
+prev = json.load(open(prevp)) if prevp else None
+newk = {k["key"]: [k["size"], k["etag"]] for k in new["keys"]}
+prevk = {k["key"]: [k["size"], k["etag"]] for k in prev["keys"]} if prev else {}
+print(sum(1 for k in newk if k not in prevk or (newk[k] != prevk[k])))
+PYK
+)
+CHANGED_MEDIA=$("$PY" - "$LOCAL_MAN" "${PREV_MAN:-}" <<'PYK'
+import json, sys
+new = json.load(open(sys.argv[1])); prevp = sys.argv[2]
+prev = json.load(open(prevp)) if prevp else None
+newm = set(new["media_keys"]); prevm = set(prev["media_keys"]) if prev else set()
+print(len(newm - prevm))
+PYK
+)
+"$PY" - "$LOGJSON" "$PUBLISH_ID" "$MODE" "$PREFIX" "$STARTED" "$FINISHED" "$PHASES_JSON" "$LOCAL_MAN" "$CHANGED_TREE" "$CHANGED_MEDIA" "$TOMB_N" <<'PYK'
 import json, sys
 path, pid, mode, prefix, started, finished, phases, man = sys.argv[1:9]
+changed_tree, changed_media, tombstones = sys.argv[9:12]
+try:
+    m = json.load(open(man))
+    bytes_tree = sum(k.get("size", 0) for k in m.get("keys", []))
+    n_tree = len(m.get("keys", []))
+    n_media = len(m.get("media_keys", []))
+except Exception:
+    bytes_tree = n_tree = n_media = 0
 json.dump({
     "publish_id": pid, "mode": mode, "prefix": prefix,
     "started": int(started), "finished": int(finished),
     "elapsed": int(finished) - int(started),
     "phases": json.loads(phases), "manifest": man,
+    "changed_tree": int(changed_tree), "changed_media": int(changed_media),
+    "tombstones": int(tombstones),
+    "bytes_tree": bytes_tree, "objects_tree": n_tree, "objects_media": n_media,
 }, open(path, "w"), indent=1)
 print("prod: ledger %s" % path)
 PYK
