@@ -7,6 +7,8 @@ from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel, Field
 import json
 import time
+from datetime import datetime, timezone
+from pathlib import Path
 
 PAYLOAD_URL = os.environ.get("PAYLOAD_URL", "http://127.0.0.1:3000")
 ADMIN_EMAIL = os.environ.get("PAYLOAD_ADMIN_EMAIL")
@@ -392,8 +394,11 @@ WEBHOOK_SECRET = os.environ.get("MCP_WEBHOOK_SECRET")
 # an operator publish. Saves arriving mid-publish simply queue on the lock
 # and then run their own full publish (which pulls latest content anyway).
 _PUBLISH_LOCK = asyncio.Lock()
-PUBLISH_SCRIPT = "/root/projects/aoin-deploy/deploy/publish.sh"
-PUBLISH_FLOCK = "/run/aoin-publish.lock"
+PUBLISH_SCRIPT = os.environ.get("AOIN_PUBLISH_SCRIPT", "/root/projects/aoin-deploy/deploy/publish.sh")
+PUBLISH_FLOCK = os.environ.get("AOIN_PUBLISH_FLOCK", "/run/aoin-publish.lock")
+PUBLISH_MARKER = os.environ.get("AOIN_PUBLISH_MARKER", "/run/aoin-publish-pending")
+PUBLISH_JOURNAL = os.environ.get("AOIN_PUBLISH_JOURNAL",
+                                 "/root/projects/aoin-deploy/deploy/logs/async-publish-journal.jsonl")
 
 async def _run_publish() -> dict:
     """Execute publish.sh under flock; returns {success, log_tail} or raises."""
@@ -410,6 +415,59 @@ async def _run_publish() -> dict:
         return {"success": False, "log_tail": f"Build failed (exit {proc.returncode})\n{tail}"}
     return {"success": True, "log_tail": "\n".join(stdout.decode().split("\n")[-10:])}
 
+def _journal(entry: dict) -> None:
+    """Append a publish outcome to the async journal; never raise into callers."""
+    try:
+        os.makedirs(os.path.dirname(PUBLISH_JOURNAL), exist_ok=True)
+        with open(PUBLISH_JOURNAL, "a") as f:
+            f.write(json.dumps(entry) + "\n")
+    except OSError as e:
+        print(f"[async-publish] journal write failed: {e}", flush=True)
+
+# --- Async publish (#82) ---
+# /hook only schedules; a single worker serializes publishes under
+# _PUBLISH_LOCK + flock (operator `ssh publish.sh` runs still interlock via
+# the same /run/aoin-publish.lock). A save arriving mid-publish re-arms the
+# event, so exactly one more full publish runs; publish.sh pulls latest
+# content from Payload, so one publish serves every pending save.
+_PUBLISH_REQUESTED = asyncio.Event()
+
+async def _publish_worker() -> None:
+    while True:
+        try:
+            await _PUBLISH_REQUESTED.wait()
+            _PUBLISH_REQUESTED.clear()
+            async with _PUBLISH_LOCK:
+                t0 = time.time()
+                try:
+                    result = await _run_publish()
+                except Exception as e:
+                    result = {"success": False, "log_tail": str(e)}
+                duration = round(time.time() - t0, 1)
+                _journal({"ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                          "duration_s": duration, **result})
+                if result.get("success"):
+                    # Marker cleared only on GREEN: a failed publish stays
+                    # pending so the next save retries it.
+                    try:
+                        os.unlink(PUBLISH_MARKER)
+                    except FileNotFoundError:
+                        pass
+                    print(f"[async-publish] green in {duration}s", flush=True)
+                else:
+                    print(f"[async-publish] FAILED ({duration}s): {result.get('log_tail', '')[-400:]}",
+                          flush=True)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            # Never let the worker die: log and keep serving.
+            print(f"[async-publish] worker error: {e}", flush=True)
+
+def _schedule_publish() -> None:
+    """Request one publish pass; safe to call from any save."""
+    Path(PUBLISH_MARKER).touch()
+    _PUBLISH_REQUESTED.set()
+
 # /hook is registered ON the FastMCP instance (custom_route) so it rides the
 # same ASGI app http_app() builds below. It is exempt from AuthMiddleware by
 # path and carries its own X-Webhook-Secret check.
@@ -418,18 +476,11 @@ async def hook_endpoint(request: Request):
     if request.headers.get("X-Webhook-Secret") != WEBHOOK_SECRET:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
 
-    # One publish at a time (#80). Concurrent saves queue here; each then runs
-    # its own full publish, which re-pulls latest content from Payload anyway.
-    # First caller blocks (Save button stays loading until build completes,
-    # per original design); on failure 500 so the hook throws and Payload
-    # surfaces the error in the same toast it uses for 403s.
-    async with _PUBLISH_LOCK:
-        try:
-            result = await _run_publish()
-        except Exception as e:
-            result = {"success": False, "log_tail": str(e)}
-        status = 200 if result.get("success") else 500
-        return JSONResponse(result, status_code=status)
+    # #82: schedule a background publish and return immediately. The Payload
+    # write itself is the source of truth for the save; publish outcome is
+    # journaled (async-publish-journal.jsonl) + prod ledger + fail counter.
+    _schedule_publish()
+    return JSONResponse({"success": True, "queued": True})
 
 
 class AuthMiddleware(BaseHTTPMiddleware):
@@ -460,3 +511,30 @@ app = mcp.http_app(
     middleware=[Middleware(AuthMiddleware)],
     host_origin_protection=False,
 )
+
+# #82: start the publish worker + recover any publish lost to a restart.
+# FastMCP 3.4.7's http_app() returns StarletteWithLifespan (no on_event),
+# so hook the ASGI lifespan directly.
+_worker_started = False
+
+async def _start_worker_once():
+    global _worker_started
+    if _worker_started:
+        return
+    _worker_started = True
+    asyncio.create_task(_publish_worker())
+    if os.path.exists(PUBLISH_MARKER):
+        print(f"[async-publish] pending marker at startup: {PUBLISH_MARKER} -> rescheduling", flush=True)
+        _PUBLISH_REQUESTED.set()
+
+class _WorkerStartupASGI:
+    """Outer ASGI shim: starts the publish worker when lifespan begins."""
+    def __init__(self, inner):
+        self._inner = inner
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "lifespan":
+            await _start_worker_once()
+        await self._inner(scope, receive, send)
+
+app = _WorkerStartupASGI(app)
