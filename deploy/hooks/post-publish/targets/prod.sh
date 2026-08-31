@@ -268,6 +268,76 @@ fi
 echo "phase: html done rc=$HTML_RC (manifest=$PUBLISH_ID)"
 note_phase html "$HTML_RC" "$ATTEMPTS" "$(( $(date +%s) - PHASE_START ))"
 
+# --- phase 3.5: orphan sweep (#83) --------------------------------------------
+# Layout commits churn _astro/*.[hash] names; the assets sync is additive-only
+# by design, so superseded hashes stay live forever and verify REDs on every
+# later publish (incident 2026-08-31: 3 orphans, tombstones:0, verify RED x2).
+# Sweep = explicit, manifest-derived deletion (HARD RULE compliant): delete
+# live _astro/ keys that appear in NO current manifest. Content is already
+# self-archived at write time, so plain delete (archive ruling 2026-08-31).
+# Guard: refuse when orphans exceed AOIN_SWEEP_MAX_RATIO (default 0.25) of
+# manifest key count - a corrupt/empty manifest can never nuke the bucket;
+# guard-abort leaves the mismatch for verify to RED loudly.
+echo "phase: sweep"
+SWEEP_RC=0
+SWEEP_N=0
+PHASE_START=$(date +%s)
+SWEEP_RATIO="${AOIN_SWEEP_MAX_RATIO:-0.25}"
+SWEEP_KEYS_LOG="$LOGDIR/sweep-$PUBLISH_ID.txt"
+: >"$SWEEP_KEYS_LOG"
+if [ "$DRY_RUN" -eq 1 ]; then
+  echo "prod: [dryrun] sweep skipped (would diff live _astro/ vs manifest)"
+else
+  SWEEP_LIST="/tmp/prod-sweep-$PUBLISH_ID.txt"
+  aws_retry sweep-ls s3 ls "s3://$BUCKET/${PREFIX}_astro/" --recursive >"$SWEEP_LIST" || SWEEP_RC=1
+  if [ "$SWEEP_RC" -eq 0 ]; then
+    SWEEP_ORPHANS=$("$PY" - "$LOCAL_MAN" "$SWEEP_LIST" "$PREFIX" "$SWEEP_RATIO" <<'PYK'
+import json, sys
+man = json.load(open(sys.argv[1]))
+man_astro = {k["key"] for k in man["keys"] if k["key"].startswith("_astro/")}
+total = len(man["keys"])
+prefix = sys.argv[3]
+live = set()
+for line in open(sys.argv[2]):
+    parts = line.split()
+    if len(parts) >= 4:
+        key = parts[3]
+        if prefix and key.startswith(prefix):
+            key = key[len(prefix):]
+        live.add(key)
+orphans = sorted(live - man_astro)
+try:
+    ratio = float(sys.argv[4])
+except ValueError:
+    ratio = 0.25
+if total == 0 or len(orphans) > ratio * total:
+    print("ABORT:%d" % len(orphans))
+else:
+    for k in orphans:
+        print(k)
+PYK
+)
+    case "$SWEEP_ORPHANS" in
+      ABORT:*)
+        echo "prod: sweep guard RED: ${SWEEP_ORPHANS#ABORT:} _astro orphans > ratio $SWEEP_RATIO of manifest - refusing mass delete; verify will report" >&2
+        SWEEP_RC=1 ;;
+      *)
+        while IFS= read -r k; do
+          [ -n "$k" ] || continue
+          if aws_retry sweep-rm s3api delete-object --bucket "$BUCKET" --key "${PREFIX}$k"; then
+            SWEEP_N=$((SWEEP_N + 1))
+            printf '%s\n' "$k" >>"$SWEEP_KEYS_LOG"
+          else
+            SWEEP_RC=1
+          fi
+        done <<<"$SWEEP_ORPHANS"
+        [ "$SWEEP_N" -gt 0 ] && echo "phase: sweep removed $SWEEP_N _astro orphans (log $SWEEP_KEYS_LOG)" ;;
+    esac
+  fi
+fi
+echo "phase: sweep done rc=$SWEEP_RC removed=$SWEEP_N"
+note_phase sweep "$SWEEP_RC" "$ATTEMPTS" "$(( $(date +%s) - PHASE_START ))"
+
 # --- phase 4: verify (reconciliation: manifest vs bucket) --------------------
 echo "phase: verify"
 VERIFY_RC=0
@@ -375,7 +445,7 @@ print("prod: ledger %s" % path)
 PYK
 
 RC=0
-for rc in "$MEDIA_RC" "$ASSET_RC" "$HTML_RC" "$VERIFY_RC"; do
+for rc in "$MEDIA_RC" "$ASSET_RC" "$HTML_RC" "$SWEEP_RC" "$VERIFY_RC"; do
   [ "$rc" -ne 0 ] && RC=1
 done
 true
