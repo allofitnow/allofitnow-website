@@ -266,7 +266,13 @@ html.lenis, html.lenis body { height: auto; }
   @keyframes svc-sub-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   @media (prefers-reduced-motion: reduce) { [data-sub-track] { animation: none; } }
 
-  .mwg_effect083 .media { width: clamp(190px, 56vw, 320px); }
+  /* Phones: the RTC stills stand FULL HEIGHT — the width stays a slab (~56vw) and the still
+     crops to a tall portrait via the base rule's object-fit:cover. height:100% is the pinned
+     stage's height (.svc-stage is fixed;inset:0), so it tracks the viewport exactly, including
+     mobile-Safari's collapsing chrome. An explicit height also makes GalleryMedia's inline
+     aspect-ratio:16/9 inert (aspect-ratio only applies when a dimension is auto), so this wins
+     without !important. buildRealtime centres them and drops the depth scale to match. */
+  .mwg_effect083 .media { width: clamp(190px, 56vw, 320px); height: 100%; }
   .mwg_effect051 .media { width: clamp(176px, 52vw, 300px); }
   /* Ghetto-but-correct: zoom the WHOLE composited ring with a 2D scale instead of
      enlarging the slot (--mr-w), which would tighten the arc spacing and worsen the

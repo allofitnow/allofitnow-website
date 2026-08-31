@@ -384,13 +384,13 @@ function buildRealtime(root, master, reparks) {
   medias.forEach((m, i) => {
     const L = LAYERS[i % LAYERS.length];             // depth: reach (speed) + scale
     const lane = (i * 7) % n;                         // shuffle into evenly-spread vertical lanes
-    // Keep the stream in a centred band so large stills don't hang off the top/bottom edges
-    // (the top lane used to sit at 5% and get cropped). Phones: a LOWER, wider band so the now
-    // ~2× stills clear the title + stacked capability bar (chrome bottom ≈ 40%) and don't crop.
-    // Phones: the single-line sub marquee frees the top, so the stream starts higher (36%)
-    // and spreads wider — bigger presence without the overlapping pile (scale kept modest).
-    const top = (mob ? 36 : 22) + (lane / Math.max(1, n - 1)) * (mob ? 52 : 54);
-    const scale = mob ? L.scale * 0.78 : L.scale;
+    // Desktop: keep the stream in a centred band so large stills don't hang off the top/bottom
+    // edges (the top lane used to sit at 5% and get cropped).
+    // Phones: every still is a full-height slab (services.css), so there are no vertical lanes
+    // left to spread into and no headroom to scale — each sits dead-centre at its natural size.
+    // Depth still reads through the per-layer horizontal reach (speed) and z-order.
+    const top = mob ? 50 : 22 + (lane / Math.max(1, n - 1)) * 54;
+    const scale = mob ? 1 : L.scale;
     const fromX = () => window.innerWidth * L.reach + 140;
     const toX = () => -window.innerWidth * L.reach - 140;
     gsap.set(m, { top: top.toFixed(2) + '%', yPercent: -50, zIndex: L.z, scale, x: fromX });
