@@ -378,9 +378,17 @@ export function mountEffects(ctrl) {
 function buildRealtime(root, master, reparks) {
   const el = root.querySelector('.mwg_effect083');
   if (!el) return;
-  const medias = [...el.querySelectorAll('.media')];
-  const n = medias.length;
   const mob = window.innerWidth < 768;
+  const all = [...el.querySelectorAll('.media')];
+  // Phones: a full-height slab is a far bigger object than the old 16:9 card, so all 16 in the
+  // stream read as clutter. Fly every other still and hide the rest. MOB_KEEP is the 1-in-N.
+  const MOB_KEEP = 2;
+  const medias = mob ? all.filter((_, i) => i % MOB_KEEP === 0) : all;
+  if (mob) all.forEach((m, i) => { if (i % MOB_KEEP) gsap.set(m, { display: 'none' }); });
+  const n = medias.length;
+  // Half the stills over the same scroll window would empty the section early, so widen the
+  // stagger by the same factor — the flight keeps its original pacing and duration.
+  const stag = mob ? RTC.stag * MOB_KEEP : RTC.stag;
   medias.forEach((m, i) => {
     const L = LAYERS[i % LAYERS.length];             // depth: reach (speed) + scale
     const lane = (i * 7) % n;                         // shuffle into evenly-spread vertical lanes
@@ -395,7 +403,7 @@ function buildRealtime(root, master, reparks) {
     const toX = () => -window.innerWidth * L.reach - 140;
     gsap.set(m, { top: top.toFixed(2) + '%', yPercent: -50, zIndex: L.z, scale, x: fromX });
     if (reparks) reparks.push(() => gsap.set(m, { x: fromX }));
-    master.fromTo(m, { x: fromX }, { x: toX, ease: 'none', duration: RTC.travel }, RTC.start + i * RTC.stag);
+    master.fromTo(m, { x: fromX }, { x: toX, ease: 'none', duration: RTC.travel }, RTC.start + i * stag);
   });
 }
 
