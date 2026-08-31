@@ -160,7 +160,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
        prev/next + all-work block. project-page.ts still owns the open state. */}
   <ProjectBar next={{ href: `/work/${next.slug}`, title: next.title, tour: next.tour }} />
 
-  <aside class="pp__aside" id="pp-writeup" data-pp-aside aria-hidden="true">
+  <aside class="pp__aside" id="pp-writeup" data-pp-aside data-lenis-prevent aria-hidden="true">
     <div class="pp__notes" data-pp-notes>
       {/* Mobile-only swipe cue (top of the write-up) — tap or swipe back. */}
       <button class="pp__cue pp__cue--back" data-pp-cue="close" type="button">«««&nbsp;&nbsp;SWIPE FOR {CUE_WORK}&nbsp;&nbsp;«««</button>
@@ -679,7 +679,14 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     right: var(--pp-edge);
     width: 0;
     max-height: var(--pp-aside-maxh, calc(100vh - 148px - 92px));
-    overflow: hidden;
+    /* Height-capped, so a long write-up has to scroll inside the panel. overflow-x
+       stays hidden to clip the content while the width animates open; overscroll
+       keeps the wheel from chaining to the page behind once the panel bottoms out.
+       Lenis owns the wheel site-wide, so the aside also carries data-lenis-prevent
+       (see the markup) — without it Lenis eats the gesture and the panel never moves. */
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior: contain;
     box-sizing: border-box;
     z-index: 15;
     pointer-events: none;
