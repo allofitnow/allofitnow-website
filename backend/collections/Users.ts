@@ -3,7 +3,7 @@ import { CollectionConfig } from "payload/types";
 const Users: CollectionConfig = {
   slug: "users",
   auth: {
-    tokenExpiration: 7200, // 2 hours (default) — JWTs are stateless; logout only clears the cookie client-side
+    tokenExpiration: 28800, // #81: 8h workday (was 7200/2h default) - designers were auto-logged-out mid-edit; JWTs are stateless; logout only clears the cookie client-side
     cookies: {
       secure: false,
       sameSite: "lax",
