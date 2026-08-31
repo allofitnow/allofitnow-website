@@ -16,7 +16,7 @@ CLI_OPTS=(--cli-connect-timeout 10 --cli-read-timeout 120)
 n=1
 while :; do
   if aws --endpoint-url "$ENDPOINT" "${CLI_OPTS[@]}" \
-       s3 cp "s3://$BUCKET/${SRC_PREFIX}${KEY}" "s3://$BUCKET/${DEST_PREFIX}${KEY}" >/dev/null 2>&1; then
+       s3 cp --copy-props none "s3://$BUCKET/${SRC_PREFIX}${KEY}" "s3://$BUCKET/${DEST_PREFIX}${KEY}" >/dev/null 2>&1; then
     exit 0
   fi
   [ "$n" -ge "$ATTEMPTS" ] && exit 1
