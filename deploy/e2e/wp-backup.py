@@ -88,7 +88,20 @@ def dump_media(base, out, workers):
     os.makedirs(f"{out}/uploads", exist_ok=True)
     media, page = [], 1
     while True:
-        batch = json.loads(fetch(f"{base}/wp-json/wp/v2/media?per_page=100&page={page}"))
+        try:
+            batch = json.loads(fetch(f"{base}/wp-json/wp/v2/media?per_page=100&page={page}"))
+        except urllib.error.HTTPError as e:
+            if e.code == 400 and page > 1:
+                # WP caps page-pagination at 100 pages; finish via offset
+                off = len(media)
+                while True:
+                    batch = json.loads(fetch(f"{base}/wp-json/wp/v2/media?per_page=100&offset={off}"))
+                    if not batch:
+                        break
+                    media.extend(batch)
+                    off += len(batch)
+                break
+            raise
         if not batch:
             break
         media.extend(batch)
