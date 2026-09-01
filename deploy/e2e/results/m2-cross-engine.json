@@ -1,0 +1,54 @@
+{
+ "target": "https://46009.someofitlater.com",
+ "at": "2026-09-01T06:25:51.636283Z",
+ "engines": {
+  "webkit": [
+   {
+    "path": "/",
+    "site": 200,
+    "errors": []
+   },
+   {
+    "path": "/work",
+    "site": 200,
+    "errors": []
+   },
+   {
+    "path": "/services",
+    "site": 200,
+    "errors": []
+   },
+   {
+    "path": "/work/trilogy",
+    "site": 200,
+    "errors": []
+   }
+  ],
+  "firefox": [
+   {
+    "path": "/",
+    "site": 200,
+    "errors": []
+   },
+   {
+    "path": "/work",
+    "site": 200,
+    "errors": []
+   },
+   {
+    "path": "/services",
+    "site": 200,
+    "errors": []
+   },
+   {
+    "path": "/work/trilogy",
+    "site": 200,
+    "errors": []
+   }
+  ]
+ },
+ "softnav": {
+  "url": "https://46009.someofitlater.com/services",
+  "bound": true
+ }
+}

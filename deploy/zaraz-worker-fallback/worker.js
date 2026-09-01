@@ -1,4 +1,4 @@
-// 46009 routing worker v3g - deploy/zaraz-worker-fallback/worker.js
+// 46009 routing worker v3h - deploy/zaraz-worker-fallback/worker.js
 // v3d -> v3f (#71 CUT-2 + #73 CUT-5), 2026-08-31:
 //   1. Per-host GA4: Host header -> measurement id map. 46009 keeps
 //      G-1TVWRSCCLN (staging ref, property 552018344); allofitnow.com gets
@@ -96,7 +96,10 @@ const SHIM = [
   'try{gtag(\'event\',\'inquiry_send\',{subject:(s&&s.value)||\'\'});}catch(e){}});}',
   'if(n&&!n.__aoinBound){n.__aoinBound=1;n.addEventListener(\'click\',function(){',
   'try{gtag(\'event\',\'nav_menu_open\');}catch(e){}});}}',
-  'bind();document.addEventListener(\'astro:page-load\',function(){bind();});})();</script>',
+  'bind();document.addEventListener(\'DOMContentLoaded\',function(){bind();});',
+  'document.addEventListener(\'astro:page-load\',function(){bind();});',
+  'document.addEventListener(\'astro:after-swap\',function(){setTimeout(bind,50);setTimeout(bind,400);setTimeout(bind,1500);});',
+  'if(window.MutationObserver){new MutationObserver(function(){bind();}).observe(document.documentElement,{childList:true,subtree:true});}})();</script>',
 ].join("");
 
 function redirect301(location) {
@@ -105,7 +108,7 @@ function redirect301(location) {
     headers: {
       "location": location,
       "cache-control": "public, max-age=86400",
-      "x-46009-worker": "v3g",
+      "x-46009-worker": "v3h",
     },
   });
 }
@@ -149,7 +152,7 @@ export default {
     if (url.pathname.startsWith("/archive/")) {
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3g" },
+        headers: { "x-46009-worker": "v3h" },
       });
     }
 
@@ -189,13 +192,13 @@ export default {
           headers: {
             "content-type": MIME.html,
             "cache-control": "no-cache",
-            "x-46009-worker": "v3g",
+            "x-46009-worker": "v3h",
           },
         });
       }
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3g" },
+        headers: { "x-46009-worker": "v3h" },
       });
     }
 
@@ -203,7 +206,7 @@ export default {
     const headers = new Headers();
     headers.set("etag", obj.httpEtag);
     headers.set("content-type", MIME[ext] || "application/octet-stream");
-    headers.set("x-46009-worker", "v3g");
+    headers.set("x-46009-worker", "v3h");
     if (ext === "html") {
       headers.set("cache-control", "no-cache");
     } else {
