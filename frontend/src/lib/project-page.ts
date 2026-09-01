@@ -51,7 +51,13 @@ export function initProjectPage(root: HTMLElement) {
   function track() {
     const titleTop = Math.max(92, titleRow.getBoundingClientRect().top);
     root.style.setProperty('--pp-title-top', `${titleTop}px`);
-    const asideTop = Math.max(148, hero.getBoundingClientRect().top);
+    // Closed, the panel follows the hero so it lines up with the artwork. Open,
+    // it is a reading surface: pin it to the chrome band (the same 148/92 offsets
+    // the stylesheet falls back to) so a long write-up gets the full height
+    // instead of the ~380px gap the hero happens to leave at the top of the page.
+    // Without this the panel is far shorter than its content and cannot hand the
+    // wheel off either, because it carries overscroll-behavior: contain.
+    const asideTop = expanded ? 148 : Math.max(148, hero.getBoundingClientRect().top);
     root.style.setProperty('--pp-aside-top', `${asideTop}px`);
     root.style.setProperty('--pp-aside-maxh', `${Math.max(0, innerHeight - asideTop - 92)}px`);
   }
@@ -202,6 +208,7 @@ export function initProjectPage(root: HTMLElement) {
     expanded = next;
     root.dataset.expanded = String(expanded);
     fit(); // set the new size target NOW so it transitions in step with the reflow
+    track(); // re-pin the panel band for the new state (see track())
     root.style.setProperty('--panel-delay', expanded ? '180ms' : '0ms');
     toggle.setAttribute('aria-expanded', String(expanded));
     aside.setAttribute('aria-hidden', String(!expanded));
