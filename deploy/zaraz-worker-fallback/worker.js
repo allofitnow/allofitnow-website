@@ -1,4 +1,4 @@
-// 46009 routing worker v3g-pre - deploy/zaraz-worker-fallback/worker.js
+// 46009 routing worker v3g - deploy/zaraz-worker-fallback/worker.js
 // v3d -> v3f (#71 CUT-2 + #73 CUT-5), 2026-08-31:
 //   1. Per-host GA4: Host header -> measurement id map. 46009 keeps
 //      G-1TVWRSCCLN (staging ref, property 552018344); allofitnow.com gets
@@ -105,7 +105,7 @@ function redirect301(location) {
     headers: {
       "location": location,
       "cache-control": "public, max-age=86400",
-      "x-46009-worker": "v3g-pre",
+      "x-46009-worker": "v3g",
     },
   });
 }
@@ -149,7 +149,7 @@ export default {
     if (url.pathname.startsWith("/archive/")) {
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3g-pre" },
+        headers: { "x-46009-worker": "v3g" },
       });
     }
 
@@ -189,13 +189,13 @@ export default {
           headers: {
             "content-type": MIME.html,
             "cache-control": "no-cache",
-            "x-46009-worker": "v3g-pre",
+            "x-46009-worker": "v3g",
           },
         });
       }
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3g-pre" },
+        headers: { "x-46009-worker": "v3g" },
       });
     }
 
@@ -203,7 +203,7 @@ export default {
     const headers = new Headers();
     headers.set("etag", obj.httpEtag);
     headers.set("content-type", MIME[ext] || "application/octet-stream");
-    headers.set("x-46009-worker", "v3g-pre");
+    headers.set("x-46009-worker", "v3g");
     if (ext === "html") {
       headers.set("cache-control", "no-cache");
     } else {
