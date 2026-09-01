@@ -31,7 +31,10 @@ for SCRIPT in deploy/hooks/post-publish/targets/*.sh; do
   OUT=$(timeout "${AOIN_TARGET_TIMEOUT:-300}" bash "$SCRIPT" \
         --build-tree "$BUILD_TREE" --publish-id "$PUBLISH_ID" 2>&1)
   RC=$?
-  ESC=$(printf '%s\n' "$OUT" | tail -n 20 | tr '\n\t' '  ')
+  # tr: flatten \n and \t; \r too - aws CLI progress output embeds \r, and
+  # universal-newlines python would otherwise split the results line apart
+  # (ledger-writer ValueError, incident 2026-09-01 post-publish dbg runs).
+  ESC=$(printf '%s\n' "$OUT" | tail -n 20 | tr '\n\t\r' '  ')
   printf '%s\t%s\t%s\n' "$T" "$RC" "$ESC" >> "$RESULTS"
   if [ "$RC" -ne 0 ]; then
     echo "WARN: post-publish target ${T} exited ${RC}; staging unaffected; see ${LEDGER}" >&2
@@ -43,7 +46,8 @@ python3 - "$LEDGER" "$PUBLISH_ID" "$BUILD_TREE" "$STARTED" "$FINISHED" "$RESULTS
 import json, os, sys, urllib.request
 ledger, pid, tree, started, finished, results = sys.argv[1:7]
 targets = []
-for line in open(results, encoding="utf-8"):
+# newline="\n": never treat embedded \r (aws progress) as a line terminator
+for line in open(results, encoding="utf-8", newline="\n"):
     name, code, tail = line.rstrip("\n").split("\t", 2)
     targets.append({"name": name, "exit": int(code), "tail": tail})
 doc = {"publish_id": pid, "build_tree": tree, "started": int(started),
