@@ -22,7 +22,7 @@
    "row": 4,
    "check": "publish battery green",
    "status": "PASS",
-   "detail": "worker stamp v3g-pre"
+   "detail": "worker stamp v3h"
   },
   {
    "row": 5,
@@ -40,7 +40,7 @@
    "row": 7,
    "check": "worker injection regression",
    "status": "PASS",
-   "detail": "gtag id for host present=True, stamp v3g-pre"
+   "detail": "gtag id for host present=True, stamp v3h"
   },
   {
    "row": 9,
@@ -117,8 +117,8 @@
   {
    "row": "M2",
    "check": "safari-firefox",
-   "status": "MANUAL",
-   "detail": "unrecorded manual check"
+   "status": "DONE",
+   "detail": "by hermes 2026-09-01"
   },
   {
    "row": "M3",
@@ -134,9 +134,8 @@
  ],
  "manualOpen": [
   "M1:real-phone spot-check",
-  "M2:safari-firefox",
   "M3:code-freeze"
  ],
  "exit": "FAIL",
- "finishedAt": "2026-09-01T04:56:37Z"
+ "finishedAt": "2026-09-01T21:53:52Z"
 }
