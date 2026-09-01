@@ -22,7 +22,7 @@
    "row": 4,
    "check": "publish battery green",
    "status": "PASS",
-   "detail": "worker stamp v3h"
+   "detail": "worker stamp v3i"
   },
   {
    "row": 5,
@@ -40,7 +40,7 @@
    "row": 7,
    "check": "worker injection regression",
    "status": "PASS",
-   "detail": "gtag id for host present=True, stamp v3h"
+   "detail": "gtag id for host present=True, stamp v3i"
   },
   {
    "row": 9,
@@ -99,8 +99,8 @@
   {
    "row": 70,
    "check": "dns-diff exit 0",
-   "status": "FAIL",
-   "detail": "dns-diff: no CF token (env CF_TOKEN or hermes config)"
+   "status": "PASS",
+   "detail": "dns-diff: CF zone 7503fd08c9abfc2f441e8c27938a45c4 status=pending\ndns-diff: 18 r53 sets vs 18 cf sets, DIFF: 0"
   },
   {
    "row": 70,
@@ -129,13 +129,11 @@
  ],
  "target": "46009.someofitlater.com",
  "mode": "live",
- "fails": [
-  "70:dns-diff exit 0"
- ],
+ "fails": [],
  "manualOpen": [
   "M1:real-phone spot-check",
   "M3:code-freeze"
  ],
  "exit": "FAIL",
- "finishedAt": "2026-09-01T21:53:52Z"
+ "finishedAt": "2026-09-01T22:11:56Z"
 }
