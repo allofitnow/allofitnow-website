@@ -15,6 +15,7 @@
 import '../styles/services.css';
 import { buildSrcset } from '../lib/media';
 import Nav from '../components/chrome/Nav.astro';
+import Cursor from '../components/chrome/Cursor.astro';
 import HoverCard from '../components/chrome/HoverCard.astro';
 import Preloader from '../components/home/Preloader.astro';
 import PageTitle from '../components/services/PageTitle.astro';
@@ -192,6 +193,11 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
     so there's no flash; the bottom script lifts it once the stage is set. */}
 <Preloader />
 <Nav />
+{/* Site-wide crosshair cursor. Base.astro mounts this for every other page; this
+    one is a standalone document outside Base, so it has to mount it itself or the
+    page falls back to the OS arrow. It also carries the global `cursor: none` rule,
+    which is why its absence showed up as the native cursor rather than no cursor. */}
+<Cursor />
 {/* Cursor-following project card — shows over project-linked stills (same rich card as the home
     marquee: name / tour / capabilities). Populated by lib/hovercard.ts from each still's data-*. */}
 <HoverCard />
