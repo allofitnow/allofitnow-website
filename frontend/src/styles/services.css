@@ -272,7 +272,7 @@ html.lenis, html.lenis body { height: auto; }
      mobile-Safari's collapsing chrome. An explicit height also makes GalleryMedia's inline
      aspect-ratio:16/9 inert (aspect-ratio only applies when a dimension is auto), so this wins
      without !important. buildRealtime centres them and drops the depth scale to match. */
-  .mwg_effect083 .media { width: clamp(190px, 56vw, 320px); height: 100%; }
+  .mwg_effect083 .media { width: clamp(260px, 78vw, 460px); height: 100%; }
   .mwg_effect051 .media { width: clamp(176px, 52vw, 300px); }
   /* Ghetto-but-correct: zoom the WHOLE composited ring with a 2D scale instead of
      enlarging the slot (--mr-w), which would tighten the arc spacing and worsen the
