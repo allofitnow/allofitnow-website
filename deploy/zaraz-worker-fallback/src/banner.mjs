@@ -45,6 +45,10 @@ const STYLE = [
   '.aoin-cs-fab:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(0,0,0,.55),0 0 0 10px rgba(20,20,25,.32);}',
   '.aoin-cs-fab:focus-visible{outline:3px solid #9db8ff;outline-offset:2px;}',
   '.aoin-cs-fab svg{width:26px;height:26px;display:block;}',
+  // site hides the native cursor site-wide (custom .aoin-cursor at z:90);
+  // our overlay/notice/fab stack above it, which buried the ONLY visible
+  // cursor -> lift the brand cursor above our layer so it stays visible
+  '.aoin-cursor{z-index:2147483600!important}',
   '@media (prefers-reduced-motion: reduce){.aoin-cs-overlay,.aoin-cs-notice{transition:none;}}',
   '</style>',
 ].join("");
