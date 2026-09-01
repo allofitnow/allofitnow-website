@@ -1,0 +1,28 @@
+{
+ "kind": "wp-backup-manifest",
+ "source": "https://allofitnow.com",
+ "started": "2026-09-01T04:23:40.395353Z",
+ "finished": "2026-09-01T04:24:42.890749Z",
+ "method": "WP REST content snapshot (pages+posts JSON + media binaries, size-verified)",
+ "caveat": "content-level snapshot, not mysqldump; users/plugins/themes/settings not captured (host creds user-held)",
+ "content": {
+  "pages": {
+   "count": 12,
+   "bytes": 123910
+  },
+  "posts": {
+   "count": 0,
+   "bytes": 2
+  }
+ },
+ "media": {
+  "items": 1149,
+  "ok": 1149,
+  "cached": 0,
+  "bytes": 2872929743,
+  "mismatch": []
+ },
+ "media_errors": [],
+ "size_mismatch": [],
+ "total_bytes": 2873053655
+}
