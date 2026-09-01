@@ -1,0 +1,146 @@
+{
+ "entries": [
+  {
+   "row": 1,
+   "check": "pages+ga4+meta suite",
+   "status": "PASS",
+   "detail": "/ HTTP 200, meta description=True"
+  },
+  {
+   "row": 2,
+   "check": "media origin gate",
+   "status": "PASS",
+   "detail": "staging-URL refs in / HTML: 0"
+  },
+  {
+   "row": 3,
+   "check": "static (no public admin)",
+   "status": "PASS",
+   "detail": "Payload admin LAN-only on .245 by design (wiki row 3 N/A)"
+  },
+  {
+   "row": 4,
+   "check": "publish battery green",
+   "status": "PASS",
+   "detail": "worker stamp v3f"
+  },
+  {
+   "row": 5,
+   "check": "REAL_UA parity surface",
+   "status": "FAIL",
+   "detail": "title=True og=False twitter=False (full parity = pinned-suite stage)"
+  },
+  {
+   "row": 6,
+   "check": "srcset ladder live",
+   "status": "PASS",
+   "detail": "srcset attrs on /work/trilogy: 7"
+  },
+  {
+   "row": 7,
+   "check": "worker injection regression",
+   "status": "PASS",
+   "detail": "gtag id for host present=True, stamp v3f"
+  },
+  {
+   "row": 9,
+   "check": "exactly-one gtag per host",
+   "status": "PASS",
+   "detail": "gtag script tags in /: 1"
+  },
+  {
+   "row": 8,
+   "check": "Plan B (#65) - not a gate",
+   "status": "PASS",
+   "detail": "superseded: GA4 = worker gtag; Zaraz OFF new zone (wiki row 8)"
+  },
+  {
+   "row": 10,
+   "check": "board 39 owns consent",
+   "status": "PASS",
+   "detail": "deferred: cookie-compliance sprint board 39 (wiki row 10); not a launch gate"
+  },
+  {
+   "row": 11,
+   "check": "CUT-5 301s + auto-rule",
+   "status": "PASS",
+   "detail": "6/6 exact-match 301s"
+  },
+  {
+   "row": 11,
+   "check": "legacy 301 query preservation",
+   "status": "PASS",
+   "detail": "Location https://allofitnow.com/work/trilogy?utm=x"
+  },
+  {
+   "row": 11,
+   "check": "archive deny (v3f)",
+   "status": "PASS",
+   "detail": "/archive/...html 404, /archive/ 404"
+  },
+  {
+   "row": 12,
+   "check": "sitemap 200 + robots line",
+   "status": "FAIL",
+   "detail": "sitemap 404, robots 200, Sitemap-line=False"
+  },
+  {
+   "row": 13,
+   "check": "week-1 watch spec'd",
+   "status": "PASS",
+   "detail": "#75 week-1 drain/fill + post-flip suite in 24h (#74 AC2); wiki row 13 PARTIAL by design"
+  },
+  {
+   "row": 70,
+   "check": "wp-backup manifest",
+   "status": "FAIL",
+   "detail": "missing results/wp-backup-manifest.json (#70 AC6)"
+  },
+  {
+   "row": 70,
+   "check": "dns-diff exit 0",
+   "status": "FAIL",
+   "detail": "missing deploy/e2e/dns-diff.py (#70 AC2)"
+  },
+  {
+   "row": 70,
+   "check": "TTL floor <= 300",
+   "status": "FAIL",
+   "detail": "missing results/ttl-floor.json (#70 AC3)"
+  },
+  {
+   "row": "M1",
+   "check": "real-phone spot-check",
+   "status": "MANUAL",
+   "detail": "unrecorded manual check"
+  },
+  {
+   "row": "M2",
+   "check": "safari-firefox",
+   "status": "MANUAL",
+   "detail": "unrecorded manual check"
+  },
+  {
+   "row": "M3",
+   "check": "code-freeze",
+   "status": "MANUAL",
+   "detail": "unrecorded manual check"
+  }
+ ],
+ "target": "46009.someofitlater.com",
+ "mode": "live",
+ "fails": [
+  "5:REAL_UA parity surface",
+  "12:sitemap 200 + robots line",
+  "70:wp-backup manifest",
+  "70:dns-diff exit 0",
+  "70:TTL floor <= 300"
+ ],
+ "manualOpen": [
+  "M1:real-phone spot-check",
+  "M2:safari-firefox",
+  "M3:code-freeze"
+ ],
+ "exit": "FAIL",
+ "finishedAt": "2026-08-31T06:08:40Z"
+}

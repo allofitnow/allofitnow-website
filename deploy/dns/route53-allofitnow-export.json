@@ -1,0 +1,223 @@
+[
+ {
+  "Name": "allofitnow.com.",
+  "Type": "A",
+  "TTL": 60,
+  "ResourceRecords": [
+   {
+    "Value": "44.215.73.49"
+   }
+  ]
+ },
+ {
+  "Name": "allofitnow.com.",
+  "Type": "MX",
+  "TTL": 60,
+  "ResourceRecords": [
+   {
+    "Value": "10 ALT3.ASPMX.L.GOOGLE.COM."
+   },
+   {
+    "Value": "10 ALT4.ASPMX.L.GOOGLE.COM."
+   },
+   {
+    "Value": "5 ALT1.ASPMX.L.GOOGLE.COM."
+   },
+   {
+    "Value": "5 ALT2.ASPMX.L.GOOGLE.COM."
+   },
+   {
+    "Value": "1 ASPMX.L.GOOGLE.COM."
+   }
+  ]
+ },
+ {
+  "Name": "allofitnow.com.",
+  "Type": "NS",
+  "TTL": 60,
+  "ResourceRecords": [
+   {
+    "Value": "ns-365.awsdns-45.com."
+   },
+   {
+    "Value": "ns-1049.awsdns-03.org."
+   },
+   {
+    "Value": "ns-1019.awsdns-63.net."
+   },
+   {
+    "Value": "ns-1880.awsdns-43.co.uk."
+   }
+  ]
+ },
+ {
+  "Name": "allofitnow.com.",
+  "Type": "SOA",
+  "TTL": 900,
+  "ResourceRecords": [
+   {
+    "Value": "ns-365.awsdns-45.com. awsdns-hostmaster.amazon.com. 1 7200 900 1209600 86400"
+   }
+  ]
+ },
+ {
+  "Name": "_670e0040caa970f5a150ba07db4f29f2.allofitnow.com.",
+  "Type": "CNAME",
+  "TTL": 300,
+  "ResourceRecords": [
+   {
+    "Value": "_0a3b719bbb4961f1df1df51f99212762.xrchbtpdjs.acm-validations.aws."
+   }
+  ]
+ },
+ {
+  "Name": "_acme-challenge.allofitnow.com.",
+  "Type": "TXT",
+  "TTL": 60,
+  "ResourceRecords": [
+   {
+    "Value": "\"GgG5l4CYptFSSb-YI6xAnABmCJPPdp-ZT35ox8NkUcI\""
+   }
+  ]
+ },
+ {
+  "Name": "_dmarc.allofitnow.com.",
+  "Type": "TXT",
+  "TTL": 300,
+  "ResourceRecords": [
+   {
+    "Value": "\"v=DMARC1; p=none;\""
+   }
+  ]
+ },
+ {
+  "Name": "dyu2fk463orhmze34gkpqynwk3j3teau._domainkey.allofitnow.com.",
+  "Type": "CNAME",
+  "TTL": 1800,
+  "ResourceRecords": [
+   {
+    "Value": "dyu2fk463orhmze34gkpqynwk3j3teau.dkim.amazonses.com"
+   }
+  ]
+ },
+ {
+  "Name": "futnjt2rzspwulgmq4u3ewo2pm3ziqc3._domainkey.allofitnow.com.",
+  "Type": "CNAME",
+  "TTL": 1800,
+  "ResourceRecords": [
+   {
+    "Value": "futnjt2rzspwulgmq4u3ewo2pm3ziqc3.dkim.amazonses.com"
+   }
+  ]
+ },
+ {
+  "Name": "google._domainkey.allofitnow.com.",
+  "Type": "TXT",
+  "TTL": 60,
+  "ResourceRecords": [
+   {
+    "Value": "\"v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQCB+QnDNHLsE+FCvIFRNtZaRaAu5A1IW4CC2wZqERZ9vLzwE0avTRuKQElwfcN58oihMFo+0XW0Ftgszym79WYHlm+wNQEtZue7eLxF1+IlC7YNBbtX5FPdte+vfsgyCuF3zxfSydy/sREM5GAbaegRFr2YSzZnJ0Uzb7ZjzeJtsQIDAQAB\""
+   }
+  ]
+ },
+ {
+  "Name": "ktstc4drr3jpc3ybz46hb2u3pcjul6br._domainkey.allofitnow.com.",
+  "Type": "CNAME",
+  "TTL": 1800,
+  "ResourceRecords": [
+   {
+    "Value": "ktstc4drr3jpc3ybz46hb2u3pcjul6br.dkim.amazonses.com"
+   }
+  ]
+ },
+ {
+  "Name": "mailtrack._domainkey.allofitnow.com.",
+  "Type": "TXT",
+  "TTL": 300,
+  "ResourceRecords": [
+   {
+    "Value": "\"v=DKIM1;p=MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA7mYtGOc/OUq1/lAIkRTWJ8GUGvl85DkxKlJcgO2oAc4M8uFWtbyD/ffdVN9ha3dE+PVcJVePj/vMR18EsUUEoShS4aS980rtb2oNY/6sgUSrLzJx8bZP/x7zkAxCQK7cEJIbPqocRxTq4yi2CjjA1lkUx07fy2RKjhduQEuhwN7Xbc2hOeh2K9YvRaImJ9srrnYaDyp\"\"dQzKs1JFm0wNQQLxrRhGFpO6Dxv+sPKrTmw9z6+k16LwcMI/KKhjyPGecez3EIYRNe+DkZTN7GgblRNOTP1d4sOvmc33o96ymi501m90L1VL+TuYkSyTfWmqDeVQnlV6pruFz9OaoXOS69wIDAQAB\""
+   }
+  ]
+ },
+ {
+  "Name": "calendar.allofitnow.com.",
+  "Type": "CNAME",
+  "TTL": 300,
+  "ResourceRecords": [
+   {
+    "Value": "ghs.googlehosted.com"
+   }
+  ]
+ },
+ {
+  "Name": "drive.allofitnow.com.",
+  "Type": "CNAME",
+  "TTL": 300,
+  "ResourceRecords": [
+   {
+    "Value": "ghs.googlehosted.com"
+   }
+  ]
+ },
+ {
+  "Name": "groups.allofitnow.com.",
+  "Type": "CNAME",
+  "TTL": 300,
+  "ResourceRecords": [
+   {
+    "Value": "ghs.googlehosted.com"
+   }
+  ]
+ },
+ {
+  "Name": "sites.allofitnow.com.",
+  "Type": "CNAME",
+  "TTL": 300,
+  "ResourceRecords": [
+   {
+    "Value": "ghs.googlehosted.com"
+   }
+  ]
+ },
+ {
+  "Name": "store.allofitnow.com.",
+  "Type": "A",
+  "TTL": 60,
+  "ResourceRecords": [
+   {
+    "Value": "54.221.78.241"
+   }
+  ]
+ },
+ {
+  "Name": "wiki.allofitnow.com.",
+  "Type": "CNAME",
+  "TTL": 300,
+  "ResourceRecords": [
+   {
+    "Value": "ghs.googlehosted.com"
+   }
+  ]
+ },
+ {
+  "Name": "www.allofitnow.com.",
+  "Type": "CNAME",
+  "TTL": 300,
+  "ResourceRecords": [
+   {
+    "Value": "allofitnow.com"
+   }
+  ]
+ },
+ {
+  "Name": "_acme-challenge.www.allofitnow.com.",
+  "Type": "TXT",
+  "TTL": 60,
+  "ResourceRecords": [
+   {
+    "Value": "\"CJsBw1nuNLbn3Ohm877niD8cJaNzXEjcIGbG4s5188s\""
+   }
+  ]
+ }
+]
