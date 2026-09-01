@@ -647,6 +647,11 @@ function initEquipment(root) {
   const SUBJECT = {
     'disguise-gx3':            { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
     'x-series-servers':        { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
+    // The fleet item carrying the silverdraft turntable was renamed to CUSTOM
+    // MEDIA SERVERS in the CMS. Keyed by the live slug; the old slug is kept so
+    // any environment still serving it keeps its measured box rather than
+    // silently falling back to FULL_FRAME (which renders it at ~half size).
+    'custom-media-servers':    { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
     'silverdraft-a6000-nodes': { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
     'laptop-flypacks':         { x: 0.104, r: 0.864, y: 0.156, b: 0.864 },
     'vfc-cards':               { x: 0.083, r: 0.959, y: 0.333, b: 0.656 },
