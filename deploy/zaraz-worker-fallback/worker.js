@@ -1,4 +1,13 @@
-// 46009 routing worker v3i - deploy/zaraz-worker-fallback/worker.js
+// 46009 routing worker v3j - deploy/zaraz-worker-fallback/worker.js
+// v3i -> v3j (#76 + #77, cookie compliance): geo-aware consent gate in
+// injectZaraz() + worker-injected geo-split consent banner. Gate = single
+// choke point for all tracking vectors (wiki cookie-compliance section 6).
+// DEPLOY HOLD: #71 AC1 GA4 baseline must be stamped BEFORE this ships live.
+import { gateOpen } from "./src/gate.mjs";
+import { bannerFor } from "./src/banner.mjs";
+// same-source: worker head-injection uses the shared snippet primitives
+import { loaderScriptTag, gtagInitJs } from "./src/inject-snippet.mjs";
+
 // v3d -> v3f (#71 CUT-2 + #73 CUT-5), 2026-08-31:
 //   1. Per-host GA4: Host header -> measurement id map. 46009 keeps
 //      G-1TVWRSCCLN (staging ref, property 552018344); allofitnow.com gets
@@ -72,17 +81,6 @@ const LEGACY_MAP = {
   "/project/peso-pluma-exodo-tour": "/work/PESO-PLUMA-EXODO",
 };
 
-function baseGtagTag(id) {
-  return '<script async src="https://www.googletagmanager.com/gtag/js?id=' + id + '"></script>';
-}
-function baseGtagInit(id) {
-  return [
-    '<script>window.dataLayer=window.dataLayer||[];',
-    'function gtag(){dataLayer.push(arguments);}',
-    'gtag(\'js\',new Date());',
-    'gtag(\'config\',\'' + id + '\');</script>',
-  ].join("");
-}
 
 const ZARAZ_TAG = '<script src="/cdn-cgi/zaraz/i.js"></script>';
 
@@ -108,7 +106,7 @@ function redirect301(location) {
     headers: {
       "location": location,
       "cache-control": "public, max-age=86400",
-      "x-46009-worker": "v3i",
+      "x-46009-worker": "v3j",
     },
   });
 }
@@ -132,7 +130,7 @@ export default {
     if (!SERVING_HOSTS.has(host)) {
       return new Response("host not served", {
         status: 403,
-        headers: { "x-46009-worker": "v3i" },
+        headers: { "x-46009-worker": "v3j" },
       });
     }
 
@@ -162,7 +160,7 @@ export default {
     if (url.pathname.startsWith("/archive/")) {
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3i" },
+        headers: { "x-46009-worker": "v3j" },
       });
     }
 
@@ -197,18 +195,18 @@ export default {
       const notFound = await env.ASSETS.get("404.html");
       if (notFound !== null) {
         const buf = await notFound.arrayBuffer();
-        return new Response(injectZaraz(buf, host), {
+        return new Response(injectZaraz(buf, host, request.headers.get("cf-ipcountry"), request.headers.get("cookie")), {
           status: 404,
           headers: {
             "content-type": MIME.html,
             "cache-control": "no-cache",
-            "x-46009-worker": "v3i",
+            "x-46009-worker": "v3j",
           },
         });
       }
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3i" },
+        headers: { "x-46009-worker": "v3j" },
       });
     }
 
@@ -216,7 +214,7 @@ export default {
     const headers = new Headers();
     headers.set("etag", obj.httpEtag);
     headers.set("content-type", MIME[ext] || "application/octet-stream");
-    headers.set("x-46009-worker", "v3i");
+    headers.set("x-46009-worker", "v3j");
     if (ext === "html") {
       headers.set("cache-control", "no-cache");
     } else {
@@ -227,19 +225,39 @@ export default {
     }
     if (ext === "html") {
       const buf = await obj.arrayBuffer();
-      return new Response(injectZaraz(buf, host), { status: 200, headers });
+      return new Response(injectZaraz(buf, host, request.headers.get("cf-ipcountry"), request.headers.get("cookie")), { status: 200, headers });
     }
     return new Response(obj.body, { status: 200, headers });
   },
 };
 
-function injectZaraz(buf, host) {
+function injectZaraz(buf, host, country, cookieHeader) {
   const html = new TextDecoder().decode(buf);
-  if (html.includes("/cdn-cgi/zaraz/i.js")) return html; // idempotent
   const ga4id = GA4_BY_HOST[host] || GA4_BY_HOST["46009.someofitlater.com"];
-  const tags = ZARAZ_TAG + baseGtagTag(ga4id) + baseGtagInit(ga4id) + SHIM;
-  if (html.includes("</head>")) {
-    return html.replace("</head>", tags + "</head>");
+  // #76 consent gate: single choke point. Gate closed -> serve the page with
+  // the banner ONLY (no tracking of any kind). Never bare-return (undefined
+  // wrapped in a Response would throw).
+  if (!gateOpen(country, cookieHeader)) {
+    const b = bannerFor(country, ga4id, cookieHeader);
+    return appendBeforeBodyEnd(html, b.html);
   }
-  return tags + html; // headless markup: prepend
+  if (html.includes("/cdn-cgi/zaraz/i.js")) return html; // idempotent
+  const tags = ZARAZ_TAG + loaderScriptTag(ga4id) + "<script>" + gtagInitJs(ga4id, country) + "</script>" + SHIM;
+  let out = html;
+  if (out.includes("</head>")) {
+    out = out.replace("</head>", tags + "</head>");
+  } else {
+    out = tags + out; // headless markup: prepend
+  }
+  // #77 banner: gate open (notice regime default-ON, or consented opt-in
+  // visitor) still needs the notice line + footer settings control.
+  const b = bannerFor(country, ga4id, cookieHeader);
+  return appendBeforeBodyEnd(out, b.html);
+}
+
+function appendBeforeBodyEnd(html, fragment) {
+  if (html.includes("</body>")) {
+    return html.replace("</body>", fragment + "</body>");
+  }
+  return html + fragment; // headless markup: append
 }
