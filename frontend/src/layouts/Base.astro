@@ -31,6 +31,9 @@ const {
 // attribute on the persistent flight layer at build time.
 const projects = await getProjects();
 const flightOrder = JSON.stringify(projects.map((p) => p.slug));
+
+// #67: canonical origin from astro.config `site` (SITE_URL env at build time).
+const SITE_URL = Astro.site?.toString().replace(/\/$/, '') ?? 'https://46009.someofitlater.com';
 ---
 
 <!doctype html>
@@ -91,6 +94,22 @@ const flightOrder = JSON.stringify(projects.map((p) => p.slug));
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
+    {/* #67 OG/Twitter meta: crawlers don't run JS, so this must live in the
+        served HTML. SITE_URL (astro.config site) selects the serving origin;
+        og:image is the pinned raster card generated from the brand wordmark. */}
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="All Of It Now" />
+    <meta property="og:image" content={`${SITE_URL}/assets/og-image.png`} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content={`${SITE_URL}${Astro.url.pathname}`} />
+    <link rel="canonical" href={`${SITE_URL}${Astro.url.pathname}`} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={`${SITE_URL}/assets/og-image.png`} />
     {/* The browser asks for /favicon.ico on its own, whatever is declared here,
         and it caches the answer hard. So the real mark has to live AT that path
         rather than only being pointed to from one: what shipped before was the
