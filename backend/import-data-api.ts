@@ -1,4 +1,3 @@
-import "dotenv/config";
 import fs from "fs";
 import path from "path";
 import FormData from "form-data";
@@ -6,7 +5,7 @@ import fetch from "node-fetch";
 
 const API_URL = "http://localhost:3000/api";
 const EMAIL = "howard.wong@anufutur.com";
-const PASSWORD = process.env.PAYLOAD_ADMIN_PASSWORD;
+const PASSWORD = "Aoin2026!";
 
 async function login() {
   const res = await fetch(`${API_URL}/users/login`, {

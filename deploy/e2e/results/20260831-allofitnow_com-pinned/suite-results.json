@@ -1,0 +1,113 @@
+{
+ "target": "allofitnow.com",
+ "mode": "pinned",
+ "startedAt": "2026-08-31T00:28:30Z",
+ "gates": [
+  {
+   "name": "page /",
+   "ok": false,
+   "detail": "HTTP 403 <html>\r\n<head><title>403 Forbidden</title></head>\r\n<body>\r\n<"
+  },
+  {
+   "name": "page /services",
+   "ok": false,
+   "detail": "HTTP 403 <html>\r\n<head><title>403 Forbidden</title></head>\r\n<body>\r\n<"
+  },
+  {
+   "name": "page /work",
+   "ok": false,
+   "detail": "HTTP 403 <html>\r\n<head><title>403 Forbidden</title></head>\r\n<body>\r\n<"
+  },
+  {
+   "name": "page /work/martin-garrix",
+   "ok": false,
+   "detail": "HTTP 403 <html>\r\n<head><title>403 Forbidden</title></head>\r\n<body>\r\n<"
+  },
+  {
+   "name": "sitemap",
+   "ok": false,
+   "detail": "HTTP 403, urlset=False"
+  },
+  {
+   "name": "robots",
+   "ok": false,
+   "detail": "HTTP 403, 553B, placeholder=False"
+  },
+  {
+   "name": "www-301",
+   "ok": false,
+   "detail": "HTTP 403 -> "
+  },
+  {
+   "name": "cut5 /project/melanie-martinez",
+   "ok": false,
+   "detail": "HTTP 403 -> "
+  },
+  {
+   "name": "cut5 /project/arcane-riot-undercity-nights",
+   "ok": false,
+   "detail": "HTTP 403 -> "
+  },
+  {
+   "name": "cut5 /project/linkin-park-from-zero",
+   "ok": false,
+   "detail": "HTTP 403 -> "
+  },
+  {
+   "name": "cut5 /project/encanto-ar",
+   "ok": false,
+   "detail": "HTTP 403 -> "
+  },
+  {
+   "name": "cut5 /project/coldplay-bts-thevoice",
+   "ok": false,
+   "detail": "HTTP 403 -> "
+  },
+  {
+   "name": "cut5 /project/peso-pluma-exodo-tour",
+   "ok": false,
+   "detail": "HTTP 403 -> "
+  },
+  {
+   "name": "cut5-direct /project/martin-garrix",
+   "ok": false,
+   "detail": "HTTP 403 ->  (want https://allofitnow.com/work/martin-garrix)"
+  },
+  {
+   "name": "cut5-direct /project/trilogy",
+   "ok": false,
+   "detail": "HTTP 403 ->  (want https://allofitnow.com/work/trilogy)"
+  },
+  {
+   "name": "cut5-direct /project/riot-x-arcane",
+   "ok": false,
+   "detail": "HTTP 403 ->  (want https://allofitnow.com/work/riot-x-arcane)"
+  },
+  {
+   "name": "hostname-pin deny",
+   "ok": true,
+   "detail": "Host: evil.example -> HTTP 403"
+  }
+ ],
+ "stages": [],
+ "finishedAt": "2026-08-31T00:28:32Z",
+ "exit": "FAIL",
+ "failed": [
+  "page /",
+  "page /services",
+  "page /work",
+  "page /work/martin-garrix",
+  "sitemap",
+  "robots",
+  "www-301",
+  "cut5 /project/melanie-martinez",
+  "cut5 /project/arcane-riot-undercity-nights",
+  "cut5 /project/linkin-park-from-zero",
+  "cut5 /project/encanto-ar",
+  "cut5 /project/coldplay-bts-thevoice",
+  "cut5 /project/peso-pluma-exodo-tour",
+  "cut5-direct /project/martin-garrix",
+  "cut5-direct /project/trilogy",
+  "cut5-direct /project/riot-x-arcane"
+ ]
+}
