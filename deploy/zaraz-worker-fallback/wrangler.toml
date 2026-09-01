@@ -4,6 +4,8 @@ compatibility_date = "2026-08-01"
 
 routes = [
   { pattern = "46009.someofitlater.com/*", zone_name = "someofitlater.com" },
+  { pattern = "allofitnow.com/*", zone_name = "allofitnow.com" },
+  { pattern = "www.allofitnow.com/*", zone_name = "allofitnow.com" },
 ]
 
 [[r2_buckets]]

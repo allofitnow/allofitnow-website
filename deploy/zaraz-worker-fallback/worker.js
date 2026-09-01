@@ -1,4 +1,4 @@
-// 46009 routing worker v3h - deploy/zaraz-worker-fallback/worker.js
+// 46009 routing worker v3i - deploy/zaraz-worker-fallback/worker.js
 // v3d -> v3f (#71 CUT-2 + #73 CUT-5), 2026-08-31:
 //   1. Per-host GA4: Host header -> measurement id map. 46009 keeps
 //      G-1TVWRSCCLN (staging ref, property 552018344); allofitnow.com gets
@@ -108,7 +108,7 @@ function redirect301(location) {
     headers: {
       "location": location,
       "cache-control": "public, max-age=86400",
-      "x-46009-worker": "v3h",
+      "x-46009-worker": "v3i",
     },
   });
 }
@@ -124,6 +124,16 @@ export default {
     // 1. www -> apex 301 (#71 task 2c): before cache, path+query preserved.
     if (host === "www.allofitnow.com") {
       return redirect301("https://allofitnow.com" + url.pathname + url.search);
+    }
+
+    // 1b. hostname pin (#71 task 2b): deny-by-default. Only www (redirected
+    // above) + SERVING_HOSTS may pass; anything else reaching this worker
+    // (route widening, future zones) gets 403 before any R2 read.
+    if (!SERVING_HOSTS.has(host)) {
+      return new Response("host not served", {
+        status: 403,
+        headers: { "x-46009-worker": "v3i" },
+      });
     }
 
     // 2. legacy redirects (#73): after www-301, before R2 fetch.
@@ -152,7 +162,7 @@ export default {
     if (url.pathname.startsWith("/archive/")) {
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3h" },
+        headers: { "x-46009-worker": "v3i" },
       });
     }
 
@@ -192,13 +202,13 @@ export default {
           headers: {
             "content-type": MIME.html,
             "cache-control": "no-cache",
-            "x-46009-worker": "v3h",
+            "x-46009-worker": "v3i",
           },
         });
       }
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3h" },
+        headers: { "x-46009-worker": "v3i" },
       });
     }
 
@@ -206,7 +216,7 @@ export default {
     const headers = new Headers();
     headers.set("etag", obj.httpEtag);
     headers.set("content-type", MIME[ext] || "application/octet-stream");
-    headers.set("x-46009-worker", "v3h");
+    headers.set("x-46009-worker", "v3i");
     if (ext === "html") {
       headers.set("cache-control", "no-cache");
     } else {
