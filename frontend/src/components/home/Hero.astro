@@ -1,6 +1,11 @@
 ---
-import { hero, reel } from '@/data/home';
-const reelSrc = `https://player.vimeo.com/video/${reel.vimeoId}?h=${reel.hash}&background=1&autoplay=1&loop=1&muted=1&autopause=0&dnt=1`;
+import { hero, getReel } from '@/data/home';
+const reel = await getReel();
+// A self-hosted file plays in a <video> cover-cropped by CSS; a Vimeo link goes through the
+// background player (background=1 is what strips the chrome). h= only belongs on the URL for
+// an unlisted video — sending an empty one makes Vimeo reject the embed.
+const isUpload = reel.source === 'upload';
+const reelSrc = `https://player.vimeo.com/video/${reel.vimeoId}?${reel.hash ? `h=${reel.hash}&` : ''}background=1&autoplay=1&loop=1&muted=1&autopause=0&dnt=1`;
 const cueWord = (w: string) => w.split('');
 ---
 
@@ -17,16 +22,68 @@ const cueWord = (w: string) => w.split('');
       </div>
       <div class="box" data-ref="box">
         <div class="reel-frame" data-ref="reelFrame">
-          <iframe
-            data-ref="reelIframe"
-            src={reelSrc}
-            allow="autoplay; fullscreen"
-            title="AOIN reel"></iframe>
+          {
+            isUpload ? (
+              <video
+                data-ref="reelVideo"
+                src={reel.src}
+                poster={reel.poster || undefined}
+                autoplay
+                loop
+                muted
+                playsinline
+                preload="auto"
+                aria-label="AOIN reel"></video>
+            ) : (
+              <iframe
+                data-ref="reelIframe"
+                src={reelSrc}
+                allow="autoplay; fullscreen"
+                title="AOIN reel"></iframe>
+            )
+          }
         </div>
       </div>
     </div>
 
     <div class="cue" data-ref="cue" data-screen-label="Scroll cue">
+      <div class="cue-row">
+        <span class="grp" data-g="1" data-br="-1"
+          ><span data-gi="1"><span data-l="1" data-b="1">[</span></span></span
+        >
+        <span class="sp"></span>
+        <span class="grp" data-g="1"
+          ><span data-gi="1">{cueWord('SCROLL').map((c) => <span data-l="1">{c}</span>)}</span></span
+        >
+        <span class="sp"></span>
+        <span class="grp" data-g="1"
+          ><span data-gi="1">{cueWord('DOWN').map((c) => <span data-l="1">{c}</span>)}</span></span
+        >
+        <span class="sp"></span>
+        <span class="grp" data-g="1" data-br="1"
+          ><span data-gi="1"><span data-l="1" data-b="1">]</span></span></span
+        >
+      </div>
+    </div>
+
+    {/* The same lettering again, purely to strip the colour out of the copy
+        below it. `saturation` takes the SOURCE's saturation — zero, since this
+        is grey — with the backdrop's luminosity, so the differenced glyphs
+        underneath come back black-or-white instead of the cyan that
+        differencing raw colour gives.
+
+        It has to be a SIBLING of `.cue`, not a child: `.cue` has a z-index and
+        so is a stacking context, which would isolate anything inside it. Being
+        painted after `.cue` is what lets it see the differenced result.
+
+        Glyph-shaped, so there is no box — only the letters are touched.
+
+        aria-hidden and pointer-events:none: it is an effect, not content. The
+        readable, clickable cue is the one above.
+
+        NB: the two runs of markup have to stay identical or they drift apart on
+        screen. Change one, change the other. */}
+    <div class="cue-sat" data-ref="cueSat" aria-hidden="true">
       <div class="cue-row">
         <span class="grp" data-g="1" data-br="-1"
           ><span data-gi="1"><span data-l="1" data-b="1">[</span></span></span
@@ -125,42 +182,102 @@ const cueWord = (w: string) => w.split('');
     border: 0;
     pointer-events: none;
   }
-
-  .cue {
+  /* The iframe is cover-cropped in JS (controller sizeReel measures the frame and sizes a
+     16:9 player to overflow it) because an iframe has no intrinsic aspect to fit. A real
+     video does, so object-fit does the same job here — and sizeReel no-ops, since it bails
+     when there is no [data-ref="reelIframe"] to size. */
+  .reel-frame video {
     position: absolute;
-    left: 0;
-    right: 0;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    /* The pinned hero is a scroll surface, so the film does not take the
+       pointer — see [data-reel-blocked] for the one case where it has to. */
+    pointer-events: none;
+  }
+  /* The browser refused to autoplay and has drawn its own play badge over the
+     film (Low Power Mode, a per-site autoplay block, a background restore).
+     The badge is the browser's, not ours, and it is the only thing that can
+     start a video the browser has decided not to start — so give the video the
+     pointer back for exactly as long as that is true. wireReel() clears the
+     attribute the moment it plays. */
+  .reel-frame[data-reel-blocked] video {
+    pointer-events: auto;
+  }
+
+  /* The two layers are laid out identically and must stay that way — one is
+     drawn straight on top of the other. */
+  .cue,
+  .cue-sat {
+    position: absolute;
+    /* The box hugs the lettering rather than spanning the viewport. Nothing
+       filters a backdrop any more, but a full-width blended layer is still a
+       full-width layer, and there is no reason for it to be one. */
+    left: 50%;
+    transform: translateX(-50%);
     bottom: 38px;
-    z-index: 6;
     display: flex;
     justify-content: center;
-    cursor: pointer;
     font-family: var(--font-mono);
     font-weight: var(--weight-mono);
     font-size: 11px;
-    color: var(--aoin-cool-white);
     opacity: 0;
   }
+
+  /* Layer 1 — the readable cue. `difference` puts it against any frame of the
+     film, but on colour it inverts the RGB: white type over a gold shot comes
+     back blue. Layer 2 takes that colour back out.
+
+     The blend sits here and not on `.cue-row` inside: `z-index` makes this a
+     stacking context, and a stacking context isolates its DESCENDANTS, so the
+     same rule one level down blended against nothing and rendered flat white —
+     failing on exactly the bright frames it exists for. An element's own
+     stacking context does not isolate the element itself. */
+  .cue {
+    z-index: 6;
+    mix-blend-mode: difference;
+    cursor: pointer;
+    color: var(--aoin-cool-white);
+  }
+
+  /* Layer 2 — the twin, above and grey. `saturation` composites the source's
+     saturation with the backdrop's luminosity and hue; grey has none, so the
+     glyphs below come back monochrome. Only where its own letters are, which
+     is why this leaves no box behind. */
+  .cue-sat {
+    z-index: 7;
+    mix-blend-mode: saturation;
+    color: #808080;
+    pointer-events: none;
+  }
+
   .cue-row {
     display: flex;
     align-items: flex-end;
   }
-  .cue .grp {
+  .cue .grp,
+  .cue-sat .grp {
     display: inline-block;
     overflow: hidden;
   }
-  .cue [data-br] {
+  .cue [data-br],
+  .cue-sat [data-br] {
     transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1);
   }
-  .cue [data-gi] {
+  .cue [data-gi],
+  .cue-sat [data-gi] {
     display: inline-block;
     white-space: nowrap;
     transform: translateY(110%);
   }
-  .cue [data-l] {
+  .cue [data-l],
+  .cue-sat [data-l] {
     display: inline-block;
   }
-  .cue .sp {
+  .cue .sp,
+  .cue-sat .sp {
     display: inline-block;
     width: 1.1em;
   }

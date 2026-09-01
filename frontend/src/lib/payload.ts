@@ -5,6 +5,8 @@
 import type { Project } from '@/data/projects';
 import type { Equipment } from '@/data/equipment';
 import type { ServiceSection } from '@/data/services';
+import type { Reel } from '@/data/home';
+import { toMediaDoc } from '@/lib/media';
 
 const API_URL = import.meta.env.PAYLOAD_URL || 'http://192.168.30.245';
 
@@ -30,15 +32,20 @@ function formatCollaborator(c: unknown): string {
 
 /** Map a Payload projects REST doc to the frontend `Project` shape. */
 export function mapPayloadProject(doc: any): Project {
-  const gallery = (doc.gallery ?? []).map((row: any) => ({
-    layout: row?.layout ?? 'full',
+  const gallery = (doc.gallery ?? []).map((row: any) => {
     // Each row's images are an array of { image: media }. Tolerate the older
     // hasMany-relationship shape (bare media objects) too, so a build mid-migration
     // never blanks a gallery: use `it.image` when present, else `it` itself.
-    images: (row?.images ?? [])
-      .map((it: any) => mediaUrl(it?.image ?? it))
-      .filter((url: string) => url !== ''),
-  }));
+    // Map once to { url, doc } pairs, drop blanks, then split — keeps the
+    // images[] and docs[] arrays index-aligned by construction.
+    const pairs = (row?.images ?? [])
+      .map((it: any) => {
+        const media = it?.image ?? it;
+        return { url: mediaUrl(media), doc: it && typeof it === 'object' ? toMediaDoc(media) : null };
+      })
+      .filter((p: any) => p.url !== '');
+    return { layout: row?.layout ?? 'full', images: pairs.map((p: any) => p.url), docs: pairs.map((p: any) => p.doc) };
+  });
 
   const credits = (doc.credits ?? []).map((g: any) => ({
     title: g?.title ?? '',
@@ -49,11 +56,35 @@ export function mapPayloadProject(doc: any): Project {
     })),
   }));
 
+  // A row is only worth rendering if it goes somewhere, so URL-less rows are
+  // dropped here rather than rendered as dead text. The publication falls back
+  // to the link's host so a row is never nameless.
+  const press = (doc.press ?? [])
+    .map((r: any) => {
+      const url = typeof r?.url === 'string' ? r.url.trim() : '';
+      if (!url) return null;
+      let host = '';
+      try {
+        host = new URL(url).hostname.replace(/^www\./, '').toUpperCase();
+      } catch {
+        host = '';
+      }
+      return {
+        publication: (r?.publication ?? '').trim() || host,
+        title: r?.title ?? '',
+        url,
+        date: r?.date ?? '',
+      };
+    })
+    .filter((r: any): r is NonNullable<typeof r> => r !== null);
+
   return {
     slug: doc.slug,
     title: doc.title,
     year: doc.year,
     image: mediaUrl(doc.image),
+    // Populated doc for #58 srcset (mediaUrl string kept for seeds/flight refs).
+    imageDoc: toMediaDoc(doc.image),
     order: doc.order,
     featured: !!doc.featured,
     featuredOrder: typeof doc.featuredOrder === 'number' ? doc.featuredOrder : undefined,
@@ -69,6 +100,7 @@ export function mapPayloadProject(doc: any): Project {
     gallery,
     stats: doc.stats ?? [],
     credits,
+    press,
     // Rich text (Slate node array) passed straight through; rendered by
     // renderRichText in the project page.
     writeup: doc.writeup ?? [],
@@ -172,6 +204,7 @@ export function mapPayloadEquipment(doc: any): Equipment {
     slug: doc.slug,
     label: doc.label ?? '',
     image: mediaUrl(doc.image),
+    imageDoc: toMediaDoc(doc.image),
     tip: doc.tip ?? '',
     order: typeof doc.order === 'number' ? doc.order : 0,
     center: !!doc.center,
@@ -202,6 +235,7 @@ export function mapPayloadServiceSection(row: any): ServiceSection {
     const media = it && it.image && typeof it.image === 'object' ? it.image
       : proj && proj.image && typeof proj.image === 'object' ? proj.image : null;
     const src = it && it.image ? mediaUrl(it.image) : proj ? mediaUrl(proj.image) : '';
+    const doc = toMediaDoc(media); // #58 srcset source (null for seed/static stills)
     const href = proj && proj.slug ? `/work/${proj.slug}` : undefined;
     // Project data for the hovercard — mirrors the home marquee (title / tour / capabilities).
     const caps = proj && Array.isArray(proj.capabilities) ? proj.capabilities.join('|') : undefined;
@@ -214,7 +248,7 @@ export function mapPayloadServiceSection(row: any): ServiceSection {
     const w = media && typeof media.width === 'number' ? media.width : 0;
     const h = media && typeof media.height === 'number' ? media.height : 0;
     const ar = wide && w > 0 && h > 0 ? `${w} / ${h}` : undefined;
-    return { src, href, slug: proj?.slug, title: proj?.title, tour: proj?.tour, caps, slot, video, wide, ar };
+    return { src, doc, href, slug: proj?.slug, title: proj?.title, tour: proj?.tour, caps, slot, video, wide, ar };
   }).filter((g: any) => g.src !== '');
   // Sub-service labels (array of { label }) — trimmed + de-blanked. Empty → the seed defaults win downstream.
   const subs = Array.isArray(row.subs)
@@ -252,6 +286,44 @@ export async function getAboutTeam(): Promise<{ name: string; title: string }[]>
       .filter((m: { name: string }) => m.name !== '');
   } catch {
     return [];
+  }
+}
+
+/** Pull a Vimeo id — and the privacy hash an unlisted video needs — out of whatever the CMS
+ *  field holds. Accepts a share URL (`vimeo.com/ID`, `vimeo.com/ID/HASH`), a player URL
+ *  (`player.vimeo.com/video/ID?h=HASH`), the `?h=` query form, or a bare id, so pasting
+ *  the address bar just works. `id: ''` when there is no id to be found. */
+export function parseVimeo(input: string): { id: string; hash: string } {
+  const raw = typeof input === 'string' ? input.trim() : '';
+  if (!raw) return { id: '', hash: '' };
+  if (/^\d+$/.test(raw)) return { id: raw, hash: '' };
+  const id = (raw.match(/(?:vimeo\.com|video)\/(\d+)/i) || [])[1] || '';
+  if (!id) return { id: '', hash: '' };
+  // The hash rides either as the path segment after the id, or as ?h=.
+  const query = (raw.match(/[?&]h=([0-9a-z]+)/i) || [])[1];
+  const segment = (raw.match(new RegExp('/' + id + '/([0-9a-z]+)', 'i')) || [])[1];
+  return { id, hash: query || segment || '' };
+}
+
+/** Fetch the hero reel from the `homepage` global. `null` on any error or empty response —
+ *  and equally when the chosen source has nothing behind it yet (file not uploaded, link not
+ *  pasted), so data/home.ts falls back to the seed rather than opening the hero on a black
+ *  box. depth=1 populates the upload relations into media docs carrying a `url`. */
+export async function getHomepageReel(): Promise<Reel | null> {
+  try {
+    const res = await fetch(`${API_URL}/api/globals/homepage?depth=1`);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const reel = data?.reel;
+    if (!reel) return null;
+    if (reel.source === 'upload') {
+      const src = mediaUrl(reel.video);
+      return src ? { source: 'upload', src, poster: mediaUrl(reel.poster), vimeoId: '', hash: '' } : null;
+    }
+    const { id, hash } = parseVimeo(reel.vimeoUrl);
+    return id ? { source: 'vimeo', src: '', poster: '', vimeoId: id, hash } : null;
+  } catch {
+    return null;
   }
 }
 

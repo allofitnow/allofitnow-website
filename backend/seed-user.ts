@@ -1,4 +1,3 @@
-import "dotenv/config";
 import payload from "payload";
 import config from "./payload.config";
 
@@ -20,7 +19,7 @@ import config from "./payload.config";
     data: {
       name: "Howard",
       email: "howard.wong@anufutur.com",
-      password: process.env.PAYLOAD_ADMIN_PASSWORD,
+      password: "Aoin2026!",
     },
   });
   console.log("Created user:", user.email, "id:", user.id);

@@ -208,6 +208,38 @@ const Projects: CollectionConfig = {
       ],
     },
     {
+      // Press coverage, shown as its own section at the foot of the PROJECT INFO
+      // panel under the write-up. Several projects in the copy doc carry a list
+      // of links at the bottom that the site had nowhere to put.
+      //
+      // `publication` is the masthead and `title` the headline; the row renders
+      // as PUBLICATION | HEADLINE, mirroring the credits block directly above it
+      // in the panel, so the two read as one column of the same thing. Only the
+      // URL is load-bearing — a row with no publication falls back to the host.
+      name: "press",
+      type: "array",
+      labels: { singular: "Press link", plural: "Press links" },
+      admin: {
+        description:
+          "Coverage links, listed at the bottom of the PROJECT INFO panel. Leave empty and the section is not rendered at all.",
+      },
+      fields: [
+        {
+          name: "publication",
+          type: "text",
+          admin: { description: "Masthead, e.g. BILLBOARD. Falls back to the link's domain if blank." },
+        },
+        { name: "title", type: "text", admin: { description: "Headline or article title." } },
+        {
+          name: "url",
+          type: "text",
+          required: true,
+          admin: { description: "Full URL, including https://" },
+        },
+        { name: "date", type: "text", admin: { description: "Optional, e.g. MAR 2025." } },
+      ],
+    },
+    {
       name: "writeup",
       type: "richText",
       // The default toolbar is bold/italic/underline and headings. This opens up

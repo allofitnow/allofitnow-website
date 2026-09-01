@@ -13,6 +13,7 @@
    controller's layout() never touches it. The page is a full HTML doc outside Base.astro
    but uses the shared site nav. */
 import '../styles/services.css';
+import { buildSrcset } from '../lib/media';
 import Nav from '../components/chrome/Nav.astro';
 import HoverCard from '../components/chrome/HoverCard.astro';
 import Preloader from '../components/home/Preloader.astro';
@@ -24,6 +25,9 @@ import ServicesBar from '../components/services/ServicesBar.astro';
 import InquiryModal from '../components/chrome/InquiryModal.astro';
 import { getServiceSections, getServiceGalleries, type GalleryItem } from '../data/services';
 import { getEquipment } from '../data/equipment';
+
+// #67: canonical origin, same source as Base.astro (astro.config site / SITE_URL env).
+const SITE_URL = Astro.site?.toString().replace(/\/$/, '') ?? 'https://46009.someofitlater.com';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -116,11 +120,88 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
 <html lang="en">
 <head>
 <meta charset="utf-8" />
+<script is:inline>
+  (function () {
+    var c = navigator.connection;
+    var light = c.saveData || /^(slow-)?2g$/.test(c.effectiveType || '');
+        if (!light) return;
+    if (c.saveData) document.documentElement.setAttribute('data-save-data', '1');
+    function capAttrs(img) {
+      var pairs = [['srcset', 'src'], ['data-lazysrcset', 'data-lazysrc']];
+      for (var p = 0; p < pairs.length; p++) {
+        var ssA = pairs[p][0], srcA = pairs[p][1];
+        var ss = img.getAttribute(ssA);
+        if (!ss || ss.indexOf('w') === -1) continue;
+        var hero = img.getAttribute('fetchpriority') === 'high';
+        var maxW = hero ? 600 : 400, keep = [], best = null;
+        ss.split(',').forEach(function (part) {
+          var seg = part.trim().match(/^(\S+)\s+(\d+)w$/);
+          if (!seg) return;
+          var w = +seg[2];
+          if (w <= maxW) keep.push(seg[0]);
+          if (!best || w < best.w) best = { w: w, u: seg[1] };
+        });
+        if (!keep.length && best) keep = [best.u + ' ' + best.w + 'w'];
+        if (keep.length) {
+          img.setAttribute(ssA, keep.join(', '));
+          var s = img.getAttribute(srcA);
+          if (s && /-\d+x\d+\./.test(s)) img.setAttribute(srcA, keep[keep.length - 1].split(' ')[0]);
+        }
+      }
+    }
+    function walk(n) {
+      if (n.nodeType !== 1) return;
+      if (n.tagName === 'IMG') capAttrs(n);
+      else if (n.querySelectorAll) {
+        var l = n.querySelectorAll('img');
+        for (var i = 0; i < l.length; i++) capAttrs(l[i]);
+      }
+    }
+    var cur = document.getElementsByTagName('img');
+    for (var i = 0; i < cur.length; i++) capAttrs(cur[i]);
+    new MutationObserver(function (muts) {
+      for (var m = 0; m < muts.length; m++) {
+        var add = muts[m].addedNodes;
+        for (var k = 0; k < add.length; k++) walk(add[k]);
+      }
+    }).observe(document.documentElement, { childList: true, subtree: true });
+  })();
+</script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
 <title>Services — All Of It Now</title>
+{/* This page is a full HTML document outside Base.astro, so every <head> tag
+    Base provides has to be repeated here. Keep these two in step with Base. */}
+<meta name="description" content="Real-time content and show production services — real-time content, screens, LED, lighting, and stage design." />
+{/* #67 OG/Twitter meta — same set as Base.astro, kept in step. */}
+<meta property="og:title" content="Services — All Of It Now" />
+<meta property="og:description" content="Real-time content and show production services — real-time content, screens, LED, lighting, and stage design." />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="All Of It Now" />
+<meta property="og:image" content={`${SITE_URL}/assets/og-image.png`} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:url" content={`${SITE_URL}/services`} />
+<link rel="canonical" href={`${SITE_URL}/services`} />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content="Services — All Of It Now" />
+<meta name="twitter:description" content="Real-time content and show production services — real-time content, screens, LED, lighting, and stage design." />
+<meta name="twitter:image" content={`${SITE_URL}/assets/og-image.png`} />
+<link rel="icon" href="/favicon.ico" sizes="32x32" />
+<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 {/* Preloader count face — its @font-face is block, and the count animates from
     the first frame, so preload it or the numbers show blank until it loads. */}
 <link rel="preload" href="/fonts/OOTheran-Light.woff2" as="font" type="font/woff2" crossorigin />
+{/* The other three this page sets type in. The intro is gated on
+    document.fonts.ready — the title, the capability labels and the character
+    field are all measured before they are drawn, so they cannot start until the
+    metrics are final. Without these the browser only discovers the faces once it
+    has parsed the stylesheet, and that extra round trip is dead time with the
+    page showing nothing: the labels appear late, together. Base.astro preloads
+    the same four; this page is a full document outside it and has to repeat
+    them, the same way it repeats the icon. */}
+<link rel="preload" href="/fonts/SNJaMono-Light.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/fonts/DenimINKWD-Medium.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/fonts/DenimINKWD-Regular.woff2" as="font" type="font/woff2" crossorigin />
 </head>
 <body>
 {/* Covers the raw stacked section layers (which paint for a frame before the
@@ -180,7 +261,7 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
               10 large videos at load. The engine loads + plays them only when Mixed is active. */}
           {MR.map((g) => g.video
             ? <video data-lazymedia data-lazysrc={g.src} muted loop playsinline preload="none" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps}></video>
-            : <img data-lazymedia data-lazysrc={g.src} alt="" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
+            : <img data-lazymedia data-lazysrc={g.doc ? buildSrcset(g.doc).src : g.src} data-lazysrcset={g.doc ? buildSrcset(g.doc).srcset : undefined} loading="lazy" decoding="async" sizes="(max-width:480px) 65vw, 33vw" alt="" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
         </div>
       </div>
       <p class="svc-desc svc-desc--overlay" data-desc="">{services[2].desc}</p>
@@ -192,7 +273,7 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
     <section class="svc-panel svc-panel--equip" data-svc-panel="" data-i="3" id="equipment-rental">
       <div class="equip" data-fx="equip">
         <div class="equip-plate" data-equip-plate>
-          <img data-equip-img src={equipCenterVid ? undefined : equipCenter.image} alt="" style={equipCenterVid ? 'opacity:0' : undefined} />
+          <img data-equip-img loading="lazy" decoding="async" src={equipCenterVid ? undefined : (equipCenter.imageDoc ? buildSrcset(equipCenter.imageDoc).src : equipCenter.image)} srcset={equipCenterVid || !equipCenter.imageDoc ? undefined : (buildSrcset(equipCenter.imageDoc).srcset || undefined)} sizes="(max-width:480px) 100vw, (max-width:900px) 85vw, 37vw" alt="" style={equipCenterVid ? 'opacity:0' : undefined} />
           <video data-equip-vid src={equipCenterVid ? equipCenter.image : undefined} muted loop playsinline preload="metadata" style={equipCenterVid ? undefined : 'opacity:0'}></video>
           <div class="equip-plate-ph" data-equip-ph aria-hidden="true"></div>
         </div>

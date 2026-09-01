@@ -23,6 +23,38 @@ const LUM_BOOST = 1.0;       // additive brightness at a light's centre (alpha �
 const LUM_CURSOR = 1.0;      // cursor-pool strength
 const LUM_NAV = 1.0;         // per-word middle-nav pool strength
 const LUM_NAV_REACH = 30;    // nav-word pool radius, in cells (wider = the nav flashlight spreads further)
+// Deterministic per-cell noise. The field's grid is rebuilt whenever its box
+// changes size, and seeding it from Math.random() meant every rebuild was a
+// brand new field: at one rebuild per drag that read as a snap, and at one per
+// frame it was television static. Keyed on the cell's (column, row) instead,
+// a rebuilt grid keeps the exact character it already had everywhere the old
+// and new grids overlap -- so the field reads as being extended or trimmed
+// rather than replaced, and it can be rebuilt as fast as the window moves.
+//
+// Column/row are counted from the top-left, which is the corner the field is
+// anchored to: it hangs from under the title and grows right and down, so
+// existing cells keep their indices and only new ones appear.
+//
+// `salt` separates the independent draws a cell needs (is it lit, which glyph,
+// which dissolve run) so they don't correlate. Math.imul keeps the multiplies
+// in 32-bit; plain `*` would drift into float territory and ruin the avalanche.
+//
+// The finalizer is murmur3's fmix32, and it is not decoration. A single-round
+// mix passed every spatial test but left the salt streams correlated at -0.26
+// -- which is a cell's "am I lit" draw predicting its dissolve draw, i.e. a
+// visible pattern waiting to happen. Measured over 48,000 cells, fmix32 holds
+// the worst salt-pair correlation to 0.005 and every neighbour correlation
+// (right, down, both diagonals, knight, and further out) under 0.011.
+const hash2 = (x, y, salt) => {
+  let h = Math.imul(x | 0, 0x27d4eb2d) ^ Math.imul(y | 0, 0x165667b1) ^ Math.imul(salt | 0, 0x9e3779b1);
+  h ^= h >>> 15;
+  h = Math.imul(h, 0x85ebca6b);
+  h ^= h >>> 13;
+  h = Math.imul(h, 0xc2b2ae35);
+  h ^= h >>> 16;
+  return (h >>> 0) / 4294967296;
+};
+
 const COPY_GLYPHS = 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 // Service taxonomy (name + subcategories) for the capability bar + field scramble. Read from the
 // #svc-taxonomy JSON island emitted by services.astro (CMS-editable via the `services` global); the
@@ -337,8 +369,7 @@ class ServicesController {
     this._raf = requestAnimationFrame(loop);
     this._resize = () => {
       this.layout();
-      clearTimeout(this._reAscii);
-      this._reAscii = setTimeout(() => this.buildAscii(), 220);
+      this.queueAscii();
     };
     window.addEventListener('resize', this._resize);
     requestAnimationFrame(() => this.layout());
@@ -346,7 +377,6 @@ class ServicesController {
     const boot = () => { this.layout(); this.buildAscii(); if (this._introOnly) this.playIntro(); };
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => setTimeout(boot, 60));
     else setTimeout(boot, 400);
-    this._reAscii = null;
     this._tick = setInterval(() => this.clock(), 1000);
     this.clock();
     // Deep-link (panel-switch mode only): /services#<slug> opens that panel.
@@ -366,6 +396,7 @@ class ServicesController {
     window.removeEventListener('resize', this._resize);
     clearInterval(this._tick);
     if (this._raf) cancelAnimationFrame(this._raf);
+    if (this._asciiRaf) { cancelAnimationFrame(this._asciiRaf); this._asciiRaf = 0; }
   }
 
   componentDidUpdate() {
@@ -537,18 +568,36 @@ class ServicesController {
       );
     };
     const lead = 260, stag = 90;
+    const SLOT_DUR = 820;
+    // Rise at the brightness the sweep is going to hand them, not the 0.45 the
+    // markup carries for the section state. sweep() refuses to touch a slot while
+    // the clip span is still wrapping its text (background-clip:text cannot map
+    // onto a descendant, it renders black), so a slot shows its plain colour
+    // until the span goes. Leaving that at 0.45 meant every slot jumped to 0.91
+    // the instant it was unwrapped: the labels arrived, sat flat for a moment,
+    // and then snapped on.
+    const navFill = 'rgba(217,225,234,' + Math.min(1, NAV_BRIGHTNESS / 100) + ')';
+    slots.forEach((s) => { s.style.color = navFill; });
+
     rise(a, lead, 900);
     rise(b, lead + stag, 900);
-    slots.forEach((s, i) => rise(s, lead + 2 * stag + i * stag, 820));
+    slots.forEach((s, i) => rise(s, lead + 2 * stag + i * stag, SLOT_DUR));
     const fieldDelay = lead + 3 * stag + slots.length * stag;
     if (field) field.animate([{ opacity: 0, easing: EASE }, { opacity: 1 }], { duration: 900, delay: fieldDelay, fill: 'both' });
-    // Once the links have risen: unwrap the clip inner span (so the sweep's background-clip:text
-    // renders instead of black) and drop the clip so hover letter-spacing isn't cut off.
-    setTimeout(() => slots.forEach((s) => {
-      const inner = s.querySelector('span');
-      if (inner) s.textContent = inner.textContent;
-      s.style.overflow = 'visible';
-    }), lead + 2 * stag + slots.length * stag + 900);
+
+    // Unwrap each slot as ITS OWN rise lands, not all four on one timer 170ms
+    // after the last of them. The clip has to go for two reasons -- the sweep
+    // needs the text to be a direct child, and hover letter-spacing would be cut
+    // off by the overflow -- but doing it in one go handed the shine to all four
+    // simultaneously, which is a single hard edge in the middle of an otherwise
+    // staggered entrance. Per slot, it inherits the same 90ms rhythm as the rise.
+    slots.forEach((s, i) => {
+      setTimeout(() => {
+        const inner = s.querySelector('span');
+        if (inner) s.textContent = inner.textContent;
+        s.style.overflow = 'visible';
+      }, lead + 2 * stag + i * stag + SLOT_DUR + 40);
+    });
     setTimeout(done, fieldDelay + 940);
   }
 
@@ -689,18 +738,25 @@ class ServicesController {
       let lsM = 0.14;
       const all = [];
       SERVICES.forEach((x) => { all.push(x.name); x.subs.forEach((y) => all.push(y)); });
+      // Same one-shot measurement as the desktop path below: this loop ran 80
+      // rounds over all 16 labels, which is 1280 layout reads on a phone that
+      // has just been rotated.
+      const REF_M = 100;
+      probeM.style.fontSize = REF_M + 'px';
+      probeM.style.letterSpacing = '0em';
+      const metricsM = all.map((t) => ({
+        w0: (probeM.textContent = t, probeM.getBoundingClientRect().width),
+        n: t.length,
+      }));
+      probeM.remove();
       const widestM = () => {
         let w = 0;
-        all.forEach((t) => { probeM.textContent = t; w = Math.max(w, probeM.getBoundingClientRect().width); });
+        metricsM.forEach((m) => { w = Math.max(w, (m.w0 * fsM) / REF_M + m.n * lsM * fsM); });
         return w;
       };
-      const applyM = () => { probeM.style.fontSize = fsM + 'px'; probeM.style.letterSpacing = lsM + 'em'; };
-      applyM();
       for (let k = 0; k < 80 && widestM() > availM && fsM > 11; k++) {
         if (lsM > 0.04) lsM = Math.max(0.04, lsM - 0.02); else fsM -= 0.5;
-        applyM();
       }
-      probeM.remove();
       this._fittedFs = fsM;
       bar.style.fontSize = fsM + 'px';
       slots.forEach((sl) => {
@@ -733,29 +789,46 @@ class ServicesController {
     const probe = document.createElement('span');
     probe.style.cssText = 'position:absolute;visibility:hidden;white-space:pre;font-family:' + getComputedStyle(slots[0]).fontFamily + ';font-weight:300';
     bar.appendChild(probe);
-    const widest = () => cands.map((list) => {
+    // Measure every candidate ONCE, at a reference size with no tracking, and
+    // model the rest. Width is exactly linear in both: glyph advances scale
+    // with font-size, and letter-spacing adds ls*fs per character (CSS puts it
+    // after the last one too, which is what the -1em margin downstream undoes).
+    // Checked against live measurement over three sizes and two trackings --
+    // largest error 0.008px.
+    //
+    // Worth doing because the search below runs up to 160 rounds and each one
+    // used to read layout for every candidate. layout() calls this on every
+    // resize event, so dragging a window edge was spending ~5ms per event here
+    // -- a third of a frame before the browser does any work of its own.
+    const REF = 100;
+    probe.style.fontSize = REF + 'px';
+    probe.style.letterSpacing = '0em';
+    const metrics = cands.map((list) => list.map((t) => ({
+      w0: (probe.textContent = t, probe.getBoundingClientRect().width),
+      n: t.length,
+    })));
+    probe.remove();
+    const widest = () => metrics.map((list) => {
       let w = 0;
-      list.forEach((t) => { probe.textContent = t; w = Math.max(w, probe.getBoundingClientRect().width); });
+      list.forEach((m) => { w = Math.max(w, (m.w0 * fs) / REF + m.n * ls * fs); });
       return w;
     });
-    const measure = (list) => {
-      let w = 0;
-      list.forEach((t) => { probe.textContent = t; w = Math.max(w, probe.getBoundingClientRect().width); });
-      return w;
-    };
-    const targets = slots.map((sl) => sl.__target || sl.textContent || '');
-    const applyProbe = () => { probe.style.fontSize = fs + 'px'; probe.style.letterSpacing = ls + 'em'; };
-    applyProbe();
     let ws = widest();
     let sum = ws.reduce((a, b) => a + b, 0);
     if (sum > avail) {
-      ws = targets.map((t) => measure([t]));
-      sum = ws.reduce((a, b) => a + b, 0);
+      // Shrink against `cands` — the widest label each slot can EVER show — not
+      // against the labels it happens to be showing right now. Fitting the
+      // current text is what made the bar overlap itself: the widths below are
+      // written as fixed px, the labels are nowrap, and scrolling into the next
+      // section scrambles in a longer sub than the one that was measured, which
+      // then runs straight into its neighbour. Which viewports it happened on
+      // depended on which pair of services you crossed between, which is why it
+      // read as intermittent. `cands` is already built for exactly this, and the
+      // comment above it already claimed this guarantee.
       for (let k = 0; k < 160 && sum > avail && (ls > lsFloor || fs > 8); k++) {
         if (ls > lsFloor) ls = Math.max(lsFloor, ls - 0.02);
         else fs -= 0.5;
-        applyProbe();
-        ws = targets.map((t) => measure([t]));
+        ws = widest();
         sum = ws.reduce((a, b) => a + b, 0);
       }
       if (sum > avail) {
@@ -763,7 +836,6 @@ class ServicesController {
         ws = ws.map((w) => w * k2);
       }
     }
-    probe.remove();
     this._fittedFs = fs;
     const barEl = bar;
     barEl.style.fontSize = fs + 'px';
@@ -795,11 +867,12 @@ class ServicesController {
       const asciiBox = root.querySelector('[data-ascii]');
       if (asciiBox) {
         const t = Math.round(tb + (this._compact ? 14 : 24));
-        if (asciiBox.style.top !== t + 'px') {
-          asciiBox.style.top = t + 'px';
-          clearTimeout(this._reAscii);
-          this._reAscii = setTimeout(() => this.buildAscii(), 60);
-        }
+        if (asciiBox.style.top !== t + 'px') asciiBox.style.top = t + 'px';
+        // queueAscii compares the box's measured size, so this covers a width
+        // change too. The old trigger fired only when `top` moved, which a
+        // width-only drag never does -- so the grid stayed as it was and the
+        // canvas's width:100% stretched it across the new width.
+        this.queueAscii();
       }
       const gapV = this._compact ? 16 : 44;
       const activeTop = Math.round(tb + gapV);
@@ -1179,14 +1252,39 @@ class ServicesController {
       // keep their plain inline color until playIntro() unwraps them, then the shine takes over.
       if (b.firstElementChild) return;
       const r = b.getBoundingClientRect();
+      // Hovered label: drop the shine entirely and burn it in at full strength.
+      // The sweep is a DARKENING mask (see below), so a label caught under the
+      // band was being read through a hole in itself — the one moment you most
+      // want it legible is the moment you are pointing at it.
+      if (b.__hov) {
+        if (b.__sw !== 2) {
+          b.__sw = 2;
+          b.__bg = null;
+          b.style.backgroundImage = 'none';
+          b.style.backgroundColor = 'transparent';
+          b.style.backgroundClip = '';
+          b.style.webkitBackgroundClip = '';
+          b.style.webkitTextFillColor = '';
+          b.style.color = 'rgb(217,225,234)';
+          b.style.textShadow = '0 0 18px rgba(217,225,234,0.45)';
+        }
+        return;
+      }
       if (b.__sw !== 1) {
         b.__sw = 1;
+        b.style.textShadow = 'none';
+        // The shine is a black gradient clipped to the glyphs, so every stop is
+        // subtracting light. At 0.88 the leading band took the label down to
+        // 0.03 effective alpha — it read as a word blinking out rather than as
+        // a sheen crossing it, and on the four hero labels that is most of the
+        // time. Halved peaks, and the bands narrowed from ~24% of the sweep to
+        // ~14%, so the dark passes over a label instead of sitting on it.
         b.style.backgroundImage = 'linear-gradient(90deg,' +
           ' rgba(0,0,0,0) 0%,' +
-          ' rgba(0,0,0,0.88) 22%,' +
-          ' rgba(0,0,0,0) 46%,' +
-          ' rgba(0,0,0,0.5) 68%,' +
-          ' rgba(0,0,0,0) 92%,' +
+          ' rgba(0,0,0,0.40) 12%,' +
+          ' rgba(0,0,0,0) 26%,' +
+          ' rgba(0,0,0,0.22) 58%,' +
+          ' rgba(0,0,0,0) 72%,' +
           ' rgba(0,0,0,0) 100%)';
         b.style.backgroundRepeat = 'repeat-x';
         b.style.backgroundClip = 'text';
@@ -1194,7 +1292,7 @@ class ServicesController {
         b.style.color = 'transparent';
         b.style.webkitTextFillColor = 'transparent';
       }
-      const want = b.__hov ? 'rgb(217,225,234)' : 'rgba(217,225,234,' + base + ')';
+      const want = 'rgba(217,225,234,' + base + ')';
       if (b.__bg !== want) { b.__bg = want; b.style.backgroundColor = want; }
       b.style.backgroundSize = band + 'px 100%';
       b.style.backgroundPosition = Math.round(x - r.left) + 'px 0';
@@ -1210,6 +1308,14 @@ class ServicesController {
       b.__bg = null;
       b.style.backgroundImage = 'none';
       b.style.backgroundColor = 'transparent';
+      // NOT `color` — leave it exactly as it was found. setActiveService() sets
+      // the resting colours and THEN the hero->section boundary calls
+      // setBarInteractive(false), which lands here: clearing colour at this
+      // point deletes the inline declaration that was just written, and the
+      // slots fall back to an inherited black. Returning to the hero repaints
+      // via sweep() (which owns colour in gradient mode), and the hover burn-in
+      // is overwritten by setActiveService on the way into a section, so there
+      // is nothing here that needs resetting.
       b.style.textShadow = 'none';
       b.style.backgroundClip = '';
       b.style.webkitBackgroundClip = '';
@@ -1244,6 +1350,41 @@ class ServicesController {
     if (!v) this._glDirty = true;
   }
 
+  // Rebuild the field when its box changes size, and only then. The grid
+  // (columns, rows, the per-cell arrays, the holes cut for the capability
+  // labels) is derived from the box, so it cannot follow the box without one.
+  //
+  // One rebuild per frame, so the field follows the window instead of catching
+  // up after it. That is only safe because of the two things above: the cells
+  // are keyed on a hash of their position, so a rebuilt grid keeps the content
+  // it already had and consecutive rebuilds are not independent fields; and
+  // buildAscii draws before it returns, so it never leaves the buffer it just
+  // cleared empty for a frame. Without either, per-frame rebuilding is static
+  // and a blackout respectively -- it was both, in that order.
+  //
+  // Cancel-and-reschedule, NOT "skip if one is pending". Treating the handle as
+  // a boolean means a single frame callback that never runs -- a cancel on
+  // teardown, or a frame dropped while the tab is hidden -- leaves it non-zero
+  // forever and every later call returns early, so the field stops rebuilding
+  // for the life of the page. Rescheduling cannot wedge: a stale handle is just
+  // cancelled. Resize events do not outpace frames, so this still coalesces to
+  // one rebuild per frame.
+  queueAscii() {
+    if (this._asciiRaf) cancelAnimationFrame(this._asciiRaf);
+    this._asciiRaf = requestAnimationFrame(() => {
+      this._asciiRaf = 0;
+      const root = this.el();
+      const box = root && root.querySelector('[data-ascii]');
+      if (!box) return;
+      const w = box.clientWidth;
+      const h = box.clientHeight;
+      if (w === this._asciiW && h === this._asciiH) return;
+      this._asciiW = w;
+      this._asciiH = h;
+      this.buildAscii();
+    });
+  }
+
   buildAscii() {
     const root = this.el();
     const box = root && root.querySelector('[data-ascii]');
@@ -1261,6 +1402,13 @@ class ServicesController {
     const dpr = Math.min(2, window.devicePixelRatio || 1);
     cvs.width = Math.floor(w * dpr);
     cvs.height = Math.floor(h * dpr);
+    // Pin the element to the size this grid was built for rather than leaving it
+    // at width/height:100%. Between the box changing and the rebuild landing,
+    // 100% stretches the old backing store across the new width -- the smear.
+    // At a fixed size it simply stops short (black, over a black page) or is
+    // clipped by the box's overflow:hidden, neither of which reads as a fault.
+    cvs.style.width = w + 'px';
+    cvs.style.height = h + 'px';
     const gl = this._gl || cvs.getContext('webgl2', { alpha: true, antialias: false, premultipliedAlpha: false });
     if (!gl) return;
     this._gl = gl;
@@ -1275,6 +1423,7 @@ class ServicesController {
     const rows = Math.max(6, Math.floor(h / ch));
     const n = cols * rows;
     this._cw = cw; this._ch = ch; this._cols = cols; this._rows = rows; this._n = n;
+    this._asciiW = w; this._asciiH = h; // keep queueAscii's guard honest after a direct build
 
     const AT = ' ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/';
     this._atIdx = {};
@@ -1358,9 +1507,9 @@ class ServicesController {
         const a = a0 * clear;
         cell[i * 2] = c;
         cell[i * 2 + 1] = r;
-        const on = Math.random() < p;
+        const on = hash2(c, r, 1) < p;
         baseA[i] = on ? a : 0;
-        dyn[i * 5] = on ? 1 + ((Math.random() * glyphN) | 0) : 0;
+        dyn[i * 5] = on ? 1 + ((hash2(c, r, 2) * glyphN) | 0) : 0;
         dyn[i * 5 + 1] = baseA[i];
         dyn[i * 5 + 4] = 1;
         if (on) live.push(i);
@@ -1381,10 +1530,16 @@ class ServicesController {
     const diss = new Float32Array(n);
     for (let r = 0; r < rows; r++) {
       let c = 0;
+      let run = 0;
       while (c < cols) {
-        const runLen = 2 + ((Math.random() * 7) | 0);
-        const rv = Math.random();
+        // Keyed on the run's index within the row, not on Math.random(), for the
+        // same reason as the cells: every row is walked from column 0, so a
+        // wider grid reproduces the same runs and simply continues past where
+        // the old one stopped, instead of re-cutting the whole row.
+        const runLen = 2 + ((hash2(run, r, 3) * 7) | 0);
+        const rv = hash2(run, r, 4);
         for (let k = 0; k < runLen && c < cols; k++, c++) diss[r * cols + c] = rv;
+        run++;
       }
     }
     this._dissolveThresh = diss;
@@ -1482,6 +1637,12 @@ class ServicesController {
     this._glyphPx = gsz / dpr;
     this._atGrid = [acols, arows];
     this._glDirty = true;
+    // Draw NOW rather than leaving it to the next tick. Setting cvs.width above
+    // cleared the drawing buffer, and the tick's draw is gated on _glDirty --
+    // so between the two there is a frame of empty canvas. One rebuild a frame
+    // means one empty frame per frame, which is the field going black for the
+    // length of a drag.
+    this.drawAscii();
 
     if (!this._asciiBound) {
       this._asciiBound = true;

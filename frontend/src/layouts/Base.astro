@@ -31,16 +31,93 @@ const {
 // attribute on the persistent flight layer at build time.
 const projects = await getProjects();
 const flightOrder = JSON.stringify(projects.map((p) => p.slug));
+
+// #67: canonical origin from astro.config `site` (SITE_URL env at build time).
+const SITE_URL = Astro.site?.toString().replace(/\/$/, '') ?? 'https://46009.someofitlater.com';
 ---
 
 <!doctype html>
 <html lang="en">
   <head>
     <meta charset="utf-8" />
+    {/* #60 Save-Data: MUST be inline + blocking + ahead of every img so the
+        rewrite is in place before the preload scanner reaches the body.
+        A deferred script loses the race on the eager hero. No-op unless
+        navigator.connection.saveData is true (Chromium opt-in). */}
+    <script is:inline>
+      (function () {
+        var c = navigator.connection;
+        var light = c.saveData || /^(slow-)?2g$/.test(c.effectiveType || '');
+        if (!light) return;
+        if (c.saveData) document.documentElement.setAttribute('data-save-data', '1');
+        function capAttrs(img) {
+          var pairs = [['srcset', 'src'], ['data-lazysrcset', 'data-lazysrc']];
+          for (var p = 0; p < pairs.length; p++) {
+            var ssA = pairs[p][0], srcA = pairs[p][1];
+            var ss = img.getAttribute(ssA);
+            if (!ss || ss.indexOf('w') === -1) continue;
+            var hero = img.getAttribute('fetchpriority') === 'high';
+            var maxW = hero ? 600 : 400, keep = [], best = null;
+            ss.split(',').forEach(function (part) {
+              var seg = part.trim().match(/^(\S+)\s+(\d+)w$/);
+              if (!seg) return;
+              var w = +seg[2];
+              if (w <= maxW) keep.push(seg[0]);
+              if (!best || w < best.w) best = { w: w, u: seg[1] };
+            });
+            if (!keep.length && best) keep = [best.u + ' ' + best.w + 'w'];
+            if (keep.length) {
+              img.setAttribute(ssA, keep.join(', '));
+              var s = img.getAttribute(srcA);
+              if (s && /-\d+x\d+\./.test(s)) img.setAttribute(srcA, keep[keep.length - 1].split(' ')[0]);
+            }
+          }
+        }
+        function walk(n) {
+          if (n.nodeType !== 1) return;
+          if (n.tagName === 'IMG') capAttrs(n);
+          else if (n.querySelectorAll) {
+            var l = n.querySelectorAll('img');
+            for (var i = 0; i < l.length; i++) capAttrs(l[i]);
+          }
+        }
+        var cur = document.getElementsByTagName('img');
+        for (var i = 0; i < cur.length; i++) capAttrs(cur[i]);
+        new MutationObserver(function (muts) {
+          for (var m = 0; m < muts.length; m++) {
+            var add = muts[m].addedNodes;
+            for (var k = 0; k < add.length; k++) walk(add[k]);
+          }
+        }).observe(document.documentElement, { childList: true, subtree: true });
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
-    <link rel="icon" href="/assets/aoin-icon.svg" type="image/svg+xml" />
+    {/* #67 OG/Twitter meta: crawlers don't run JS, so this must live in the
+        served HTML. SITE_URL (astro.config site) selects the serving origin;
+        og:image is the pinned raster card generated from the brand wordmark. */}
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="All Of It Now" />
+    <meta property="og:image" content={`${SITE_URL}/assets/og-image.png`} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:url" content={`${SITE_URL}${Astro.url.pathname}`} />
+    <link rel="canonical" href={`${SITE_URL}${Astro.url.pathname}`} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={`${SITE_URL}/assets/og-image.png`} />
+    {/* The browser asks for /favicon.ico on its own, whatever is declared here,
+        and it caches the answer hard. So the real mark has to live AT that path
+        rather than only being pointed to from one: what shipped before was the
+        Astro starter's logo sitting at /favicon.ico and /favicon.svg, which is
+        what the tab actually showed. Declaring the .ico as well keeps the two
+        in step. The SVG is listed second and wins wherever it is understood. */}
+    <link rel="icon" href="/favicon.ico" sizes="32x32" />
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 
     {/* Fonts are on the critical path — the preloader/intro is gated on
         document.fonts.ready, so avoid the FOIT that font-display:block causes. */}

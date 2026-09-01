@@ -7,10 +7,17 @@ from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel, Field
 import json
 import time
+from datetime import datetime, timezone
+from pathlib import Path
 
 PAYLOAD_URL = os.environ.get("PAYLOAD_URL", "http://127.0.0.1:3000")
 ADMIN_EMAIL = os.environ.get("PAYLOAD_ADMIN_EMAIL")
 ADMIN_PASSWORD = os.environ.get("PAYLOAD_ADMIN_PASSWORD")
+
+# #81: since #80, Payload PATCH responses await the full live publish
+# (~100-200s). httpx default timeout is 5s -> guaranteed ReadTimeout on every
+# save. 600s read covers publish + queue behind a concurrent publish.
+HTTP_TIMEOUT = httpx.Timeout(600.0, connect=10.0)
 
 class AssetInput(BaseModel):
     kind: Literal["image", "video_link"]
@@ -43,7 +50,7 @@ mcp = FastMCP("AOIN Portfolio MCP")
 
 # --- Helpers ---
 async def get_jwt() -> str:
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         res = await client.post(f"{PAYLOAD_URL}/api/users/login", json={
             "email": ADMIN_EMAIL,
             "password": ADMIN_PASSWORD
@@ -62,7 +69,7 @@ async def upload_asset(jwt: str, asset: AssetInput) -> str:
         tmp_path = tmp.name
         
     try:
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             with open(tmp_path, "rb") as f:
                 files = {"file": (asset.filename, f, asset.mime)}
                 res = await client.post(
@@ -84,7 +91,7 @@ async def upload_media(filename: str, mime: str, base64: str) -> Dict[str, str]:
     asset = AssetInput(kind="image", purpose="gallery", filename=filename, mime=mime, base64=base64)
     media_id = await upload_asset(jwt, asset)
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         res = await client.get(f"{PAYLOAD_URL}/api/media/{media_id}")
         res.raise_for_status()
         doc = res.json()
@@ -95,7 +102,7 @@ async def upload_media(filename: str, mime: str, base64: str) -> Dict[str, str]:
 async def link_video(slug: str, provider: Literal['vimeo'], url: str) -> Dict[str, str]:
     """Set an external video URL on a project's video_url field."""
     jwt = await get_jwt()
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         # Get project ID
         proj_res = await client.get(f"{PAYLOAD_URL}/api/projects?where[slug][equals]={slug}")
         proj_res.raise_for_status()
@@ -120,7 +127,7 @@ async def list_media(query: str = "", limit: int = 50) -> Dict[str, Any]:
     if query:
         url += f"&where[filename][contains]={query}"
         
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         res = await client.get(url)
         res.raise_for_status()
         data = res.json()
@@ -139,7 +146,7 @@ async def list_projects(status: Optional[Literal['published', 'archive']] = None
     if status:
         url += f"&where[status][equals]={status}"
         
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         res = await client.get(url)
         res.raise_for_status()
         data = res.json()
@@ -149,18 +156,18 @@ async def list_projects(status: Optional[Literal['published', 'archive']] = None
         "projects": [{
             "slug": p["slug"],
             "title": p["title"],
-            "client": p["client"],
-            "year": p["year"],
-            "role": p["role"],
-            "status": p["status"],
-            "thumb_url": p.get("thumb", {}).get("url", "")
+            "client": p.get("client") or p.get("code", ""),
+            "year": p.get("year", ""),
+            "role": p.get("role") or ", ".join(p.get("capabilities") or []),
+            "status": p.get("status", ""),
+            "thumb_url": (p.get("thumb") or {}).get("url", "")
         } for p in data["docs"]]
     }
 
 @mcp.tool()
 async def get_project(slug: str) -> Dict[str, Any]:
     """Full detail for one project."""
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         res = await client.get(f"{PAYLOAD_URL}/api/projects?where[slug][equals]={slug}")
         res.raise_for_status()
         docs = res.json()["docs"]
@@ -174,7 +181,7 @@ async def get_project(slug: str) -> Dict[str, Any]:
 async def set_status(slug: str, status: Literal['published', 'archive']) -> Dict[str, str]:
     """Flip publish state."""
     jwt = await get_jwt()
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         proj_res = await client.get(f"{PAYLOAD_URL}/api/projects?where[slug][equals]={slug}")
         proj_res.raise_for_status()
         docs = proj_res.json()["docs"]
@@ -256,7 +263,7 @@ async def create_portfolio(
     
     if not payload_doc.get("order"):
         # Auto-assign order
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
             res = await client.get(f"{PAYLOAD_URL}/api/projects?limit=1&sort=-order")
             res.raise_for_status()
             docs = res.json()["docs"]
@@ -285,7 +292,7 @@ async def create_portfolio(
         if gallery:
             payload_doc["gallery"] = gallery
             
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         res = await client.post(
             f"{PAYLOAD_URL}/api/projects",
             headers={"Authorization": f"JWT {jwt}"},
@@ -303,7 +310,7 @@ async def update_portfolio(slug: str, data: Optional[Dict[str, Any]] = None, ass
     """Patch fields and/or manage media."""
     jwt = await get_jwt()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         proj_res = await client.get(f"{PAYLOAD_URL}/api/projects?where[slug][equals]={slug}")
         proj_res.raise_for_status()
         docs = proj_res.json()["docs"]
@@ -349,7 +356,7 @@ async def delete_portfolio(slug: str) -> Dict[str, Any]:
     """Delete a project. Refuses if published."""
     jwt = await get_jwt()
     
-    async with httpx.AsyncClient() as client:
+    async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         proj_res = await client.get(f"{PAYLOAD_URL}/api/projects?where[slug][equals]={slug}")
         proj_res.raise_for_status()
         docs = proj_res.json()["docs"]
@@ -371,43 +378,110 @@ async def delete_portfolio(slug: str) -> Dict[str, Any]:
 # But wait, this is a FastMCP instance. To expose it via ASGI:
 # app = mcp.http_app
 
-# Now we need to add Starlette middleware for Bearer token and /hook
+# Now we need Starlette middleware for Bearer token; /hook mounts as a
+# FastMCP custom route further down.
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 from starlette.requests import Request
-from starlette.routing import Route
-from starlette.applications import Starlette
 
 BEARER_TOKEN = os.environ.get("MCP_BEARER_TOKEN")
 WEBHOOK_SECRET = os.environ.get("MCP_WEBHOOK_SECRET")
 
-# Add the /hook endpoint BEFORE the auth middleware, or make the auth middleware skip it.
+# --- Publish serialization (#80) ---
+# One publish at a time, in-process (asyncio.Lock) and cross-process
+# (flock -w 900): manual `ssh root@.245 publish.sh` invocations share the
+# same /run/aoin-publish.lock, so a designer save can never interleave with
+# an operator publish. Saves arriving mid-publish simply queue on the lock
+# and then run their own full publish (which pulls latest content anyway).
+_PUBLISH_LOCK = asyncio.Lock()
+PUBLISH_SCRIPT = os.environ.get("AOIN_PUBLISH_SCRIPT", "/root/projects/aoin-deploy/deploy/publish.sh")
+PUBLISH_FLOCK = os.environ.get("AOIN_PUBLISH_FLOCK", "/run/aoin-publish.lock")
+PUBLISH_MARKER = os.environ.get("AOIN_PUBLISH_MARKER", "/run/aoin-publish-pending")
+PUBLISH_JOURNAL = os.environ.get("AOIN_PUBLISH_JOURNAL",
+                                 "/root/projects/aoin-deploy/deploy/logs/async-publish-journal.jsonl")
+
+async def _run_publish() -> dict:
+    """Execute publish.sh under flock; returns {success, log_tail} or raises."""
+    proc = await asyncio.create_subprocess_exec(
+        "flock", "-w", "900", PUBLISH_FLOCK,
+        PUBLISH_SCRIPT,
+        stdout=asyncio.subprocess.PIPE,
+        stderr=asyncio.subprocess.PIPE,
+    )
+    stdout, stderr = await proc.communicate()
+    log = (stdout.decode() + stderr.decode())
+    tail = "\n".join(log.split("\n")[-15:])
+    if proc.returncode != 0:
+        return {"success": False, "log_tail": f"Build failed (exit {proc.returncode})\n{tail}"}
+    return {"success": True, "log_tail": "\n".join(stdout.decode().split("\n")[-10:])}
+
+def _journal(entry: dict) -> None:
+    """Append a publish outcome to the async journal; never raise into callers."""
+    try:
+        os.makedirs(os.path.dirname(PUBLISH_JOURNAL), exist_ok=True)
+        with open(PUBLISH_JOURNAL, "a") as f:
+            f.write(json.dumps(entry) + "\n")
+    except OSError as e:
+        print(f"[async-publish] journal write failed: {e}", flush=True)
+
+# --- Async publish (#82) ---
+# /hook only schedules; a single worker serializes publishes under
+# _PUBLISH_LOCK + flock (operator `ssh publish.sh` runs still interlock via
+# the same /run/aoin-publish.lock). A save arriving mid-publish re-arms the
+# event, so exactly one more full publish runs; publish.sh pulls latest
+# content from Payload, so one publish serves every pending save.
+_PUBLISH_REQUESTED = asyncio.Event()
+
+async def _publish_worker() -> None:
+    while True:
+        try:
+            await _PUBLISH_REQUESTED.wait()
+            _PUBLISH_REQUESTED.clear()
+            async with _PUBLISH_LOCK:
+                t0 = time.time()
+                try:
+                    result = await _run_publish()
+                except Exception as e:
+                    result = {"success": False, "log_tail": str(e)}
+                duration = round(time.time() - t0, 1)
+                _journal({"ts": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+                          "duration_s": duration, **result})
+                if result.get("success"):
+                    # Marker cleared only on GREEN: a failed publish stays
+                    # pending so the next save retries it.
+                    try:
+                        os.unlink(PUBLISH_MARKER)
+                    except FileNotFoundError:
+                        pass
+                    print(f"[async-publish] green in {duration}s", flush=True)
+                else:
+                    print(f"[async-publish] FAILED ({duration}s): {result.get('log_tail', '')[-400:]}",
+                          flush=True)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:
+            # Never let the worker die: log and keep serving.
+            print(f"[async-publish] worker error: {e}", flush=True)
+
+def _schedule_publish() -> None:
+    """Request one publish pass; safe to call from any save."""
+    Path(PUBLISH_MARKER).touch()
+    _PUBLISH_REQUESTED.set()
+
+# /hook is registered ON the FastMCP instance (custom_route) so it rides the
+# same ASGI app http_app() builds below. It is exempt from AuthMiddleware by
+# path and carries its own X-Webhook-Secret check.
+@mcp.custom_route("/hook", methods=["POST"])
 async def hook_endpoint(request: Request):
     if request.headers.get("X-Webhook-Secret") != WEBHOOK_SECRET:
         return JSONResponse({"error": "Unauthorized"}, status_code=401)
 
-    # Run publish.sh SYNCHRONOUSLY — block the HTTP response until the build
-    # completes or fails. The Payload afterChange hook is awaiting this
-    # response, so the admin UI's Save button stays in its loading state
-    # for the entire duration. On failure we return 500 so the hook throws
-    # and Payload surfaces the error in the same toast it uses for 403s.
-    try:
-        proc = await asyncio.create_subprocess_exec(
-            "/root/projects/aoin-deploy/deploy/publish.sh",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
-        )
-        stdout, stderr = await proc.communicate()
-        if proc.returncode != 0:
-            tail = "\n".join((stdout.decode() + stderr.decode()).split("\n")[-15:])
-            return JSONResponse(
-                {"error": f"Build failed (exit {proc.returncode})", "log": tail},
-                status_code=500,
-            )
-        tail = "\n".join(stdout.decode().split("\n")[-10:])
-        return JSONResponse({"success": True, "log_tail": tail})
-    except Exception as e:
-        return JSONResponse({"error": str(e)}, status_code=500)
+    # #82: schedule a background publish and return immediately. The Payload
+    # write itself is the source of truth for the save; publish outcome is
+    # journaled (async-publish-journal.jsonl) + prod ledger + fail counter.
+    _schedule_publish()
+    return JSONResponse({"success": True, "queued": True})
+
 
 class AuthMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -424,18 +498,43 @@ class AuthMiddleware(BaseHTTPMiddleware):
             
         return await call_next(request)
 
-# Wrap the app
-routes = [
-    Route("/hook", hook_endpoint, methods=["POST"])
-]
-
-from fastmcp.server.http import create_sse_app
+# Mount as streamable HTTP. Notes:
+# - middleware= is the supported http_app() parameter (FastMCP 3.4.7); it
+#   does NOT accept routes=, which is why /hook moved to @mcp.custom_route.
+# - host_origin_protection=False pins today's verified default so a future
+#   FastMCP upgrade that flips it cannot start 403ing through nginx.
+#   Bearer auth already gates every MCP route; /hook is secret-gated.
 from starlette.middleware import Middleware
 
-app = create_sse_app(
-    server=mcp,
-    message_path="/mcp/messages",
-    sse_path="/mcp",
-    routes=[Route("/hook", hook_endpoint, methods=["POST"])],
-    middleware=[Middleware(AuthMiddleware)]
+app = mcp.http_app(
+    path="/mcp",
+    middleware=[Middleware(AuthMiddleware)],
+    host_origin_protection=False,
 )
+
+# #82: start the publish worker + recover any publish lost to a restart.
+# FastMCP 3.4.7's http_app() returns StarletteWithLifespan (no on_event),
+# so hook the ASGI lifespan directly.
+_worker_started = False
+
+async def _start_worker_once():
+    global _worker_started
+    if _worker_started:
+        return
+    _worker_started = True
+    asyncio.create_task(_publish_worker())
+    if os.path.exists(PUBLISH_MARKER):
+        print(f"[async-publish] pending marker at startup: {PUBLISH_MARKER} -> rescheduling", flush=True)
+        _PUBLISH_REQUESTED.set()
+
+class _WorkerStartupASGI:
+    """Outer ASGI shim: starts the publish worker when lifespan begins."""
+    def __init__(self, inner):
+        self._inner = inner
+
+    async def __call__(self, scope, receive, send):
+        if scope.get("type") == "lifespan":
+            await _start_worker_once()
+        await self._inner(scope, receive, send)
+
+app = _WorkerStartupASGI(app)

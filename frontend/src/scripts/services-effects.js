@@ -136,9 +136,14 @@ export function mountEffects(ctrl) {
 
   // Build the scrubbed galleries onto one master timeline; Mixed/Equip reveal on entry.
   const master = gsap.timeline({ paused: true });
-  buildRealtime(root, master);
-  buildScreens(root, master);
-  const orbit = buildMixed(root); // { setBoost, assemble, show(v) }
+  // Off-stage parking positions are derived from the viewport, and the value a
+  // still sits at BEFORE its tween starts is written by a gsap.set() at build
+  // time -- which is not on the timeline, so master.invalidate() cannot reach
+  // it. Each gallery registers how to re-park itself; onRefresh replays them.
+  const reparks = [];
+  buildRealtime(root, master, reparks);
+  buildScreens(root, master, reparks);
+  const orbit = buildMixed(root); // { resize, setBoost, assemble, show(v) }
   const equip = initEquipment(root);
   master.to({ v: 0 }, { v: 1, duration: 0.001 }, 0.999); // pin master duration to 1 (progress == time)
 
@@ -149,6 +154,9 @@ export function mountEffects(ctrl) {
     if (!tr) return 200;
     return Math.round(tr.getBoundingClientRect().bottom - root.getBoundingClientRect().top + 20);
   };
+  // The bar's resting BOTTOM — activeTop is its resting top. The equipment cell
+  // hangs off this so it never overlaps the sub-service names.
+  const equipBarBottom = () => activeTop() + (bar ? bar.offsetHeight : 0);
   const descOf = (i) => panels[i] && panels[i].querySelector('[data-desc]');
   const equipEl = panels[3] && panels[3].querySelector('.equip');
 
@@ -161,6 +169,8 @@ export function mountEffects(ctrl) {
   const loadMedia = (el) => {
     if (el && !el.getAttribute('src') && el.dataset.lazysrc) {
       el.setAttribute('src', el.dataset.lazysrc);
+      // #58: the responsive ladder rides the same swap — never before entry.
+      if (el.dataset.lazysrcset) el.setAttribute('srcset', el.dataset.lazysrcset);
       if (el.tagName === 'VIDEO') { try { el.load(); } catch (_) {} }
     }
   };
@@ -286,6 +296,21 @@ export function mountEffects(ctrl) {
   // ---- the single trigger ----------------------------------------------------------
   // We scrub the master timeline MANUALLY from self.progress (already smoothed by Lenis) so the
   // galleries, field dissolve, orbit speed, and chrome all share one synced source of truth.
+  // Put every still back at the distance the CURRENT viewport makes off-stage,
+  // then let anything mid-flight overwrite that with its own re-read values.
+  // Called from onRefresh, and directly on each resize event -- see there.
+  const resync = (p) => {
+    reparks.forEach((repark) => repark());
+    master.invalidate();
+    // progress() does not render when handed the value it already holds, which
+    // after a resize is the common case, so the invalidated tweens would never
+    // re-read anything. The hair's-breadth nudge forces it; both writes land in
+    // the same frame so nothing is painted at the nudged value, and
+    // suppressEvents stops the trip past it firing callbacks.
+    master.progress(p > 0 ? Math.max(0, p - 1e-4) : 1e-4, true);
+    master.progress(p, true);
+  };
+
   let govRaf = 0;
   const st = ScrollTrigger.create({
     trigger: scrollDist,
@@ -303,8 +328,8 @@ export function mountEffects(ctrl) {
       }
     },
     onRefresh: (self) => {
-      master.invalidate();
-      master.progress(self.progress);
+      resync(self.progress);
+      if (equip && equip.layout) equip.layout(equipBarBottom());
       if (ctrl.dissolveField) ctrl.dissolveField(dissState.t);
     },
   });
@@ -317,6 +342,7 @@ export function mountEffects(ctrl) {
   driveReveal(0);
 
   ScrollTrigger.refresh();
+  if (equip && equip.layout) equip.layout(equipBarBottom());
   initNav(ctrl, lenis, st);
 
   // Lock scroll while the on-load intro plays (unless we're deep-linking straight in).
@@ -332,6 +358,16 @@ export function mountEffects(ctrl) {
   let reFit = null;
   window.addEventListener('resize', () => {
     if (bar) bar.style.top = lastSection < 0 ? '52vh' : activeTop() + 'px';
+    // Re-park on EVERY resize event, not only when the debounced refresh lands.
+    // A still's off-stage distance is a function of the viewport, so leaving it
+    // until the drag stops means the whole drag is spent with the stills at the
+    // distance that was off-screen for the old size -- which is them sitting
+    // visibly in frame the entire time you are dragging. This is a handful of
+    // gsap.set calls and one timeline render; the expensive part, ScrollTrigger
+    // re-measuring the scroll distances, stays debounced below.
+    resync(st.progress);
+    orbit.resize();
+    if (equip && equip.layout) equip.layout(equipBarBottom());
     clearTimeout(reFit);
     reFit = setTimeout(() => { ScrollTrigger.refresh(); }, 220); // onRefresh re-applies the dissolve
   });
@@ -339,31 +375,40 @@ export function mountEffects(ctrl) {
 }
 
 /* ---- REAL-TIME CONTENT — mwg_083 fly-across (scrubbed R→L, parallax depth) ------- */
-function buildRealtime(root, master) {
+function buildRealtime(root, master, reparks) {
   const el = root.querySelector('.mwg_effect083');
   if (!el) return;
-  const medias = [...el.querySelectorAll('.media')];
-  const n = medias.length;
   const mob = window.innerWidth < 768;
+  const all = [...el.querySelectorAll('.media')];
+  // Phones: a full-height slab is a far bigger object than the old 16:9 card, so all 16 in the
+  // stream read as clutter. Fly every other still and hide the rest. MOB_KEEP is the 1-in-N.
+  const MOB_KEEP = 2;
+  const medias = mob ? all.filter((_, i) => i % MOB_KEEP === 0) : all;
+  if (mob) all.forEach((m, i) => { if (i % MOB_KEEP) gsap.set(m, { display: 'none' }); });
+  const n = medias.length;
+  // Half the stills over the same scroll window would empty the section early, so widen the
+  // stagger by the same factor — the flight keeps its original pacing and duration.
+  const stag = mob ? RTC.stag * MOB_KEEP : RTC.stag;
   medias.forEach((m, i) => {
     const L = LAYERS[i % LAYERS.length];             // depth: reach (speed) + scale
     const lane = (i * 7) % n;                         // shuffle into evenly-spread vertical lanes
-    // Keep the stream in a centred band so large stills don't hang off the top/bottom edges
-    // (the top lane used to sit at 5% and get cropped). Phones: a LOWER, wider band so the now
-    // ~2× stills clear the title + stacked capability bar (chrome bottom ≈ 40%) and don't crop.
-    // Phones: the single-line sub marquee frees the top, so the stream starts higher (36%)
-    // and spreads wider — bigger presence without the overlapping pile (scale kept modest).
-    const top = (mob ? 36 : 22) + (lane / Math.max(1, n - 1)) * (mob ? 52 : 54);
-    const scale = mob ? L.scale * 0.78 : L.scale;
+    // Desktop: keep the stream in a centred band so large stills don't hang off the top/bottom
+    // edges (the top lane used to sit at 5% and get cropped).
+    // Phones: every still is a full-height slab (services.css), so there are no vertical lanes
+    // left to spread into and no headroom to scale — each sits dead-centre at its natural size.
+    // Depth still reads through the per-layer horizontal reach (speed) and z-order.
+    const top = mob ? 50 : 22 + (lane / Math.max(1, n - 1)) * 54;
+    const scale = mob ? 1 : L.scale;
     const fromX = () => window.innerWidth * L.reach + 140;
     const toX = () => -window.innerWidth * L.reach - 140;
     gsap.set(m, { top: top.toFixed(2) + '%', yPercent: -50, zIndex: L.z, scale, x: fromX });
-    master.fromTo(m, { x: fromX }, { x: toX, ease: 'none', duration: RTC.travel }, RTC.start + i * RTC.stag);
+    if (reparks) reparks.push(() => gsap.set(m, { x: fromX }));
+    master.fromTo(m, { x: fromX }, { x: toX, ease: 'none', duration: RTC.travel }, RTC.start + i * stag);
   });
 }
 
 /* ---- SCREENS PRODUCTION — mwg_051 (scrubbed bottom→top, parallax spread, stills may bleed off-edge) --- */
-function buildScreens(root, master) {
+function buildScreens(root, master, reparks) {
   const el = root.querySelector('.mwg_effect051');
   if (!el) return;
   const medias = [...el.querySelectorAll('.media')];
@@ -395,6 +440,7 @@ function buildScreens(root, master) {
     const fromY = () => window.innerHeight * L.reach + 120;
     const toY = () => -window.innerHeight * L.reach - 120;
     gsap.set(m, { left: left.toFixed(2) + '%', zIndex: L.z, scale, y: fromY });
+    if (reparks) reparks.push(() => gsap.set(m, { y: fromY }));
     master.fromTo(m, { y: fromY }, { y: toY, ease: 'none', duration: SCR.travel }, SCR.start + i * SCR.stag);
   });
 }
@@ -402,13 +448,43 @@ function buildScreens(root, master) {
 /* ---- MIXED REALITY — mwg_061 orbit: assembles, self-runs, scroll drives speed --- */
 function buildMixed(root) {
   const el = root.querySelector('.mwg_effect061');
-  if (!el) return { setBoost() {}, assemble() {}, show() {} };
+  if (!el) return { resize() {}, setBoost() {}, assemble() {}, show() {} };
   const container = el.querySelector('.container');
   const medias = [...el.querySelectorAll('img, video')];  // orbit slots can be video (webm) too
   const angle = 360 / medias.length;
   // Ring centred at the container origin (no push-back). The camera is inside the ring — see the
   // ORBIT_* constants. Each image sits at translateZ(-50vw) rotated to its slot.
-  medias.forEach((m, i) => gsap.set(m, { z: '-50vw', rotationY: angle * i }));
+  //
+  // The geometry is four quantities that only work while they agree, and on a
+  // resize they stop agreeing. Measured at 1440 and then read at 1920:
+  //
+  //   perspective (CSS, on the panel)        720 -> 960   recomputed by the browser
+  //   translateZ  (kept as the string -50vw) 720 -> 960   resolved by the browser
+  //   transform-origin x  (inline, by GSAP)  223  ->  223   FROZEN, should be 298
+  //   transform-origin z  (GSAP's zOrigin)   720  ->  720   FROZEN, should be 960
+  //
+  // services.css sets `transform-origin: 50% 0 50vw`, but GSAP writes its own
+  // INLINE transform-origin the first time it touches the transform -- resolved
+  // to pixels, and with the z stashed in its own cache rather than in the
+  // inline value. That inline rule then wins over the stylesheet's for the rest
+  // of the page's life. So the camera stays where it was when the ring was
+  // built while everything around it moves, and the ring skews and clips.
+  //
+  // Restating transformOrigin is what forces GSAP to re-parse it; setting z or
+  // rotationY alone does not, which is why re-applying only those changed
+  // nothing.
+  //
+  // In PIXELS, not '50vw'. GSAP does not resolve viewport units inside
+  // transformOrigin -- it takes the number and drops the unit, so '50% 0 50vw'
+  // gives a z origin of 50px and the ring collapses. Both the origin and the
+  // radius are therefore resolved here, from the same number, on every call.
+  const sizeRing = () => {
+    const r = window.innerWidth * ORBIT_R_VW; // the 50vw ring radius, in px
+    medias.forEach((m, i) =>
+      gsap.set(m, { transformOrigin: `50% 0 ${r}px`, z: -r, rotationY: angle * i })
+    );
+  };
+  sizeRing();
   gsap.set(el, { autoAlpha: 0 });
 
   // Reused per-frame scratch: opacities + the video-slot indices (for the decode cap).
@@ -461,6 +537,8 @@ function buildMixed(root) {
   el.addEventListener('touchmove', (e) => { if (e.touches && e.touches[0]) tilt(e.touches[0].clientX); }, { passive: true });
 
   return {
+    // Re-resolve the ring radius against the current viewport — see sizeRing.
+    resize: sizeRing,
     setBoost(p, vel) {
       // Only RAISE the target from scroll speed (inside the mixed section); the
       // ticker eases it back down. vel arrives as 0 during programmatic jumps,
@@ -519,6 +597,88 @@ function initEquipment(root) {
     for (let i = 0; i < rows.length; i++) { const d = Math.abs(centerOf(i) - cp); if (d < bd) { bd = d; best = i; } }
     return best;
   };
+  // ---- plate fit ------------------------------------------------------------------
+  // Every render is fitted by its SUBJECT, not by its frame, so a rack and a
+  // circuit board come out the same size on screen even though their frames do
+  // not agree on shape or on how much black they carry around the hardware.
+  //
+  // What this replaces fitted the frame into a SQUARE of the cell's smaller axis
+  // and then multiplied by a hand-measured constant. Two things went wrong with
+  // that. A square of the smaller axis throws away the whole of a wide cell: at
+  // 1504x560 the box was 560 on a side and 944px of width went unused. And
+  // `contain` fits the FRAME, so a tall subject inside a 16:9 frame gets fitted
+  // by the frame's width and lands tiny -- the rack's subject came out 308px
+  // tall in a 560px cell, which is the "why is it so small" of it.
+  //
+  // Now: fit the frame to the cell to learn the picture's real size, read the
+  // subject out of it with the measured box, and scale until the SUBJECT fills
+  // PLATE_FILL of the cell on whichever axis binds first. Then slide the
+  // subject's centre onto the cell's centre, which also retires the old nudge.
+  //
+  // The subject can never be clipped, by construction rather than by tuning:
+  // k = FILL * min(W/sw, H/sh), so sw*k <= FILL*W and sh*k <= FILL*H on both
+  // axes at once, in a cell of any shape. The FRAME does overflow, and
+  // overflow:hidden takes the surplus -- that surplus is the black margin, which
+  // is the point.
+  //
+  // PLATE_FILL is the one number to turn if these want to be bigger or smaller.
+  // It is margin INSIDE the cell, on top of the gaps the cell already keeps from
+  // the names above and the fleet marquee below, which is why it can sit this
+  // close to 1 without the render crowding either.
+  const PLATE_FILL = 0.96;
+
+  // Subject box as fractions of the frame: x..r across, y..b down. Measured off
+  // the renders (the union of every sampled frame). Keyed by slug because six of
+  // the seven are 1000x1000, so the frame's shape says nothing about how tightly
+  // the hardware sits inside it. Anything absent falls back to the whole frame,
+  // which simply means "contain it, with PLATE_FILL of margin" and is never
+  // wrong, only conservative -- so a new fleet item is safe before anyone
+  // measures it. Re-exporting a render tight to its subject makes its entry
+  // unnecessary rather than wrong.
+  const FULL_FRAME = { x: 0, r: 1, y: 0, b: 1 };
+  const SUBJECT = {
+    'disguise-gx3':            { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
+    'x-series-servers':        { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
+    'silverdraft-a6000-nodes': { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
+    'laptop-flypacks':         { x: 0.104, r: 0.864, y: 0.156, b: 0.864 },
+    'vfc-cards':               { x: 0.083, r: 0.959, y: 0.333, b: 0.656 },
+    'custom-rack-builds':      { x: 0.042, r: 0.886, y: 0.037, b: 0.889 },
+    'renderstream-hardware':   { x: 0.031, r: 0.979, y: 0.208, b: 1.000 },
+  };
+
+  let plateBox = FULL_FRAME;
+  const setScale = (r) => { plateBox = (r && SUBJECT[r.dataset.slug]) || FULL_FRAME; fitPlate(); };
+
+  // Recomputed from measured pixels every time the cell or the media can have
+  // changed, which is what makes it follow a resize instead of being baked once.
+  function fitPlate() {
+    if (!plate) return;
+    const W = plate.clientWidth;
+    const H = plate.clientHeight;
+    if (!W || !H) return;
+    [img, vid].forEach((m) => {
+      if (!m) return;
+      const nw = m.naturalWidth || m.videoWidth || 0;
+      const nh = m.naturalHeight || m.videoHeight || 0;
+      if (!nw || !nh) return; // not decoded yet; the load handlers call back
+      const fit = Math.min(W / nw, H / nh);   // what object-fit:contain resolves to
+      const pw = nw * fit;
+      const ph = nh * fit;
+      const sw = (plateBox.r - plateBox.x) * pw;
+      const sh = (plateBox.b - plateBox.y) * ph;
+      if (sw <= 0 || sh <= 0) return;
+      const k = PLATE_FILL * Math.min(W / sw, H / sh);
+      const ox = ((plateBox.x + plateBox.r) / 2 - 0.5) * pw;
+      const oy = ((plateBox.y + plateBox.b) / 2 - 0.5) * ph;
+      m.style.transform =
+        'translate(' + (-ox * k).toFixed(1) + 'px,' + (-oy * k).toFixed(1) + 'px) scale(' + k.toFixed(4) + ')';
+    });
+  }
+
+  // A swapped src arrives with no dimensions; fit again once it has them.
+  if (img) img.addEventListener('load', fitPlate);
+  if (vid) vid.addEventListener('loadedmetadata', fitPlate);
+
   // Paint the plate for a row: real items show their image; placeholder items show a
   // labelled placeholder box (the data has no plate asset yet — pending the CMS).
   const isVideoSrc = (s) => /\.(webm|mp4|m4v|mov)(\?|$)/i.test(s || '');
@@ -529,6 +689,7 @@ function initEquipment(root) {
     const src = r.dataset.img || '';
     const isVid = !isPh && isVideoSrc(src);
     plateIsVideo = isVid;
+    setScale(r);
     if (isPh) {
       if (img) { img.removeAttribute('src'); img.style.opacity = '0'; }
       if (vid) { vid.pause && vid.pause(); vid.style.opacity = '0'; }
@@ -570,15 +731,23 @@ function initEquipment(root) {
   // Center the default item (CUSTOM RACK BUILDS) once fonts — and thus item widths — settle.
   const center = () => { const i = activeIdx < 0 ? defaultIdx : activeIdx; setX(xForIndex(i)); swap(i, true); };
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(center); else center();
-  window.addEventListener('resize', () => { const i = activeIdx < 0 ? defaultIdx : activeIdx; setX(clampU(bounds().min, bounds().max, xForIndex(i))); });
+  window.addEventListener('resize', () => {
+    const i = activeIdx < 0 ? defaultIdx : activeIdx;
+    setX(clampU(bounds().min, bounds().max, xForIndex(i)));
+  });
 
   // pointer drag (touch-action:pan-y in CSS lets vertical page scroll pass through)
-  let dragging = false, downX = 0, startX = 0, lastX = 0, lastT = 0, vel = 0, moved = 0;
+  // Bound to the plate as well as the marquee, so the render is draggable too — on a phone the
+  // plate is most of the section and swiping it is the obvious gesture. `surface` is whichever of
+  // the two started this drag: the capture has to go on that element or the move/up events stop
+  // arriving mid-swipe, and it is also what tells `up` whether a tap means anything (see there).
+  let dragging = false, downX = 0, startX = 0, lastX = 0, lastT = 0, vel = 0, moved = 0, surface = null;
   const down = (e) => {
     dragging = true; downX = lastX = e.clientX; startX = trackX; vel = 0; moved = 0; lastT = performance.now();
+    surface = e.currentTarget;
     gsap.killTweensOf(track);
     marquee.classList.add('is-grabbing');
-    if (marquee.setPointerCapture) try { marquee.setPointerCapture(e.pointerId); } catch (_) {}
+    if (surface.setPointerCapture) try { surface.setPointerCapture(e.pointerId); } catch (_) {}
   };
   const move = (e) => {
     if (!dragging) return;
@@ -600,20 +769,27 @@ function initEquipment(root) {
   };
   const up = (e) => {
     if (!dragging) return; dragging = false;
+    const from = surface; surface = null;
     marquee.classList.remove('is-grabbing');
-    if (marquee.releasePointerCapture && e.pointerId != null) try { marquee.releasePointerCapture(e.pointerId); } catch (_) {}
+    if (from && from.releasePointerCapture && e.pointerId != null) try { from.releasePointerCapture(e.pointerId); } catch (_) {}
     // A tap (no real movement) selects the name under the pointer; a drag snaps to center (a flick
     // advances one). Tap is handled here — not via a row 'click' listener — because pointer capture
     // routes the click to the marquee, so per-row click handlers never fire.
+    // Only the marquee reads a tap that way: an x on the plate points at whichever name happens to
+    // sit above it, so tapping the render would jump the fleet somewhere arbitrary. A tap there
+    // settles back onto the current item instead.
     let target;
-    if (moved < 5) target = itemAtClientX(e.clientX);
+    if (moved < 5) target = from === marquee ? itemAtClientX(e.clientX) : (activeIdx < 0 ? defaultIdx : activeIdx);
     else { target = nearest(); if (Math.abs(vel) > 0.35) target += vel < 0 ? 1 : -1; }
     snapTo(clampU(0, rows.length - 1, target));
   };
-  marquee.addEventListener('pointerdown', down);
-  marquee.addEventListener('pointermove', move);
-  marquee.addEventListener('pointerup', up);
-  marquee.addEventListener('pointercancel', up);
+  [marquee, plate].forEach((el) => {
+    if (!el) return;
+    el.addEventListener('pointerdown', down);
+    el.addEventListener('pointermove', move);
+    el.addEventListener('pointerup', up);
+    el.addEventListener('pointercancel', up);
+  });
 
   // Section-gated playback: the plate video plays ONLY while Equipment is active,
   // and restarts from 0 each time you scroll in — so its intro is never missed.
@@ -625,7 +801,31 @@ function initEquipment(root) {
     if (on && plateIsVideo) { try { vid.currentTime = 0; } catch (_) {} vid.play && vid.play().catch(() => {}); }
     else if (!on) { vid.pause && vid.pause(); }
   };
-  return { setActive };
+  // Put the cell's top under the capability bar's RESTING position, and refit.
+  // The stylesheet's `top` is a guess that predates the bar being measured: at
+  // 1600x1000 the bar rests at 220..248 while the cell started at 200, so the
+  // cell opened ABOVE the sub-service names and the render, centred in it, sat
+  // high of the space it looked like it should be centred in. Taking the bar's
+  // own bottom is what makes the gap above the render equal the gap below it.
+  //
+  // `barBottom` is the RESTING bottom, passed in by the caller, not the bar's
+  // current one: while the page is still scrolling into the section the bar is
+  // mid-flight from 52vh, and reading it there would drop the cell down the
+  // screen and then walk it back up.
+  const layout = (barBottom) => {
+    if (typeof barBottom === 'number' && barBottom > 0) {
+      // The SAME gap the flex column already puts between the plate and the
+      // fleet marquee, read off the element so the two cannot drift apart.
+      // Equal gaps above and below the cell are what make the render, centred
+      // within it, land equidistant between the names and the marquee -- a
+      // separately chosen top gap would centre it in the cell but not on screen.
+      const gap = parseFloat(getComputedStyle(wrap).rowGap) || 24;
+      wrap.style.top = Math.round(barBottom + gap) + 'px';
+    }
+    fitPlate();
+  };
+
+  return { setActive, layout };
 }
 
 /* ---- Service nav + deep links (homepage → a section; intro labels → scroll) ----- */

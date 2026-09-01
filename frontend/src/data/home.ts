@@ -21,11 +21,36 @@ export interface SocialLink {
   href: string;
 }
 
-export const reel = {
-  // The Vimeo stand-in from the prototype. Replace when the real reel is cut.
+/** The film behind the hero lockup. `source` decides which half of this is live:
+ *  a file uploaded to Payload's media collection, or a Vimeo link. */
+export interface Reel {
+  source: 'upload' | 'vimeo';
+  /** Absolute URL of the uploaded video (`source: 'upload'`). */
+  src: string;
+  /** Poster still held until the file can paint (`source: 'upload'`; optional). */
+  poster: string;
+  /** Numeric Vimeo id (`source: 'vimeo'`). */
+  vimeoId: string;
+  /** Privacy hash for an unlisted Vimeo video; '' when the video is public. */
+  hash: string;
+}
+
+// The stand-in from the prototype. Unlike the rest of this file it is a FALLBACK rather
+// than the content: it stands in whenever the CMS has no usable reel — global unreachable,
+// or a source picked with nothing filled in yet — so the hero never opens on a black box.
+const REEL_SEED: Reel = {
+  source: 'vimeo',
+  src: '',
+  poster: '',
   vimeoId: '1153696598',
   hash: '028fbff75b',
 };
+
+/** The hero reel: the `homepage` global's, falling back to the seed above. */
+export async function getReel(): Promise<Reel> {
+  const { getHomepageReel } = await import('@/lib/payload');
+  return (await getHomepageReel()) ?? REEL_SEED;
+}
 
 export const location = 'LOS ANGELES, CALIFORNIA';
 export const tagline = 'REDEFINING THE BOUNDARIES OF REAL-TIME CONTENT';
