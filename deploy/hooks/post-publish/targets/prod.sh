@@ -129,6 +129,12 @@ if [ "$GRC" -ne 0 ]; then
   fatal "translate-gate-red" 0
   exit 2
 fi
+
+# --- URL normalization (#69) ---------------------------------------------------
+# Same-domain http:// -> https:// in the translated tree BEFORE the manifest is
+# built (so the manifest captures post-rewrite URLs). Lint pass: never blocks.
+"$PY" "$LIB/normalize_urls.py" --tree "$PROD_TREE" >>"$GATE_LOG" 2>&1 || true
+
 if ! aws_retry preflight s3api head-bucket --bucket "$BUCKET"; then
   echo "prod: endpoint/auth unreachable (head-bucket failed after $ATTEMPT_SEEN attempts); bucket untouched" >&2
   fatal "endpoint-or-auth-unreachable" "$ATTEMPT_SEEN"
