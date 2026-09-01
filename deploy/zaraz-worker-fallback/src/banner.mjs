@@ -41,6 +41,10 @@ const STYLE = [
   '.aoin-cs-notice a{color:#9db8ff;}',
   '.aoin-cs-settings-btn{background:none;border:none;color:#9db8ff;font-size:.85rem;cursor:pointer;padding:4px 8px;text-decoration:underline;}',
   '.aoin-cs-settings-btn:focus-visible{outline:3px solid #9db8ff;outline-offset:2px;}',
+  '.aoin-cs-fab{position:fixed;right:20px;bottom:20px;z-index:2147482998;width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(20,20,25,.92);border:1px solid #4a4a55;box-shadow:0 6px 20px rgba(0,0,0,.45),0 0 0 8px rgba(20,20,25,.28);cursor:pointer;transition:transform .15s ease,box-shadow .15s ease;backdrop-filter:blur(6px);padding:0;}',
+  '.aoin-cs-fab:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(0,0,0,.55),0 0 0 10px rgba(20,20,25,.32);}',
+  '.aoin-cs-fab:focus-visible{outline:3px solid #9db8ff;outline-offset:2px;}',
+  '.aoin-cs-fab svg{width:26px;height:26px;display:block;}',
   '@media (prefers-reduced-motion: reduce){.aoin-cs-overlay,.aoin-cs-notice{transition:none;}}',
   '</style>',
 ].join("");
@@ -90,11 +94,19 @@ function runtimeJs(id) {
     ' }',
     ' if(notice){',
     '  var b=document.getElementById("aoin-cs-out");',
-    '  if(b){b.addEventListener("click",function(){applyChoice(false);});}',
+    '  if(b&&!b.dataset.wired){b.dataset.wired=1;b.addEventListener("click",function(){applyChoice(false);});}',
     '  var r=document.getElementById("aoin-cs-reopen");',
-    '  if(r){r.addEventListener("click",function(){var o=document.getElementById("aoin-cs-overlay");if(o){o.remove();}',
+    '  if(r&&!r.dataset.wired){r.dataset.wired=1;r.addEventListener("click",function(){var o=document.getElementById("aoin-cs-overlay");if(o){o.remove();}',
     '   document.body.insertAdjacentHTML("beforeend",window.__aoinCsModalHtml);window.__aoinCsWire();});}',
     ' }};',
+    ' var fab=document.getElementById("aoin-cs-fab");',
+    ' if(fab){',
+    '  if(notice){fab.style.bottom="64px";}',
+    '  if(!fab.dataset.wired){fab.dataset.wired=1;fab.addEventListener("click",function(){',
+    '   var o=document.getElementById("aoin-cs-overlay");',
+    '   if(o){o.remove();return;}',
+    '   document.body.insertAdjacentHTML("beforeend",window.__aoinCsModalHtml);window.__aoinCsWire();});}',
+    ' }',
     'window.__aoinCsRunReady=1;})();</script>',
   ].join("");
 }
@@ -127,30 +139,39 @@ const NOTICE_HTML = [
   '</div>',
 ].join("");
 
+const FAB_HTML = [
+  '<button id="aoin-cs-fab" class="aoin-cs-fab" type="button" aria-label="Cookie settings (design preview)" title="Cookie settings">',
+  '<svg viewBox="0 0 24 24" fill="none" aria-hidden="true"><circle cx="12" cy="12" r="9" stroke="#f2f2f4" stroke-width="1.8"/><circle cx="9" cy="9.5" r="1.3" fill="#f2f2f4"/><circle cx="14" cy="8.5" r="1.1" fill="#f2f2f4"/><circle cx="15.5" cy="13.5" r="1.4" fill="#f2f2f4"/><circle cx="10" cy="15" r="1.1" fill="#f2f2f4"/></svg>',
+  '</button>',
+].join("");
+
 const SETTINGS_BTN_HTML = '<button id="aoin-cs-reopen" class="aoin-cs-settings-btn" type="button">Cookie settings</button>';
 
 // Suppress banner if the visitor already chose (consent cookie present in the
 // request). Neither plane re-presents after an explicit choice; the footer
 // "Cookie settings" control is the re-open path in both regimes.
-export function bannerFor(country, ga4id, cookieHeader) {
+// preview=true on any host except allofitnow.com/www: floating design-preview
+// button (owner ruling 2026-09-01). Never on production hosts.
+export function bannerFor(country, ga4id, cookieHeader, preview) {
+  const fab = preview ? FAB_HTML : "";
   const optIn = isOptIn(country);
   const chose = parseConsentPresent(cookieHeader);
   if (chose) {
     // choice already recorded: no banner, footer control only (both planes)
     return {
       kind: "settled",
-      html: STYLE + runtimeJs(ga4id) + '<div id="aoin-cs-footer">' + SETTINGS_BTN_HTML + "</div>" + wireFooterOnly(),
+      html: STYLE + runtimeJs(ga4id) + fab + '<div id="aoin-cs-footer">' + SETTINGS_BTN_HTML + "</div>" + wireFooterOnly(),
     };
   }
   if (optIn) {
     return {
       kind: "modal",
-      html: STYLE + runtimeJs(ga4id) + MODAL_HTML.replace("<div ", '<div data-bv="' + BANNER_VERSION + '" ') + footWireModal(),
+      html: STYLE + runtimeJs(ga4id) + fab + MODAL_HTML.replace("<div ", '<div data-bv="' + BANNER_VERSION + '" ') + footWireModal(),
     };
   }
   return {
     kind: "notice",
-    html: STYLE + runtimeJs(ga4id) + NOTICE_HTML + '<div id="aoin-cs-footer">' + SETTINGS_BTN_HTML + "</div>" + wireFooterOnly(),
+    html: STYLE + runtimeJs(ga4id) + NOTICE_HTML + fab + '<div id="aoin-cs-footer">' + SETTINGS_BTN_HTML + "</div>" + wireFooterOnly(),
     notice: true,
   };
 }

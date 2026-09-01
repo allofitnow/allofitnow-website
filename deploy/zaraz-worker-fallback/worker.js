@@ -234,11 +234,13 @@ export default {
 function injectZaraz(buf, host, country, cookieHeader) {
   const html = new TextDecoder().decode(buf);
   const ga4id = GA4_BY_HOST[host] || GA4_BY_HOST["46009.someofitlater.com"];
+  // design-preview fab: any host except production (owner ruling 2026-09-01)
+  const preview = host !== "allofitnow.com" && host !== "www.allofitnow.com";
   // #76 consent gate: single choke point. Gate closed -> serve the page with
   // the banner ONLY (no tracking of any kind). Never bare-return (undefined
   // wrapped in a Response would throw).
   if (!gateOpen(country, cookieHeader)) {
-    const b = bannerFor(country, ga4id, cookieHeader);
+    const b = bannerFor(country, ga4id, cookieHeader, preview);
     return appendBeforeBodyEnd(html, b.html);
   }
   if (html.includes("/cdn-cgi/zaraz/i.js")) return html; // idempotent
@@ -251,7 +253,7 @@ function injectZaraz(buf, host, country, cookieHeader) {
   }
   // #77 banner: gate open (notice regime default-ON, or consented opt-in
   // visitor) still needs the notice line + footer settings control.
-  const b = bannerFor(country, ga4id, cookieHeader);
+  const b = bannerFor(country, ga4id, cookieHeader, preview);
   return appendBeforeBodyEnd(out, b.html);
 }
 
