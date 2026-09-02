@@ -1,8 +1,8 @@
-// 46009 routing worker v3j - deploy/zaraz-worker-fallback/worker.js
-// v3i -> v3j (#76 + #77, cookie compliance): geo-aware consent gate in
+// 46009 routing worker v3k - deploy/zaraz-worker-fallback/worker.js
+// v3j -> v3k (#108 banner v2: notice Accept/Deny + brand font; #76/#77 gate):
+// geo-aware consent gate in
 // injectZaraz() + worker-injected geo-split consent banner. Gate = single
 // choke point for all tracking vectors (wiki cookie-compliance section 6).
-// DEPLOY HOLD: #71 AC1 GA4 baseline must be stamped BEFORE this ships live.
 import { gateOpen } from "./src/gate.mjs";
 import { bannerFor } from "./src/banner.mjs";
 // same-source: worker head-injection uses the shared snippet primitives
@@ -106,7 +106,7 @@ function redirect301(location) {
     headers: {
       "location": location,
       "cache-control": "public, max-age=86400",
-      "x-46009-worker": "v3j",
+      "x-46009-worker": "v3k",
     },
   });
 }
@@ -130,7 +130,7 @@ export default {
     if (!SERVING_HOSTS.has(host)) {
       return new Response("host not served", {
         status: 403,
-        headers: { "x-46009-worker": "v3j" },
+        headers: { "x-46009-worker": "v3k" },
       });
     }
 
@@ -160,7 +160,7 @@ export default {
     if (url.pathname.startsWith("/archive/")) {
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3j" },
+        headers: { "x-46009-worker": "v3k" },
       });
     }
 
@@ -200,13 +200,13 @@ export default {
           headers: {
             "content-type": MIME.html,
             "cache-control": "no-cache",
-            "x-46009-worker": "v3j",
+            "x-46009-worker": "v3k",
           },
         });
       }
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3j" },
+        headers: { "x-46009-worker": "v3k" },
       });
     }
 
@@ -214,7 +214,7 @@ export default {
     const headers = new Headers();
     headers.set("etag", obj.httpEtag);
     headers.set("content-type", MIME[ext] || "application/octet-stream");
-    headers.set("x-46009-worker", "v3j");
+    headers.set("x-46009-worker", "v3k");
     if (ext === "html") {
       headers.set("cache-control", "no-cache");
     } else {

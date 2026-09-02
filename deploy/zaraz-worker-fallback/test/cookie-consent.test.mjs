@@ -95,10 +95,13 @@ test("bannerFor with choice already recorded -> settled (no re-presentation)", (
   }
 });
 
-test("notice plane: opt-out link present, /privacy linked", () => {
+test("notice plane: Accept/Deny buttons + /privacy linked, brand font on all controls", () => {
   const b = bannerFor("US", "G-TEST", null);
-  assert.ok(b.html.includes("aoin-cs-out"));
+  assert.ok(b.html.includes("aoin-cs-notice-deny"));
+  assert.ok(b.html.includes("aoin-cs-notice-accept"));
   assert.ok(b.html.includes('href="/privacy"'));
+  assert.ok(!b.html.includes("aoin-cs-out")); // v1 one-click link removed
+  assert.ok(b.html.includes("Denim INK WD")); // brand font (fallback stack)
 });
 
 test("modal plane: no pre-ticked boxes beyond analytics default checkbox state clarity", () => {

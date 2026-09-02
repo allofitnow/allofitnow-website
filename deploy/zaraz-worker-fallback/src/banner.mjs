@@ -22,24 +22,29 @@ import { isOptIn } from "./gate.mjs";
 // same-source rule (#77): handlers compose the shared snippet module
 import { acceptBodyJs, optOutBodyJs } from "./inject-snippet.mjs";
 
-const BANNER_VERSION = 1; // bump when banner text/controls change materially (#79 tracks v2)
+const BANNER_VERSION = 2; // bump when banner text/controls change materially (#79 tracks v2); 2 = notice Accept/Deny + brand font
+
+const FONT_BODY = 'var(--font-body,"Denim INK WD",-apple-system,"Helvetica Neue",Arial,sans-serif)';
 
 const STYLE = [
   '<style id="aoin-cs">',
   '.aoin-cs-overlay{position:fixed;inset:0;background:rgba(10,10,12,.72);z-index:2147483000;display:flex;align-items:center;justify-content:center;}',
-  '.aoin-cs-dialog{background:#141419;color:#f2f2f4;font-family:inherit;max-width:520px;width:calc(100% - 32px);padding:28px;border-radius:12px;margin:16px;}',
+  '.aoin-cs-dialog{background:#141419;color:#f2f2f4;font-family:' + FONT_BODY + ';max-width:520px;width:calc(100% - 32px);padding:28px;border-radius:12px;margin:16px;}',
   '.aoin-cs-dialog h2{font-size:1.15rem;margin:0 0 10px;color:#fff;font-weight:600;}',
   '.aoin-cs-dialog p{font-size:.92rem;line-height:1.5;margin:0 0 18px;color:#d4d4d9;}',
   '.aoin-cs-dialog a{color:#9db8ff;}',
   '.aoin-cs-btns{display:flex;gap:10px;flex-wrap:wrap;}',
-  '.aoin-cs-btn{flex:1 1 140px;min-height:48px;border:1px solid #4a4a55;border-radius:8px;background:#1e1e26;color:#f2f2f4;font-size:.95rem;font-weight:500;cursor:pointer;padding:0 14px;}',
+  '.aoin-cs-btn{flex:1 1 140px;min-height:48px;border:1px solid #4a4a55;border-radius:8px;background:#1e1e26;color:#f2f2f4;font-size:.95rem;font-weight:500;cursor:pointer;padding:0 14px;font-family:' + FONT_BODY + ';}',
   '.aoin-cs-btn:focus-visible{outline:3px solid #9db8ff;outline-offset:2px;}',
   '.aoin-cs-panel{margin-top:14px;display:none;}',
   '.aoin-cs-panel.open{display:block;}',
   '.aoin-cs-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid #2a2a33;font-size:.92rem;}',
-  '.aoin-cs-notice{position:fixed;left:0;right:0;bottom:0;z-index:2147482999;background:#141419;color:#d4d4d9;font-size:.85rem;padding:10px 16px;text-align:center;border-top:1px solid #2a2a33;}',
+  '.aoin-cs-notice{position:fixed;left:0;right:0;bottom:0;z-index:2147482999;background:#141419;color:#d4d4d9;font-size:.85rem;padding:10px 16px;text-align:center;border-top:1px solid #2a2a33;font-family:' + FONT_BODY + ';}',
   '.aoin-cs-notice a{color:#9db8ff;}',
-  '.aoin-cs-settings-btn{background:none;border:none;color:#9db8ff;font-size:.85rem;cursor:pointer;padding:4px 8px;text-decoration:underline;}',
+  '.aoin-cs-notice-btns{display:inline-flex;gap:8px;margin-left:10px;vertical-align:middle;white-space:nowrap;}',
+  '.aoin-cs-nbtn{min-height:36px;padding:0 16px;border:1px solid #4a4a55;border-radius:8px;background:#1e1e26;color:#f2f2f4;font-size:.85rem;font-weight:500;cursor:pointer;font-family:' + FONT_BODY + ';}',
+  '.aoin-cs-nbtn:focus-visible{outline:3px solid #9db8ff;outline-offset:2px;}',
+  '.aoin-cs-settings-btn{background:none;border:none;color:#9db8ff;font-size:.85rem;cursor:pointer;padding:4px 8px;text-decoration:underline;font-family:' + FONT_BODY + ';}',
   '.aoin-cs-settings-btn:focus-visible{outline:3px solid #9db8ff;outline-offset:2px;}',
   '.aoin-cs-fab{position:fixed;right:20px;bottom:20px;z-index:2147482998;width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(20,20,25,.92);border:1px solid #4a4a55;box-shadow:0 6px 20px rgba(0,0,0,.45),0 0 0 8px rgba(20,20,25,.28);cursor:pointer;transition:transform .15s ease,box-shadow .15s ease;backdrop-filter:blur(6px);padding:0;}',
   '.aoin-cs-fab:hover{transform:translateY(-2px);box-shadow:0 8px 26px rgba(0,0,0,.55),0 0 0 10px rgba(20,20,25,.32);}',
@@ -97,8 +102,10 @@ function runtimeJs(id) {
     '  g("aoin-cs-save").addEventListener("click",function(){applyChoice(g("aoin-cs-analytics").checked===true);});',
     ' }',
     ' if(notice){',
-    '  var b=document.getElementById("aoin-cs-out");',
-    '  if(b&&!b.dataset.wired){b.dataset.wired=1;b.addEventListener("click",function(){applyChoice(false);});}',
+      '  var d=document.getElementById("aoin-cs-notice-deny");',
+      '  if(d&&!d.dataset.wired){d.dataset.wired=1;d.addEventListener("click",function(){applyChoice(false);});}',
+      '  var a=document.getElementById("aoin-cs-notice-accept");',
+      '  if(a&&!a.dataset.wired){a.dataset.wired=1;a.addEventListener("click",function(){applyChoice(true);});}',
     '  var r=document.getElementById("aoin-cs-reopen");',
     '  if(r&&!r.dataset.wired){r.dataset.wired=1;r.addEventListener("click",function(){var o=document.getElementById("aoin-cs-overlay");if(o){o.remove();}',
     '   document.body.insertAdjacentHTML("beforeend",window.__aoinCsModalHtml);window.__aoinCsWire();});}',
@@ -139,8 +146,11 @@ const MODAL_HTML = [
 const NOTICE_HTML = [
   '<div id="aoin-cs-notice" class="aoin-cs-notice">',
   'We use analytics cookies to improve this site. ',
-  '<a href="/privacy">Privacy policy</a> &middot; ',
-  '<button id="aoin-cs-out" class="aoin-cs-settings-btn" type="button">Turn off analytics</button>',
+  '<a href="/privacy">Privacy policy</a>',
+  '<span class="aoin-cs-notice-btns">',
+  '<button id="aoin-cs-notice-deny" class="aoin-cs-nbtn" type="button">Deny</button>',
+  '<button id="aoin-cs-notice-accept" class="aoin-cs-nbtn" type="button">Accept</button>',
+  '</span>',
   '</div>',
 ].join("");
 

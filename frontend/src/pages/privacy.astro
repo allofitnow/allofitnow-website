@@ -39,16 +39,17 @@ import Base from '@/layouts/Base.astro';
             Track) receives initial keyboard focus.
           </li>
           <li>
-            Everywhere else: analytics run by default. You can switch analytics off at
-            any time with one click via "Cookie settings" in the footer - switching off
-            is exactly as easy as it was on.
+            Everywhere else: analytics run by default. A slim banner offers
+            Deny and Accept, and you can change your choice at any time via
+            "Cookie settings" in the footer - switching off is exactly as easy
+            as it was on.
           </li>
         </ul>
       </section>
 
       <section>
         <h2><span>Cookies</span><span class="rule" aria-hidden="true"></span></h2>
-        <p>Today (served from the someofitlater.com zone):</p>
+        <p>Cookies set by this site (allofitnow.com):</p>
         <div class="table-wrap">
           <table>
             <thead>
@@ -61,16 +62,10 @@ import Base from '@/layouts/Base.astro';
             </thead>
             <tbody>
               <tr>
-                <td class="mono">_ga, _ga_1TVWRSCCLN</td>
+                <td class="mono">_ga, _ga_NDWE8QHK9W</td>
                 <td>GA4 measurement</td>
                 <td>Google gtag.js</td>
                 <td>up to 2 years</td>
-              </tr>
-              <tr>
-                <td class="mono">cfz_google-analytics_v4, cfzs_google-analytics_v4</td>
-                <td>GA4 via Cloudflare Zaraz (pre-cutover only)</td>
-                <td>Zaraz tool</td>
-                <td>persistent / session</td>
               </tr>
               <tr>
                 <td class="mono">aoin_consent</td>
@@ -81,19 +76,14 @@ import Base from '@/layouts/Base.astro';
             </tbody>
           </table>
         </div>
-        <p>
-          After the cutover to allofitnow.com (cookies then scoped .allofitnow.com):
-          _ga* measurement cookies and the aoin_consent record remain; the Cloudflare
-          Zaraz cookies disappear with the zone change.
-        </p>
       </section>
 
       <section>
         <h2><span>Where data goes</span><span class="rule" aria-hidden="true"></span></h2>
         <p>
-          Google (script hosting googletagmanager.com; collection google-analytics.com)
-          and Cloudflare (edge hosting; pre-cutover Zaraz endpoint receives page
-          metadata - screen size, timezone, referrer, title). No other recipients.
+          Google (script hosting googletagmanager.com; collection
+          google-analytics.com) and Cloudflare (edge hosting). No other
+          recipients.
         </p>
       </section>
 
