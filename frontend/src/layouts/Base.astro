@@ -173,6 +173,7 @@ const SITE_URL = Astro.site?.toString().replace(/\/$/, '') ?? 'https://46009.som
       import '@/lib/hovercard';
       import { ensureLenis } from '@/lib/smooth-scroll';
       import { initMuteMedia } from '@/lib/mute-media';
+      import '@/lib/ladder-boot';
 
       // Nothing on this site is meant to make noise. Enforced here rather than
       // trusted to every render site remembering the muted attribute — see

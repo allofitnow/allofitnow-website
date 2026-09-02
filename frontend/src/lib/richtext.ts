@@ -1,5 +1,5 @@
 import { mediaUrl } from '@/lib/payload';
-import { buildSrcset, mediaHref, toMediaDoc } from '@/lib/media';
+import { appendMasterRung, buildSrcset, toMediaDoc, videoPosterHref, videoRungs } from './media';
 
 // Minimal serializer for Payload's Slate rich-text JSON → HTML string.
 //
@@ -100,7 +100,21 @@ function serializeUpload(node: SlateNode): string {
         : '';
 
   const media = isVideo
-    ? `<video src="${escapeHtml(src)}"${ratio} autoplay muted loop playsinline preload="metadata"></video>`
+    ? (() => {
+        // #103: rendition ladder for inline write-up videos. A wired doc
+        // (sizes w1280/w854) renders src-less with data-rungs + poster +
+        // preload=none — lib/ladder-boot.ts (loaded by Base.astro on every
+        // Base page; ProjectPage includes rich text under Base) picks the
+        // rung. Legacy mov/string uploads keep today's plain-src markup.
+        const mdoc = toMediaDoc({ ...doc, url: undefined });
+        const rungs = mdoc ? videoRungs(mdoc) : [];
+        if (rungs.length) {
+          appendMasterRung(rungs, src, mdoc?.width);
+          const poster = videoPosterHref(mdoc!);
+          return `<video data-rungs="${escapeHtml(JSON.stringify(rungs))}" data-master-src="${escapeHtml(src)}"${poster ? ` poster="${escapeHtml(poster)}"` : ''} autoplay muted loop playsinline preload="none"></video>`;
+        }
+        return `<video src="${escapeHtml(src)}"${ratio} autoplay muted loop playsinline preload="metadata"></video>`;
+      })()
     : (() => {
         // #58: filename is the SSOT — derive src + srcset from it (doc.url is
         // untrusted on legacy docs). No rungs (video-adjacent/legacy doc) → plain src.

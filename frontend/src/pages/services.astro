@@ -13,7 +13,7 @@
    controller's layout() never touches it. The page is a full HTML doc outside Base.astro
    but uses the shared site nav. */
 import '../styles/services.css';
-import { buildSrcset } from '../lib/media';
+import { buildSrcset, videoPosterHref, videoRungs } from '../lib/media';
 import Nav from '../components/chrome/Nav.astro';
 import Cursor from '../components/chrome/Cursor.astro';
 import HoverCard from '../components/chrome/HoverCard.astro';
@@ -113,6 +113,28 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
 // initial plate paints the <img> or the <video>; initEquipment swaps between them on selection.
 const isVideoSrc = (u: string) => /\.(webm|mp4|m4v|mov)(\?|$)/i.test(u || '');
 const equipCenterVid = isVideoSrc(equipCenter.image);
+
+// #103: rendition ladder for video plates — rungs from the item's media doc
+// (master topping the ladder), poster by filename convention. Empty array for
+// non-video / ladder-less items (WP-hosted seeds) → today's plain-src plate.
+const equipRungs = (e: (typeof equipment)[number]) => {
+  if (!isVideoSrc(e.image) || !e.imageDoc) return [];
+  const r = videoRungs(e.imageDoc);
+  if (r.length) appendMasterRung(r, e.image, e.imageDoc?.width);
+  return r;
+};
+const equipCenterRungs = equipRungs(equipCenter);
+const equipCenterPoster = equipCenterRungs.length ? videoPosterHref(equipCenter.imageDoc!) : null;
+
+// #103: MR-orbit video ladder — same contract as GalleryMedia (the orbit's
+// emitter is inline here rather than the component).
+const mrVidAttrs = (g: (typeof MR)[number]) => {
+  if (!g.video || !g.doc) return { rungs: undefined, poster: undefined };
+  const r = videoRungs(g.doc);
+  if (!r.length) return { rungs: undefined, poster: undefined };
+  appendMasterRung(r, g.src, g.doc?.width);
+  return { rungs: JSON.stringify(r), poster: videoPosterHref(g.doc) || undefined };
+};
 ---
 <!doctype html>
 <html lang="en">
@@ -247,9 +269,12 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
         <div class="container">
           {/* Deferred like GalleryMedia — the orbit's 10 slots would otherwise autoplay
               10 large videos at load. The engine loads + plays them only when Mixed is active. */}
-          {MR.map((g) => g.video
-            ? <video data-lazymedia data-lazysrc={g.src} muted loop playsinline preload="none" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps}></video>
-            : <img data-lazymedia data-lazysrc={g.doc ? buildSrcset(g.doc).src : g.src} data-lazysrcset={g.doc ? buildSrcset(g.doc).srcset : undefined} loading="lazy" decoding="async" sizes="(max-width:480px) 65vw, 33vw" alt="" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
+          {MR.map((g) => {
+            const l = mrVidAttrs(g);
+            return g.video
+              ? <video data-lazymedia data-lazysrc={g.src} data-master-src={l.rungs ? g.src : undefined} data-rungs={l.rungs} poster={l.poster} muted loop playsinline preload="none" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps}></video>
+              : <img data-lazymedia data-lazysrc={g.doc ? buildSrcset(g.doc).src : g.src} data-lazysrcset={g.doc ? buildSrcset(g.doc).srcset : undefined} loading="lazy" decoding="async" sizes="(max-width:480px) 65vw, 33vw" alt="" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />;
+          })}
         </div>
       </div>
       <p class="svc-desc svc-desc--overlay" data-desc="">{services[2].desc}</p>
@@ -262,7 +287,11 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
       <div class="equip" data-fx="equip">
         <div class="equip-plate" data-equip-plate>
           <img data-equip-img loading="lazy" decoding="async" src={equipCenterVid ? undefined : (equipCenter.imageDoc ? buildSrcset(equipCenter.imageDoc).src : equipCenter.image)} srcset={equipCenterVid || !equipCenter.imageDoc ? undefined : (buildSrcset(equipCenter.imageDoc).srcset || undefined)} sizes="(max-width:480px) 100vw, (max-width:900px) 85vw, 37vw" alt="" style={equipCenterVid ? 'opacity:0' : undefined} />
-          <video data-equip-vid src={equipCenterVid ? equipCenter.image : undefined} muted loop playsinline preload="metadata" style={equipCenterVid ? undefined : 'opacity:0'}></video>
+          {/* #103: a wired plate video renders src-less with data-rungs +
+              poster — initEquipment's setPlate picks the rung at first paint
+              (and on every marquee selection), so the plate never fetches the
+              master on a ladder-bearing item. Ladder-less keeps plain src. */}
+          <video data-equip-vid data-rungs={equipCenterRungs.length ? JSON.stringify(equipCenterRungs) : undefined} data-master-src={equipCenterRungs.length ? equipCenter.image : undefined} poster={equipCenterPoster || undefined} src={equipCenterVid && !equipCenterRungs.length ? equipCenter.image : undefined} muted loop playsinline preload={equipCenterRungs.length ? 'none' : 'metadata'} style={equipCenterVid ? undefined : 'opacity:0'}></video>
           <div class="equip-plate-ph" data-equip-ph aria-hidden="true"></div>
         </div>
         <div class="equip-marquee" data-equip-marquee aria-label="Drag to browse equipment">
@@ -273,6 +302,8 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
                 class="equip-item"
                 data-equip-row
                 data-img={e.image}
+                data-rungs={(() => { const r = equipRungs(e); return r.length ? JSON.stringify(r) : undefined; })()}
+                data-poster={(() => { const r = equipRungs(e); return r.length ? videoPosterHref(e.imageDoc!) || undefined : undefined; })()}
                 data-tip={e.tip}
                 data-slug={e.slug}
                 data-placeholder={e.placeholder ? 'true' : undefined}
@@ -319,6 +350,7 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
   import { mountEffects } from '../scripts/services-effects.js';
   import '../lib/hovercard'; // cursor project card over project-linked stills (binds its own listeners)
   import { initMuteMedia } from '../lib/mute-media';
+  import '@/lib/ladder-boot'; // #103: installs window.__aoinPickRung + wires non-lazymedia data-rungs videos
 
   // Standalone document, outside Base.astro, so it mounts its own copy — the
   // gallery and equipment plates are the densest video on the site.

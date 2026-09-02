@@ -167,11 +167,31 @@ export function mountEffects(ctrl) {
   // clip is reused instead of re-downloaded.
   const sectionMedia = panels.map((pan) => [...pan.querySelectorAll('[data-lazymedia]')]);
   const loadMedia = (el) => {
-    if (el && !el.getAttribute('src') && el.dataset.lazysrc) {
-      el.setAttribute('src', el.dataset.lazysrc);
-      // #58: the responsive ladder rides the same swap — never before entry.
-      if (el.dataset.lazysrcset) el.setAttribute('srcset', el.dataset.lazysrcset);
-      if (el.tagName === 'VIDEO') { try { el.load(); } catch (_) {} }
+    if (el && !el.getAttribute('src')) {
+      // #103: a rung-bearing video picks its rendition HERE (section entry)
+      // instead of taking data-lazysrc's master — only the chosen rung hits
+      // the wire. window.__aoinPickRung is installed by lib/ladder-boot
+      // (guarded in case of script-order races; fallback = data-lazysrc).
+      const rungsRaw = el.dataset ? el.dataset.rungs : null;
+      if (el.tagName === 'VIDEO' && rungsRaw && typeof window.__aoinPickRung === 'function') {
+        let rungs = [];
+        try { rungs = JSON.parse(rungsRaw); } catch (_) { rungs = []; }
+        if (Array.isArray(rungs) && rungs.length) {
+          const chosen = window.__aoinPickRung(rungs, el.dataset.lazysrc || '');
+          if (chosen) {
+            el.setAttribute('src', chosen);
+            if (el.dataset.lazysrcset) el.setAttribute('srcset', el.dataset.lazysrcset);
+            try { el.load(); } catch (_) {}
+            return;
+          }
+        }
+      }
+      if (el.dataset.lazysrc) {
+        el.setAttribute('src', el.dataset.lazysrc);
+        // #58: the responsive ladder rides the same swap — never before entry.
+        if (el.dataset.lazysrcset) el.setAttribute('srcset', el.dataset.lazysrcset);
+        if (el.tagName === 'VIDEO') { try { el.load(); } catch (_) {} }
+      }
     }
   };
   const playMedia = (el) => { loadMedia(el); if (el.tagName === 'VIDEO') { try { const p = el.play(); if (p) p.catch(() => {}); } catch (_) {} } };
@@ -771,7 +791,18 @@ function initEquipment(root) {
     } else if (isVid) {
       if (img) img.style.opacity = '0';
       if (vid) {
-        if (vid.getAttribute('src') !== src) vid.src = src;
+        // #103: rung-bearing fleet items pick their rendition at selection
+        // (row data-rungs, baked at build); ladder-less items take raw src.
+        let chosen = src;
+        const rungsRaw = r.dataset.rungs;
+        if (rungsRaw && typeof window.__aoinPickRung === 'function') {
+          let rungs = [];
+          try { rungs = JSON.parse(rungsRaw); } catch (_) { rungs = []; }
+          if (Array.isArray(rungs) && rungs.length) chosen = window.__aoinPickRung(rungs, src) || src;
+        }
+        const rowPoster = r.dataset.poster;
+        if (rowPoster && vid.getAttribute('poster') !== rowPoster) vid.setAttribute('poster', rowPoster);
+        if (vid.getAttribute('src') !== chosen) vid.src = chosen;
         vid.style.opacity = '1';
         // Only autoplay while the equipment section is active — otherwise the plate
         // holds frame 0 so its intro plays from the start when you scroll in.
