@@ -336,6 +336,11 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
   import { mountServices } from '../scripts/services-controller.js';
   import { mountEffects } from '../scripts/services-effects.js';
   import '../lib/hovercard'; // cursor project card over project-linked stills (binds its own listeners)
+  import { initMuteMedia } from '../lib/mute-media';
+
+  // Standalone document, outside Base.astro, so it mounts its own copy — the
+  // gallery and equipment plates are the densest video on the site.
+  initMuteMedia();
 
   const ctrl = mountServices({ introOnly: true });
   // mountEffects positions every gallery off-stage synchronously (master.progress(0)),
