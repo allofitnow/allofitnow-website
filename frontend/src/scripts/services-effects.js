@@ -379,31 +379,28 @@ function buildRealtime(root, master, reparks) {
   const el = root.querySelector('.mwg_effect083');
   if (!el) return;
   const mob = window.innerWidth < 768;
-  const all = [...el.querySelectorAll('.media')];
-  // Phones: a full-height slab is a far bigger object than the old 16:9 card, so all 16 in the
-  // stream read as clutter. Fly every other still and hide the rest. MOB_KEEP is the 1-in-N.
-  const MOB_KEEP = 2;
-  const medias = mob ? all.filter((_, i) => i % MOB_KEEP === 0) : all;
-  if (mob) all.forEach((m, i) => { if (i % MOB_KEEP) gsap.set(m, { display: 'none' }); });
+  const medias = [...el.querySelectorAll('.media')];
   const n = medias.length;
-  // Half the stills over the same scroll window would empty the section early, so widen the
-  // stagger by the same factor — the flight keeps its original pacing and duration.
-  const stag = mob ? RTC.stag * MOB_KEEP : RTC.stag;
+  // Phones fly the same stream as desktop — every still, the same lanes, the same depth scale —
+  // at ~80vw a card (services.css). A card that wide is in frame for two-thirds of its flight
+  // (desktop's 24vw card: under half), so at desktop pacing ~8 would be on screen at once. A
+  // wider stagger and a shorter flight keep it to ~4, and the section still hands off to
+  // Screens at the same progress: the last card lands at ≈0.415 either way.
+  const stag = mob ? 0.017 : RTC.stag;
+  const travel = mob ? 0.10 : RTC.travel;
   medias.forEach((m, i) => {
     const L = LAYERS[i % LAYERS.length];             // depth: reach (speed) + scale
     const lane = (i * 7) % n;                         // shuffle into evenly-spread vertical lanes
-    // Desktop: keep the stream in a centred band so large stills don't hang off the top/bottom
-    // edges (the top lane used to sit at 5% and get cropped).
-    // Phones: every still is a full-height slab (services.css), so there are no vertical lanes
-    // left to spread into and no headroom to scale — each sits dead-centre at its natural size.
-    // Depth still reads through the per-layer horizontal reach (speed) and z-order.
-    const top = mob ? 50 : 22 + (lane / Math.max(1, n - 1)) * 54;
-    const scale = mob ? 1 : L.scale;
+    // Keep the stream in a centred band so large stills don't hang off the top/bottom edges (the
+    // top lane used to sit at 5% and get cropped). On a phone that band runs under the title and
+    // the copy on purpose — the faint section scrim and the type's text-shadows carry legibility.
+    const top = 22 + (lane / Math.max(1, n - 1)) * 54;
+    const scale = L.scale;
     const fromX = () => window.innerWidth * L.reach + 140;
     const toX = () => -window.innerWidth * L.reach - 140;
     gsap.set(m, { top: top.toFixed(2) + '%', yPercent: -50, zIndex: L.z, scale, x: fromX });
     if (reparks) reparks.push(() => gsap.set(m, { x: fromX }));
-    master.fromTo(m, { x: fromX }, { x: toX, ease: 'none', duration: RTC.travel }, RTC.start + i * stag);
+    master.fromTo(m, { x: fromX }, { x: toX, ease: 'none', duration: travel }, RTC.start + i * stag);
   });
 }
 
@@ -416,32 +413,36 @@ function buildScreens(root, master, reparks) {
   if (!n) return;
   const mob = window.innerWidth < 768;
   // Organic parallax spread kept: stills tile into `nc` lanes (the (i*3)%n shuffle), each lane a depth
-  // layer (reach + scale). On desktop the lanes sit at a FIXED centre-to-centre PITCH that clears the
-  // widest layer + a gap, so nothing overlaps horizontally even as the stills grow — the trade (per the
-  // brief) is that the outer lanes BLEED off the viewport edges instead of packing in, so the horizontal
-  // distance is preserved. Phones keep the old on-screen packing (mobile is a deferred pass).
+  // layer (reach + scale). The lanes sit at a FIXED centre-to-centre PITCH that clears the widest
+  // layer + a gap, so nothing overlaps horizontally even as the stills grow — the trade (per the
+  // brief) is that the outer lanes BLEED off the viewport edges instead of packing in, so the
+  // horizontal distance is preserved. Phones run the same maths with TWO lanes instead of four:
+  // at ~56vw a card (services.css) the four-lane pitch would put the outer lanes entirely
+  // off-screen, whereas two lanes bleed ~13% off their edges — desktop's outer lanes, in effect.
+  // Cards alternate lanes, so a lane's neighbours are two stagger steps apart vertically.
   const uniq = [...new Set(medias.map((_, i) => (i * 3) % n))].sort((a, b) => a - b);
-  const nc = uniq.length;
+  const nc = mob ? Math.min(2, uniq.length) : uniq.length;
   const sampleW = medias[0] ? medias[0].getBoundingClientRect().width : window.innerWidth * 0.22;
   const imgPct = (sampleW / window.innerWidth) * 100;       // image width as % of viewport
   const maxScale = Math.max(...LAYERS.map((l) => l.scale)); // widest depth layer
-  const GAP = mob ? 1 : 1.5;                                // gap between adjacent lane footprints (%)
+  const GAP = 1.5;                                          // gap between adjacent lane footprints (%)
   const pitch = imgPct * maxScale + GAP;                    // lane centre-to-centre spacing ⇒ no h-overlap
   const mid = (nc - 1) / 2;                                 // centre the lane group; wider-than-100% ⇒ bleed
-  const MARGIN = 4;
-  const packTravel = Math.max(0, 100 - 2 * MARGIN - imgPct);
+  // Phones: bigger cards, so fewer in frame per scroll — a wider stagger and a shorter rise keep
+  // it to ~4 on screen (two per lane), and the section still clears at the same progress as
+  // desktop (last card gone ≈0.59 either way).
+  const stag = mob ? 0.014 : SCR.stag;
+  const travel = mob ? 0.13 : SCR.travel;
   medias.forEach((m, i) => {
     const L = LAYERS[i % LAYERS.length];
-    const col = uniq.indexOf((i * 3) % n);
-    const left = mob
-      ? MARGIN + (nc > 1 ? col / (nc - 1) : 0.5) * packTravel   // phones: keep everything on-screen
-      : 50 + (col - mid) * pitch - imgPct / 2;                  // desktop: fixed pitch, outer lanes bleed off-edge
-    const scale = mob ? L.scale * 1.0 : L.scale;
+    const col = uniq.indexOf((i * 3) % n) % nc;
+    const left = 50 + (col - mid) * pitch - imgPct / 2;
+    const scale = L.scale;
     const fromY = () => window.innerHeight * L.reach + 120;
     const toY = () => -window.innerHeight * L.reach - 120;
     gsap.set(m, { left: left.toFixed(2) + '%', zIndex: L.z, scale, y: fromY });
     if (reparks) reparks.push(() => gsap.set(m, { y: fromY }));
-    master.fromTo(m, { y: fromY }, { y: toY, ease: 'none', duration: SCR.travel }, SCR.start + i * SCR.stag);
+    master.fromTo(m, { y: fromY }, { y: toY, ease: 'none', duration: travel }, SCR.start + i * stag);
   });
 }
 

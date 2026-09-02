@@ -203,12 +203,24 @@ html.lenis, html.lenis body { height: auto; }
 .svc-panel--equip .svc-desc { max-width: 62ch; bottom: 44px; }
 
 /* ===== Capability list (the four [data-slot] names) =====
-   The list sits on the character field, which is lit brightest exactly where the names are — the
-   per-word luminance pools ADD light rather than clear it — and only dissolves once you are into a
-   section. So the field's characters read straight through the type, worst of all on the hero and
-   the whole way out of it. A soft dark halo lifts the names off the field without dimming it or
-   retiming the dissolve. Same treatment .svc-desc uses to hold up over the galleries. */
-[data-slot] { text-shadow: 0 1px 16px rgba(0, 0, 0, 0.92), 0 0 3px rgba(0, 0, 0, 0.85); }
+   Separation from the character field is the bar's --cap-sep drop-shadow (CapabilityBar.astro) —
+   a drop-shadow, never a text-shadow: in the hero the labels are a gradient clipped to the glyphs,
+   and a text-shadow paints over that fill and darkens the letters themselves.
+
+   Hover borrows the Work page's filter treatment: a cool-white plate wipes up from the baseline
+   and the label inverts to black. The plate is a ::before behind the text — the button's filter
+   already makes it a stacking context, so z-index:-1 keeps the plate under the glyphs. The
+   controller drops the clipped gradient on a hovered slot (sweep()'s burn-in) and adds .is-hov,
+   so what the plate sits under is a plain colour, which !important then turns black. */
+[data-slot] { position: relative; }
+[data-slot]::before {
+  content: ''; position: absolute; inset: -0.1em -0.4em; z-index: -1;
+  background: rgb(217, 225, 234);
+  transform: scaleY(0); transform-origin: bottom;
+  transition: transform 0.35s var(--fly-ease);
+}
+[data-slot].is-hov::before { transform: scaleY(1); }
+[data-slot].is-hov { color: #000 !important; text-shadow: none !important; }
 
 /* ===== Persistent bottom-right service nav ===== */
 .svc-nav {
@@ -266,14 +278,18 @@ html.lenis, html.lenis body { height: auto; }
   @keyframes svc-sub-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   @media (prefers-reduced-motion: reduce) { [data-sub-track] { animation: none; } }
 
-  /* Phones: the RTC stills stand FULL HEIGHT — the width stays a slab (~56vw) and the still
-     crops to a tall portrait via the base rule's object-fit:cover. height:100% is the pinned
-     stage's height (.svc-stage is fixed;inset:0), so it tracks the viewport exactly, including
-     mobile-Safari's collapsing chrome. An explicit height also makes GalleryMedia's inline
-     aspect-ratio:16/9 inert (aspect-ratio only applies when a dimension is auto), so this wins
-     without !important. buildRealtime centres them and drops the depth scale to match. */
-  .mwg_effect083 .media { width: clamp(260px, 78vw, 460px); height: 100%; }
-  .mwg_effect051 .media { width: clamp(176px, 52vw, 300px); }
+  /* Phones run the DESKTOP mechanic for both photo galleries — 16:9 cards, the desktop lane
+     spread and depth scale, every still flying — just bigger, so fewer are in frame per scroll
+     (buildRealtime / buildScreens widen the stagger to match). The cards run under the title
+     above and the copy below on purpose; the ≤5% scrim further down and the type's own
+     text-shadows carry legibility. The full-height-slab / every-other-still experiment is gone. */
+  .mwg_effect083 .media { width: clamp(260px, 80vw, 460px); }
+  .mwg_effect051 .media { width: clamp(200px, 56vw, 320px); }
+  /* Now that the galleries run under the chrome, the title and the sub marquee take the same
+     halo the description already wears — a glyph shadow, not a band over the images. */
+  [data-title-a], [data-title-b], [data-sub-marquee] {
+    text-shadow: 0 1px 16px rgba(0, 0, 0, 0.92), 0 0 3px rgba(0, 0, 0, 0.85);
+  }
   /* Ghetto-but-correct: zoom the WHOLE composited ring with a 2D scale instead of
      enlarging the slot (--mr-w), which would tighten the arc spacing and worsen the
      wrap-around overlap. Scaling the outer element keeps the ring's internal spacing
@@ -286,16 +302,13 @@ html.lenis, html.lenis body { height: auto; }
      viewport that gap is only ~160px — a 2× band (~175px) can't fit and rode up into
      the last sub. 1.5 keeps it bold but always clears the chrome above and copy below. */
   .mwg_effect061 { --mr-w: 46vw; --mr-h: 25.875vw; transform: translateY(44px) scale(2.2); transform-origin: 50% 50%; } /* bigger + re-centered now the one-line marquee shortened the chrome */
-  /* SCREENS columns rise through the FULL height on desktop; on a phone the title +
-     stacked capability bar own the top ~40%, so confine the gallery to the lower 60%
-     (overflow:hidden clips a column as it reaches the fold) — no image behind the chrome. */
-  .svc-panel--screens .mwg_effect051 { top: 32%; } /* marquee freed the top → columns fill the lower 68% */
-  /* Top gradient keeps the chrome zone clean; the bottom gradient is stronger + taller
-     on mobile so the ~2× galleries can't wash out the description sitting over them. */
+  /* The scrim between the galleries and the type is deliberately faint on phones — 5% black at
+     the very edges, gone by a third of the way in — so the cards read at full strength under
+     the title and the copy. Legibility is the type's text-shadow, not a band over the images. */
   .svc-panel--realtime::before, .svc-panel--screens::before {
     background:
-      linear-gradient(to bottom, rgba(0, 0, 0, 0.82) 0%, rgba(0, 0, 0, 0) 40%),
-      linear-gradient(to top, rgba(0, 0, 0, 0.92) 0%, rgba(0, 0, 0, 0.55) 24%, rgba(0, 0, 0, 0) 46%);
+      linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0) 30%),
+      linear-gradient(to top, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0) 34%);
   }
   /* plate drops below the stacked capability bar (was top:22vh → overlapped the subs);
      leaves room for the CTA below the marquee (no nav on mobile) */

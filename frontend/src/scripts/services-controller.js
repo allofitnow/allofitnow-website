@@ -109,6 +109,7 @@ class ServicesController {
       b.addEventListener('mouseenter', () => {
         if (this.active >= 0) return;
         b.__hov = true;
+        b.classList.add('is-hov'); // the Work-page plate wipe (services.css); sweep() drops the clip for it
         if (b.__lsWide != null) {
           b.style.letterSpacing = b.__lsWide + 'em';
           b.style.transform = 'translateX(' + shift() + 'px)';
@@ -116,6 +117,7 @@ class ServicesController {
       });
       b.addEventListener('mouseleave', () => {
         b.__hov = false;
+        b.classList.remove('is-hov');
         if (b.__lsTight != null) {
           b.style.letterSpacing = b.__lsTight + 'em';
           b.style.transform = 'translateX(0)';
@@ -1305,6 +1307,7 @@ class ServicesController {
     root.querySelectorAll('[data-slot]').forEach((b) => {
       b.__sw = 0;
       b.__hov = false;
+      b.classList.remove('is-hov'); // a tap on a phone never gets a mouseleave; the section boundary clears it
       b.__bg = null;
       b.style.backgroundImage = 'none';
       b.style.backgroundColor = 'transparent';
