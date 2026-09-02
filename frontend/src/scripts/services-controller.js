@@ -105,16 +105,50 @@ class ServicesController {
         if (this._introOnly) { this.scrollToSection(+b.dataset.i); return; }
         if (this.active < 0) this.go(+b.dataset.i);
       });
-      // The hover gesture is the wiping bar now (CapabilityBar.astro) plus the
-      // black text sweep() paints for __hov, matching the Work page filters. The
-      // tracking no longer widens: it changed the button's width mid-wipe, so the
-      // bar grew sideways while it rose.
+      // The hover gesture is the wiping bar (CapabilityBar.astro) plus black text,
+      // matching the Work page filters. The tracking no longer widens: it changed
+      // the button's width mid-wipe, so the bar grew sideways while it rose.
+      //
+      // The colour is written HERE and not left to sweep(). sweep only runs on the
+      // hero of the scrolling build; in the intro build it never runs at all and the
+      // labels are painted with a plain colour, so a sweep-only hover state left
+      // cool-white text on the cool-white bar -- invisible. Setting it directly
+      // works in every mode, and sweep's __sw === 3 branch still covers the case
+      // where it IS running and would otherwise repaint over this next frame.
+      //
+      // webkitTextFillColor as well as color: in gradient mode the fill is
+      // transparent so the clipped background shows through, and colour alone would
+      // have nothing to act on.
       b.addEventListener('mouseenter', () => {
         if (this.active >= 0) return;
         b.__hov = true;
+        // Snapshot rather than assume a resting value: colour here is owned by
+        // setActiveService or sweep depending on mode, and leaving must hand it back
+        // exactly as found rather than making this a third writer.
+        b.__preHov = {
+          color: b.style.color,
+          fill: b.style.webkitTextFillColor,
+          filter: b.style.filter,
+          shadow: b.style.textShadow,
+        };
+        b.style.color = '#000';
+        b.style.webkitTextFillColor = '#000';
+        b.style.filter = 'none';   // the halo separates the label from the field; on white it muddies
+        b.style.textShadow = 'none';
       });
       b.addEventListener('mouseleave', () => {
         b.__hov = false;
+        const pre = b.__preHov;
+        if (pre) {
+          b.style.color = pre.color;
+          b.style.webkitTextFillColor = pre.fill;
+          b.style.filter = pre.filter;
+          b.style.textShadow = pre.shadow;
+          b.__preHov = null;
+        }
+        // Force sweep, if it is running, to re-run its gradient branch rather than
+        // trusting the snapshot to match what it would have painted.
+        if (b.__sw === 3) b.__sw = 0;
       });
     });
     // Panel-navigation handlers (clicks into subcategories, inventory rows, drag,
