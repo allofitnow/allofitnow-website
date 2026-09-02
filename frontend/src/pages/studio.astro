@@ -318,10 +318,14 @@ const rows = Math.ceil(members.length / columns);
     root.style.visibility = 'hidden';
 
     /* Flex/grid blocks cascade child-by-child so a row's items land in
-       sequence; text blocks rise behind their clip; images animate whole. */
+       sequence; text blocks rise behind their clip; images animate whole. The band
+       is the exception: those three stills open the page as one block of content,
+       so they rise behind a clip like the statement under them rather than fading
+       in flat. Team portraits keep the plain fade -- they arrive one per roster row
+       on scroll, where a clip would read as a glitch rather than a reveal. */
     const collect = (el: HTMLElement, out: Target[]): void => {
       if (el.tagName === 'IMG') {
-        out.push({ node: el, plain: true });
+        out.push({ node: el, plain: !el.closest('.band') });
         return;
       }
       const display = getComputedStyle(el).display;
