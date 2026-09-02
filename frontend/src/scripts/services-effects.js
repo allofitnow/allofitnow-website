@@ -384,13 +384,18 @@ function buildRealtime(root, master, reparks) {
   medias.forEach((m, i) => {
     const L = LAYERS[i % LAYERS.length];             // depth: reach (speed) + scale
     const lane = (i * 7) % n;                         // shuffle into evenly-spread vertical lanes
-    // Desktop: keep the stream in a centred band so large stills don't hang off the top/bottom
+    // Keep the stream in a centred band so large stills don't hang off the top/bottom
     // edges (the top lane used to sit at 5% and get cropped).
-    // Phones: every still is a full-height slab (services.css), so there are no vertical lanes
-    // left to spread into and no headroom to scale — each sits dead-centre at its natural size.
-    // Depth still reads through the per-layer horizontal reach (speed) and z-order.
-    const top = mob ? 50 : 22 + (lane / Math.max(1, n - 1)) * 54;
-    const scale = mob ? 1 : L.scale;
+    //
+    // Phones get the lanes too now. They did not before because every still was a
+    // full-height slab, which left nothing to spread into — so all of them were
+    // parked dead-centre at natural size and simply covered one another. The slab is
+    // gone (services.css lets the 16/9 aspect stand again), so the band and the
+    // per-layer depth scale both come back; the phone band is a little tighter and
+    // sits lower, because the title and the stacked capability bar own the top.
+    const band = mob ? { top: 34, span: 52 } : { top: 22, span: 54 };
+    const top = band.top + (lane / Math.max(1, n - 1)) * band.span;
+    const scale = L.scale;
     const fromX = () => window.innerWidth * L.reach + 140;
     const toX = () => -window.innerWidth * L.reach - 140;
     gsap.set(m, { top: top.toFixed(2) + '%', yPercent: -50, zIndex: L.z, scale, x: fromX });
