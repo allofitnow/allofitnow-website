@@ -354,10 +354,14 @@ for line in open(sys.argv[2]):
         key = parts[3]
         if prefix and key.startswith(prefix):
             key = key[len(prefix):]
-        # #83 class (all _astro) + #107 F2 class (top-level html anywhere
-        # except the never-swept prefixes, which are never listed above)
-        if key.startswith("_astro/") or key.endswith(".html"):
-            live.add(key)
+        # #83 class (all _astro) + #107 F2 class (html) + renamed-asset
+        # class (publish 1788380915: about-band-1/2.webp superseded by -v2
+        # names, live-only, REDing every verify). Sweep scope MUST equal
+        # verify scope: every listed key outside media/ archive/ manifests/
+        # that appears in NO manifest is an orphan, whatever its extension.
+        # media/ is never listed here (huge, media-prefixed); archive/ and
+        # manifests/ are never swept by design (2026-08-31 ruling).
+        live.add(key)
 orphans = sorted(live - man_keys)
 try:
     ratio = float(sys.argv[4])
