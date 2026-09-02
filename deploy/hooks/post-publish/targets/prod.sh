@@ -274,16 +274,19 @@ fi
 echo "phase: html done rc=$HTML_RC (manifest=$PUBLISH_ID)"
 note_phase html "$HTML_RC" "$ATTEMPTS" "$(( $(date +%s) - PHASE_START ))"
 
-# --- phase 3.5: orphan sweep (#83) --------------------------------------------
+# --- phase 3.5: orphan sweep (#83; #107 F2 extends to stale HTML) -----------
 # Layout commits churn _astro/*.[hash] names; the assets sync is additive-only
 # by design, so superseded hashes stay live forever and verify REDs on every
 # later publish (incident 2026-08-31: 3 orphans, tombstones:0, verify RED x2).
-# Sweep = explicit, manifest-derived deletion (HARD RULE compliant): delete
-# live _astro/ keys that appear in NO current manifest. Content is already
-# self-archived at write time, so plain delete (archive ruling 2026-08-31).
-# Guard: refuse when orphans exceed AOIN_SWEEP_MAX_RATIO (default 0.25) of
-# manifest key count - a corrupt/empty manifest can never nuke the bucket;
-# guard-abort leaves the mismatch for verify to RED loudly.
+# #107 F2: the html sync is additive too, so work/<slug>/index.html of a
+# deleted/archived project stays 200 forever. Sweep candidates are now ALL
+# live _astro/ keys PLUS every top-level *.html (root objects + every
+# top-level dir except media/ archive/ manifests/) that appear in NO current
+# manifest. HTML is already self-archived at write time by the phase-3
+# archive loop, so plain delete (archive ruling 2026-08-31) - no re-copy.
+# Guard: refuse when the UNION of orphans exceeds AOIN_SWEEP_MAX_RATIO
+# (default 0.25) of manifest key count - a corrupt/empty manifest can never
+# nuke the bucket; guard-abort leaves the mismatch for verify to RED loudly.
 echo "phase: sweep"
 SWEEP_RC=0
 SWEEP_N=0
@@ -292,15 +295,43 @@ SWEEP_RATIO="${AOIN_SWEEP_MAX_RATIO:-0.25}"
 SWEEP_KEYS_LOG="$LOGDIR/sweep-$PUBLISH_ID.txt"
 : >"$SWEEP_KEYS_LOG"
 if [ "$DRY_RUN" -eq 1 ]; then
-  echo "prod: [dryrun] sweep skipped (would diff live _astro/ vs manifest)"
+  echo "prod: [dryrun] sweep skipped (would diff live _astro/+html vs manifest)"
 else
   SWEEP_LIST="/tmp/prod-sweep-$PUBLISH_ID.txt"
-  aws_retry sweep-ls s3 ls "s3://$BUCKET/${PREFIX}_astro/" --recursive >"$SWEEP_LIST" || SWEEP_RC=1
+  : >"$SWEEP_LIST"
+  aws_retry sweep-ls s3 ls "s3://$BUCKET/${PREFIX}_astro/" --recursive >>"$SWEEP_LIST" || SWEEP_RC=1
+  # #107 F2: root objects (non-recursive; PRE lines are ignored downstream)
+  # plus every top-level dir that may carry html. media/ (no html, huge
+  # listing), archive/ and manifests/ (never swept by design) are skipped.
+  aws_retry sweep-root s3 ls "s3://$BUCKET/${PREFIX}" >>"$SWEEP_LIST" || SWEEP_RC=1
+  SWEEP_GUARD="$(mktemp)"
+  if aws_retry sweep-dirs s3api list-objects-v2 --bucket "$BUCKET" --prefix "${PREFIX:-}" --delimiter "/" \
+      --query "CommonPrefixes[].Prefix" --output text >"$SWEEP_GUARD"; then
+    SWEEP_DIRS=$("$PY" - "$SWEEP_GUARD" "$PREFIX" <<'PYK2'
+import sys
+prefix = sys.argv[2]
+skip = {"media/", "archive/", "manifests/", "_astro/"}
+dirs = []
+for g in open(sys.argv[1]).read().split():
+    if prefix and g.startswith(prefix):
+        g = g[len(prefix):]
+    if g.endswith("/") and g not in skip:
+        dirs.append(g)
+print("\n".join(dirs))
+PYK2
+)
+    for d in $SWEEP_DIRS; do
+      aws_retry "sweep-${d%/}" s3 ls "s3://$BUCKET/${PREFIX}$d" --recursive >>"$SWEEP_LIST" || SWEEP_RC=1
+    done
+  else
+    SWEEP_RC=1
+  fi
+  rm -f "$SWEEP_GUARD"
   if [ "$SWEEP_RC" -eq 0 ]; then
     SWEEP_ORPHANS=$("$PY" - "$LOCAL_MAN" "$SWEEP_LIST" "$PREFIX" "$SWEEP_RATIO" <<'PYK'
 import json, sys
 man = json.load(open(sys.argv[1]))
-man_astro = {k["key"] for k in man["keys"] if k["key"].startswith("_astro/")}
+man_keys = {k["key"] for k in man["keys"]}
 total = len(man["keys"])
 prefix = sys.argv[3]
 live = set()
@@ -310,8 +341,11 @@ for line in open(sys.argv[2]):
         key = parts[3]
         if prefix and key.startswith(prefix):
             key = key[len(prefix):]
-        live.add(key)
-orphans = sorted(live - man_astro)
+        # #83 class (all _astro) + #107 F2 class (top-level html anywhere
+        # except the never-swept prefixes, which are never listed above)
+        if key.startswith("_astro/") or key.endswith(".html"):
+            live.add(key)
+orphans = sorted(live - man_keys)
 try:
     ratio = float(sys.argv[4])
 except ValueError:
@@ -325,7 +359,7 @@ PYK
 )
     case "$SWEEP_ORPHANS" in
       ABORT:*)
-        echo "prod: sweep guard RED: ${SWEEP_ORPHANS#ABORT:} _astro orphans > ratio $SWEEP_RATIO of manifest - refusing mass delete; verify will report" >&2
+        echo "prod: sweep guard RED: ${SWEEP_ORPHANS#ABORT:} orphans > ratio $SWEEP_RATIO of manifest - refusing mass delete; verify will report" >&2
         SWEEP_RC=1 ;;
       *)
         while IFS= read -r k; do
@@ -337,7 +371,7 @@ PYK
             SWEEP_RC=1
           fi
         done <<<"$SWEEP_ORPHANS"
-        [ "$SWEEP_N" -gt 0 ] && echo "phase: sweep removed $SWEEP_N _astro orphans (log $SWEEP_KEYS_LOG)" ;;
+        [ "$SWEEP_N" -gt 0 ] && echo "phase: sweep removed $SWEEP_N orphans (log $SWEEP_KEYS_LOG)" ;;
     esac
   fi
 fi
