@@ -105,21 +105,16 @@ class ServicesController {
         if (this._introOnly) { this.scrollToSection(+b.dataset.i); return; }
         if (this.active < 0) this.go(+b.dataset.i);
       });
-      const shift = () => 0;
+      // The hover gesture is the wiping bar now (CapabilityBar.astro) plus the
+      // black text sweep() paints for __hov, matching the Work page filters. The
+      // tracking no longer widens: it changed the button's width mid-wipe, so the
+      // bar grew sideways while it rose.
       b.addEventListener('mouseenter', () => {
         if (this.active >= 0) return;
         b.__hov = true;
-        if (b.__lsWide != null) {
-          b.style.letterSpacing = b.__lsWide + 'em';
-          b.style.transform = 'translateX(' + shift() + 'px)';
-        }
       });
       b.addEventListener('mouseleave', () => {
         b.__hov = false;
-        if (b.__lsTight != null) {
-          b.style.letterSpacing = b.__lsTight + 'em';
-          b.style.transform = 'translateX(0)';
-        }
       });
     });
     // Panel-navigation handlers (clicks into subcategories, inventory rows, drag,
@@ -1272,9 +1267,30 @@ class ServicesController {
         }
         return;
       }
+      // Hovered: drop the gradient so a plain colour can take effect. In gradient
+      // mode the glyph colour IS background-color clipped to the text, so setting
+      // `color` alone does nothing and sweep would repaint it next frame anyway.
+      // The drop-shadow halo goes too -- it exists to separate the label from the
+      // field, and over the white bar it just muddies black type.
+      if (b.__hov) {
+        if (b.__sw !== 3) {
+          b.__sw = 3;
+          b.__bg = null;
+          b.style.backgroundImage = 'none';
+          b.style.backgroundColor = 'transparent';
+          b.style.backgroundClip = '';
+          b.style.webkitBackgroundClip = '';
+          b.style.webkitTextFillColor = '';
+          b.style.textShadow = 'none';
+          b.style.filter = 'none';
+          b.style.color = '#000';
+        }
+        return;
+      }
       if (b.__sw !== 1) {
         b.__sw = 1;
         b.style.textShadow = 'none';
+        b.style.filter = 'drop-shadow(var(--cap-sep))'; // restored after a hover
         // The shine is a black gradient clipped to the glyphs, so every stop is
         // subtracting light. At 0.88 the leading band took the label down to
         // 0.03 effective alpha — it read as a word blinking out rather than as
