@@ -278,18 +278,19 @@ html.lenis, html.lenis body { height: auto; }
   @keyframes svc-sub-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
   @media (prefers-reduced-motion: reduce) { [data-sub-track] { animation: none; } }
 
-  /* Phones run the DESKTOP mechanic for both photo galleries — 16:9 cards, the desktop lane
-     spread and depth scale, every still flying — just bigger, so fewer are in frame per scroll
-     (buildRealtime / buildScreens widen the stagger to match). The cards run under the title
-     above and the copy below on purpose; the ≤5% scrim further down and the type's own
-     text-shadows carry legibility. The full-height-slab / every-other-still experiment is gone. */
-  .mwg_effect083 .media { width: clamp(260px, 80vw, 460px); }
-  .mwg_effect051 .media { width: clamp(200px, 56vw, 320px); }
-  /* Now that the galleries run under the chrome, the title and the sub marquee take the same
-     halo the description already wears — a glyph shadow, not a band over the images. */
-  [data-title-a], [data-title-b], [data-sub-marquee] {
-    text-shadow: 0 1px 16px rgba(0, 0, 0, 0.92), 0 0 3px rgba(0, 0, 0, 0.85);
-  }
+  /* Phones: the RTC stills used to stand FULL HEIGHT (height:100%, cropped to a tall
+     portrait by object-fit:cover). A full-height slab leaves no vertical room to
+     spread into, which is exactly why buildRealtime parked every one of them dead
+     centre — so all of them sat on top of each other and the section read as a
+     single smeared image.
+     Dropping the height lets GalleryMedia's inline aspect-ratio:16/9 apply again
+     (aspect-ratio only takes effect while a dimension is auto), so a still is now
+     about 27vw tall instead of 100% — that headroom is what the vertical lanes and
+     the depth scale need, and buildRealtime puts both back.
+     Both galleries also come down a size: the point on a phone is to see the
+     staggering, and overlap at 56/52vw was hiding it. */
+  .mwg_effect083 .media { width: clamp(168px, 48vw, 260px); }
+  .mwg_effect051 .media { width: clamp(150px, 44vw, 250px); }
   /* Ghetto-but-correct: zoom the WHOLE composited ring with a 2D scale instead of
      enlarging the slot (--mr-w), which would tighten the arc spacing and worsen the
      wrap-around overlap. Scaling the outer element keeps the ring's internal spacing

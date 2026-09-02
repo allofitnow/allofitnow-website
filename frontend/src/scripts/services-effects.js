@@ -392,13 +392,19 @@ function buildRealtime(root, master, reparks) {
   const stag = mob ? 0.017 : RTC.stag;
   const travel = mob ? 0.085 : RTC.travel;
   medias.forEach((m, i) => {
-    const lane2 = i % 2;                              // phones: alternate the two lanes
-    const L = mob ? LAYERS[lane2] : LAYERS[i % LAYERS.length]; // depth: reach (speed) + scale
-    const lane = (i * 7) % n;                         // desktop: shuffle into evenly-spread lanes
-    // Keep the stream in a centred band so large stills don't hang off the top/bottom edges (the
-    // top lane used to sit at 5% and get cropped). On a phone the two lanes run under the title
-    // and the copy on purpose — the faint section scrim and the type's text-shadows carry legibility.
-    const top = mob ? (lane2 ? 69 : 31) : 22 + (lane / Math.max(1, n - 1)) * 54;
+    const L = LAYERS[i % LAYERS.length];             // depth: reach (speed) + scale
+    const lane = (i * 7) % n;                         // shuffle into evenly-spread vertical lanes
+    // Keep the stream in a centred band so large stills don't hang off the top/bottom
+    // edges (the top lane used to sit at 5% and get cropped).
+    //
+    // Phones get the lanes too now. They did not before because every still was a
+    // full-height slab, which left nothing to spread into — so all of them were
+    // parked dead-centre at natural size and simply covered one another. The slab is
+    // gone (services.css lets the 16/9 aspect stand again), so the band and the
+    // per-layer depth scale both come back; the phone band is a little tighter and
+    // sits lower, because the title and the stacked capability bar own the top.
+    const band = mob ? { top: 34, span: 52 } : { top: 22, span: 54 };
+    const top = band.top + (lane / Math.max(1, n - 1)) * band.span;
     const scale = L.scale;
     const fromX = () => window.innerWidth * L.reach + 140;
     const toX = () => -window.innerWidth * L.reach - 140;
