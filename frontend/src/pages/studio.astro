@@ -157,11 +157,7 @@ const rows = Math.ceil(members.length / columns);
 
   .profile {
     display: grid;
-    /* Two columns at most. At a 300px minimum the 1180px block fits THREE, which
-       left the four-paragraph profile as 3 + 1 -- a full row and an orphan. 460px
-       is wide enough that only two fit, so the copy reads as an even 2x2 block, and
-       min(100%, ...) still lets it collapse to a single column on the way down. */
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 460px), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
     gap: clamp(24px, 3vw, 56px);
     max-width: 1180px;
   }
