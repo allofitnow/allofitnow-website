@@ -381,20 +381,24 @@ function buildRealtime(root, master, reparks) {
   const mob = window.innerWidth < 768;
   const medias = [...el.querySelectorAll('.media')];
   const n = medias.length;
-  // Phones fly the same stream as desktop — every still, the same lanes, the same depth scale —
-  // at ~80vw a card (services.css). A card that wide is in frame for two-thirds of its flight
-  // (desktop's 24vw card: under half), so at desktop pacing ~8 would be on screen at once. A
-  // wider stagger and a shorter flight keep it to ~4, and the section still hands off to
-  // Screens at the same progress: the last card lands at ≈0.415 either way.
+  // Phones fly the same stream as desktop — every still, the same depth mechanic — at ~80vw a
+  // card (services.css), but the cards must never overlap each other. Two things buy that:
+  // TWO lanes (31% / 69%), far enough apart that a card in one cannot reach the other, and one
+  // depth layer PER LANE, so every card in a lane moves at the same speed and stays exactly the
+  // stagger apart — in the desktop pile a fast layer overtakes a slow one, which is the overlap.
+  // Same-lane cards are two stagger steps apart; at this stagger/flight ratio that is ~0.4 of the
+  // flight path, ~410px on a 375 phone against a 300px card. The flight is shorter than desktop's
+  // so the section still hands off to Screens at the same progress (last card gone ≈0.40).
   const stag = mob ? 0.017 : RTC.stag;
-  const travel = mob ? 0.10 : RTC.travel;
+  const travel = mob ? 0.085 : RTC.travel;
   medias.forEach((m, i) => {
-    const L = LAYERS[i % LAYERS.length];             // depth: reach (speed) + scale
-    const lane = (i * 7) % n;                         // shuffle into evenly-spread vertical lanes
+    const lane2 = i % 2;                              // phones: alternate the two lanes
+    const L = mob ? LAYERS[lane2] : LAYERS[i % LAYERS.length]; // depth: reach (speed) + scale
+    const lane = (i * 7) % n;                         // desktop: shuffle into evenly-spread lanes
     // Keep the stream in a centred band so large stills don't hang off the top/bottom edges (the
-    // top lane used to sit at 5% and get cropped). On a phone that band runs under the title and
-    // the copy on purpose — the faint section scrim and the type's text-shadows carry legibility.
-    const top = 22 + (lane / Math.max(1, n - 1)) * 54;
+    // top lane used to sit at 5% and get cropped). On a phone the two lanes run under the title
+    // and the copy on purpose — the faint section scrim and the type's text-shadows carry legibility.
+    const top = mob ? (lane2 ? 69 : 31) : 22 + (lane / Math.max(1, n - 1)) * 54;
     const scale = L.scale;
     const fromX = () => window.innerWidth * L.reach + 140;
     const toX = () => -window.innerWidth * L.reach - 140;
@@ -419,12 +423,15 @@ function buildScreens(root, master, reparks) {
   // horizontal distance is preserved. Phones run the same maths with TWO lanes instead of four:
   // at ~56vw a card (services.css) the four-lane pitch would put the outer lanes entirely
   // off-screen, whereas two lanes bleed ~13% off their edges — desktop's outer lanes, in effect.
-  // Cards alternate lanes, so a lane's neighbours are two stagger steps apart vertically.
+  // Cards alternate lanes, and each lane carries ONE depth layer, so every card in a lane rises at
+  // the same speed and stays two stagger steps (~400px) behind the one before it — a faster layer
+  // in the same lane would overtake and overlap, which is what the desktop pile is allowed to do.
   const uniq = [...new Set(medias.map((_, i) => (i * 3) % n))].sort((a, b) => a - b);
   const nc = mob ? Math.min(2, uniq.length) : uniq.length;
+  const layers = mob ? LAYERS.slice(0, nc) : LAYERS;        // phones: layer k lives in lane k
   const sampleW = medias[0] ? medias[0].getBoundingClientRect().width : window.innerWidth * 0.22;
   const imgPct = (sampleW / window.innerWidth) * 100;       // image width as % of viewport
-  const maxScale = Math.max(...LAYERS.map((l) => l.scale)); // widest depth layer
+  const maxScale = Math.max(...layers.map((l) => l.scale)); // widest depth layer in play
   const GAP = 1.5;                                          // gap between adjacent lane footprints (%)
   const pitch = imgPct * maxScale + GAP;                    // lane centre-to-centre spacing ⇒ no h-overlap
   const mid = (nc - 1) / 2;                                 // centre the lane group; wider-than-100% ⇒ bleed
@@ -434,8 +441,8 @@ function buildScreens(root, master, reparks) {
   const stag = mob ? 0.014 : SCR.stag;
   const travel = mob ? 0.13 : SCR.travel;
   medias.forEach((m, i) => {
-    const L = LAYERS[i % LAYERS.length];
     const col = uniq.indexOf((i * 3) % n) % nc;
+    const L = mob ? layers[col] : LAYERS[i % LAYERS.length];
     const left = 50 + (col - mid) * pitch - imgPct / 2;
     const scale = L.scale;
     const fromY = () => window.innerHeight * L.reach + 120;
