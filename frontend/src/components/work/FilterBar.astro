@@ -118,9 +118,13 @@ import { CAPABILITIES } from '@/data/projects';
     border-top: 1px solid currentColor;
   }
 
-  /* Mobile: single view only (drop the view toggles), and let the five long
-     capability names WRAP onto as many lines as they need — compact 11px, no
-     horizontal scroll. */
+  /* Mobile: single view only (drop the view toggles), and the five capability
+     names justify to the page — two per row, the left column under SELECTED
+     and the right column ending flush under WORK (the title is space-between
+     across the same stage padding). A grid rather than wrap + space-between so
+     the pairing holds at every width: ALL / REAL-TIME CONTENT, SCREENS
+     PRODUCTION / MIXED REALITY, EQUIPMENT RENTAL. No side padding, so the
+     text sits on the margin; the hover plate keeps its own. */
   @media (max-width: 720px) {
     .filterbar {
       gap: 0;
@@ -129,13 +133,24 @@ import { CAPABILITIES } from '@/data/projects';
       letter-spacing: 0.12em;
     }
     .filters {
-      flex-wrap: wrap;
-      justify-content: flex-start;
-      gap: 6px 4px;
+      display: grid;
+      grid-template-columns: auto auto;
+      justify-content: space-between;
+      gap: 8px 12px;
     }
     .filt {
-      padding: 6px 10px;
+      padding: 6px 0;
       white-space: nowrap;
+      /* A grid item stretches to its track by default, and a button centres
+         its label inside that — ALL would float in a track as wide as
+         SCREENS PRODUCTION. Shrink each to its text and pin it to its edge. */
+      justify-self: start;
+    }
+    .filt:nth-child(even) {
+      justify-self: end;
+    }
+    .filt::before {
+      inset: 0 -8px;
     }
     .views {
       display: none;
