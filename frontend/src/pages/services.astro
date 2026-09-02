@@ -13,7 +13,7 @@
    controller's layout() never touches it. The page is a full HTML doc outside Base.astro
    but uses the shared site nav. */
 import '../styles/services.css';
-import { buildSrcset, videoPosterHref, videoRungs } from '../lib/media';
+import { appendMasterRung, buildSrcset, videoPosterHref, videoRungs } from '../lib/media';
 import Nav from '../components/chrome/Nav.astro';
 import Cursor from '../components/chrome/Cursor.astro';
 import HoverCard from '../components/chrome/HoverCard.astro';
