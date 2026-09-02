@@ -69,11 +69,13 @@ export const band: MediaRef[] = [
   },
 ];
 
-// Studio profile. Two paragraphs render as the intended two-column set; one or
-// three still lay out. Plain text, no markup.
+// Studio profile. The grid is auto-fit minmax(300px, 1fr) inside 1180px, so the
+// paragraph count decides the column count on its own. Plain text, no markup.
 export const profile: string[] = [
-  "All of it Now (AOIN) is a cutting-edge creative agency based in Los Angeles, California. With a rich background in film/TV production, information technology, and brand marketing, we specialize in crafting immersive digital experiences that captivate and inspire. From live event production and virtual/augmented reality (VR/AR) to interactive installations and custom motion graphics, our team pushes the boundaries of what's possible through technology-driven design.",
-  "Our passion lies at the intersection of creativity and innovation, partnering with top brands, artists, and events to deliver unforgettable experiences. Utilizing industry-leading tools such as Notch and Disguise, we bring projects to life in real-time, whether it's for concerts, permanent installations, or virtual production. At AOIN, we strive to exceed expectations and redefine the potential of digital storytelling.",
+  "All of it Now is a creative technology studio based in Los Angeles, partnering with agencies and artists to develop real-time systems, content, and technical solutions for TV, film, corporate events, and live music.",
+  "Our work sits at the intersection of creative ideas and technical development. We design and build the systems that bring real-time visuals into live production, from Notch and Unreal Engine content to camera-driven graphics, interactive environments, mixed reality, and large-scale screen systems. We also provide the programming, integration, and infrastructure required to take those systems from development into the live environment.",
+  "AOIN works alongside creative directors, show designers, artists, and production teams throughout the process, translating creative concepts into flexible technical systems that can perform at scale. Whether developing a real-time visual system, building a custom media server, integrating tracked cameras, or creating a pipeline for augmented reality, our approach is grounded in finding practical technical solutions that support ambitious creative ideas.",
+  "Our work has spanned global tours, major festivals, broadcast, film and television, and large-scale live productions. As productions continue to grow in scale and complexity, AOIN builds the technology and workflows that allow creative teams to work at the edge of what is possible in real time.",
 ];
 
 // Roster SEED — the fallback when the CMS `about` global is empty/unreachable (getRoster()
