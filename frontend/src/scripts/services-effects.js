@@ -378,19 +378,9 @@ export function mountEffects(ctrl) {
 function buildRealtime(root, master, reparks) {
   const el = root.querySelector('.mwg_effect083');
   if (!el) return;
-  const mob = window.innerWidth < 768;
   const medias = [...el.querySelectorAll('.media')];
   const n = medias.length;
-  // Phones fly the same stream as desktop — every still, the same depth mechanic — at ~80vw a
-  // card (services.css), but the cards must never overlap each other. Two things buy that:
-  // TWO lanes (31% / 69%), far enough apart that a card in one cannot reach the other, and one
-  // depth layer PER LANE, so every card in a lane moves at the same speed and stays exactly the
-  // stagger apart — in the desktop pile a fast layer overtakes a slow one, which is the overlap.
-  // Same-lane cards are two stagger steps apart; at this stagger/flight ratio that is ~0.4 of the
-  // flight path, ~410px on a 375 phone against a 300px card. The flight is shorter than desktop's
-  // so the section still hands off to Screens at the same progress (last card gone ≈0.40).
-  const stag = mob ? 0.017 : RTC.stag;
-  const travel = mob ? 0.085 : RTC.travel;
+  const mob = window.innerWidth < 768;
   medias.forEach((m, i) => {
     const L = LAYERS[i % LAYERS.length];             // depth: reach (speed) + scale
     const lane = (i * 7) % n;                         // shuffle into evenly-spread vertical lanes
@@ -414,7 +404,7 @@ function buildRealtime(root, master, reparks) {
     const toX = () => -window.innerWidth * L.reach - 140;
     gsap.set(m, { top: top.toFixed(2) + '%', yPercent: -50, zIndex: L.z, scale, x: fromX });
     if (reparks) reparks.push(() => gsap.set(m, { x: fromX }));
-    master.fromTo(m, { x: fromX }, { x: toX, ease: 'none', duration: travel }, RTC.start + i * stag);
+    master.fromTo(m, { x: fromX }, { x: toX, ease: 'none', duration: RTC.travel }, RTC.start + i * RTC.stag);
   });
 }
 
@@ -427,39 +417,32 @@ function buildScreens(root, master, reparks) {
   if (!n) return;
   const mob = window.innerWidth < 768;
   // Organic parallax spread kept: stills tile into `nc` lanes (the (i*3)%n shuffle), each lane a depth
-  // layer (reach + scale). The lanes sit at a FIXED centre-to-centre PITCH that clears the widest
-  // layer + a gap, so nothing overlaps horizontally even as the stills grow — the trade (per the
-  // brief) is that the outer lanes BLEED off the viewport edges instead of packing in, so the
-  // horizontal distance is preserved. Phones run the same maths with TWO lanes instead of four:
-  // at ~56vw a card (services.css) the four-lane pitch would put the outer lanes entirely
-  // off-screen, whereas two lanes bleed ~13% off their edges — desktop's outer lanes, in effect.
-  // Cards alternate lanes, and each lane carries ONE depth layer, so every card in a lane rises at
-  // the same speed and stays two stagger steps (~400px) behind the one before it — a faster layer
-  // in the same lane would overtake and overlap, which is what the desktop pile is allowed to do.
+  // layer (reach + scale). On desktop the lanes sit at a FIXED centre-to-centre PITCH that clears the
+  // widest layer + a gap, so nothing overlaps horizontally even as the stills grow — the trade (per the
+  // brief) is that the outer lanes BLEED off the viewport edges instead of packing in, so the horizontal
+  // distance is preserved. Phones keep the old on-screen packing (mobile is a deferred pass).
   const uniq = [...new Set(medias.map((_, i) => (i * 3) % n))].sort((a, b) => a - b);
-  const nc = mob ? Math.min(2, uniq.length) : uniq.length;
-  const layers = mob ? LAYERS.slice(0, nc) : LAYERS;        // phones: layer k lives in lane k
+  const nc = uniq.length;
   const sampleW = medias[0] ? medias[0].getBoundingClientRect().width : window.innerWidth * 0.22;
   const imgPct = (sampleW / window.innerWidth) * 100;       // image width as % of viewport
-  const maxScale = Math.max(...layers.map((l) => l.scale)); // widest depth layer in play
-  const GAP = 1.5;                                          // gap between adjacent lane footprints (%)
+  const maxScale = Math.max(...LAYERS.map((l) => l.scale)); // widest depth layer
+  const GAP = mob ? 1 : 1.5;                                // gap between adjacent lane footprints (%)
   const pitch = imgPct * maxScale + GAP;                    // lane centre-to-centre spacing ⇒ no h-overlap
   const mid = (nc - 1) / 2;                                 // centre the lane group; wider-than-100% ⇒ bleed
-  // Phones: bigger cards, so fewer in frame per scroll — a wider stagger and a shorter rise keep
-  // it to ~4 on screen (two per lane), and the section still clears at the same progress as
-  // desktop (last card gone ≈0.59 either way).
-  const stag = mob ? 0.014 : SCR.stag;
-  const travel = mob ? 0.13 : SCR.travel;
+  const MARGIN = 4;
+  const packTravel = Math.max(0, 100 - 2 * MARGIN - imgPct);
   medias.forEach((m, i) => {
-    const col = uniq.indexOf((i * 3) % n) % nc;
-    const L = mob ? layers[col] : LAYERS[i % LAYERS.length];
-    const left = 50 + (col - mid) * pitch - imgPct / 2;
-    const scale = L.scale;
+    const L = LAYERS[i % LAYERS.length];
+    const col = uniq.indexOf((i * 3) % n);
+    const left = mob
+      ? MARGIN + (nc > 1 ? col / (nc - 1) : 0.5) * packTravel   // phones: keep everything on-screen
+      : 50 + (col - mid) * pitch - imgPct / 2;                  // desktop: fixed pitch, outer lanes bleed off-edge
+    const scale = mob ? L.scale * 1.0 : L.scale;
     const fromY = () => window.innerHeight * L.reach + 120;
     const toY = () => -window.innerHeight * L.reach - 120;
     gsap.set(m, { left: left.toFixed(2) + '%', zIndex: L.z, scale, y: fromY });
     if (reparks) reparks.push(() => gsap.set(m, { y: fromY }));
-    master.fromTo(m, { y: fromY }, { y: toY, ease: 'none', duration: travel }, SCR.start + i * stag);
+    master.fromTo(m, { y: fromY }, { y: toY, ease: 'none', duration: SCR.travel }, SCR.start + i * SCR.stag);
   });
 }
 

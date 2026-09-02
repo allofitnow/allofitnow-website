@@ -1346,7 +1346,6 @@ class ServicesController {
     root.querySelectorAll('[data-slot]').forEach((b) => {
       b.__sw = 0;
       b.__hov = false;
-      b.classList.remove('is-hov'); // a tap on a phone never gets a mouseleave; the section boundary clears it
       b.__bg = null;
       b.style.backgroundImage = 'none';
       b.style.backgroundColor = 'transparent';
