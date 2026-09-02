@@ -370,6 +370,7 @@ class ServicesController {
     this._resize = () => {
       this.layout();
       this.queueAscii();
+      this.repaintFieldAfterSettle();
     };
     window.addEventListener('resize', this._resize);
     requestAnimationFrame(() => this.layout());
@@ -397,6 +398,7 @@ class ServicesController {
     clearInterval(this._tick);
     if (this._raf) cancelAnimationFrame(this._raf);
     if (this._asciiRaf) { cancelAnimationFrame(this._asciiRaf); this._asciiRaf = 0; }
+    if (this._settleRaf) { cancelAnimationFrame(this._settleRaf); this._settleRaf = 0; }
   }
 
   componentDidUpdate() {
@@ -1383,6 +1385,35 @@ class ServicesController {
       this._asciiH = h;
       this.buildAscii();
     });
+  }
+
+  /*
+   * Redraw the field across a resize's settle.
+   *
+   * drawAscii() places the four per-word luminance pools from the labels' LIVE
+   * rects, so it already has everything it needs -- but it only runs when
+   * tickAscii sees _glDirty, and a resize never sets that. The one draw a resize
+   * does get is buildAscii's, on the next frame, which lands in the middle of the
+   * move: fitSlots transitions letter-spacing for 340ms and the bar is still
+   * redistributing. So the pools were placed where the labels had just been and
+   * then nothing redrew them, leaving the four names sitting on unlit field until
+   * something else dirtied the buffer -- moving the cursor over it, or a reload.
+   * That is why a refresh always looked right and a resize never did.
+   *
+   * Redrawing across the whole settle rather than betting on one frame is the same
+   * approach the project page takes for its title fit, and for the same reason: the
+   * cascade is longer than any single measurement.
+   */
+  repaintFieldAfterSettle(ms) {
+    if (this._settleRaf) { cancelAnimationFrame(this._settleRaf); this._settleRaf = 0; }
+    const end = performance.now() + (ms || 520); // 340ms letter-spacing + the bar's own reflow
+    const step = () => {
+      // _gl is absent until buildAscii has run once; nothing to repaint yet.
+      if (!this._gl) { this._settleRaf = 0; return; }
+      this.drawAscii();
+      this._settleRaf = performance.now() < end ? requestAnimationFrame(step) : 0;
+    };
+    this._settleRaf = requestAnimationFrame(step);
   }
 
   buildAscii() {
