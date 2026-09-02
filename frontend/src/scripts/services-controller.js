@@ -113,8 +113,8 @@ class ServicesController {
       // hero of the scrolling build; in the intro build it never runs at all and the
       // labels are painted with a plain colour, so a sweep-only hover state left
       // cool-white text on the cool-white bar -- invisible. Setting it directly
-      // works in every mode, and sweep's __sw === 3 branch still covers the case
-      // where it IS running and would otherwise repaint over this next frame.
+      // works in every mode, and sweep's own __hov branch paints the same black for
+      // the case where it IS running and would otherwise repaint over this.
       //
       // webkitTextFillColor as well as color: in gradient mode the fill is
       // transparent so the clipped background shows through, and colour alone would
@@ -148,7 +148,7 @@ class ServicesController {
         }
         // Force sweep, if it is running, to re-run its gradient branch rather than
         // trusting the snapshot to match what it would have painted.
-        if (b.__sw === 3) b.__sw = 0;
+        if (b.__sw === 2) b.__sw = 0;
       });
     });
     // Panel-navigation handlers (clicks into subcategories, inventory rows, drag,
@@ -1283,10 +1283,18 @@ class ServicesController {
       // keep their plain inline color until playIntro() unwraps them, then the shine takes over.
       if (b.firstElementChild) return;
       const r = b.getBoundingClientRect();
-      // Hovered label: drop the shine entirely and burn it in at full strength.
-      // The sweep is a DARKENING mask (see below), so a label caught under the
-      // band was being read through a hole in itself — the one moment you most
-      // want it legible is the moment you are pointing at it.
+      // Hovered label: drop the shine entirely and paint it BLACK, over the white
+      // bar CapabilityBar.astro wipes up behind it -- the Work page filter
+      // treatment. It used to burn in at full cool-white here, which was right when
+      // the label sat on the dark field (the sweep is a DARKENING mask, so a label
+      // caught under the band was read through a hole in itself, at exactly the
+      // moment you are pointing at it) but is invisible once the bar is behind it:
+      // cool-white type on a cool-white bar.
+      //
+      // This is the branch that actually runs. Both fills are set because in
+      // gradient mode webkitTextFillColor is transparent so the clipped background
+      // shows through, and colour alone would have nothing to act on. The halo goes
+      // too: it separates the label from the field, and only muddies black on white.
       if (b.__hov) {
         if (b.__sw !== 2) {
           b.__sw = 2;
@@ -1295,29 +1303,10 @@ class ServicesController {
           b.style.backgroundColor = 'transparent';
           b.style.backgroundClip = '';
           b.style.webkitBackgroundClip = '';
-          b.style.webkitTextFillColor = '';
-          b.style.color = 'rgb(217,225,234)';
-          b.style.textShadow = '0 0 18px rgba(217,225,234,0.45)';
-        }
-        return;
-      }
-      // Hovered: drop the gradient so a plain colour can take effect. In gradient
-      // mode the glyph colour IS background-color clipped to the text, so setting
-      // `color` alone does nothing and sweep would repaint it next frame anyway.
-      // The drop-shadow halo goes too -- it exists to separate the label from the
-      // field, and over the white bar it just muddies black type.
-      if (b.__hov) {
-        if (b.__sw !== 3) {
-          b.__sw = 3;
-          b.__bg = null;
-          b.style.backgroundImage = 'none';
-          b.style.backgroundColor = 'transparent';
-          b.style.backgroundClip = '';
-          b.style.webkitBackgroundClip = '';
-          b.style.webkitTextFillColor = '';
+          b.style.webkitTextFillColor = '#000';
+          b.style.color = '#000';
           b.style.textShadow = 'none';
           b.style.filter = 'none';
-          b.style.color = '#000';
         }
         return;
       }
