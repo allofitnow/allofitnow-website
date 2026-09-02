@@ -666,7 +666,14 @@ export class HomeController {
 
     const foot = this.ref('footer');
     if (foot) {
-      foot.style.padding = m ? '96px 20px 0' : '110px 48px 0';
+      // Phone: top-adjust the columns instead of dropping them 96px. The footer is
+      // space-between over at least 100svh, so that offset did not add air above
+      // the text -- it pushed the whole block down and handed the slack to the gap
+      // above the wordmark, which is the empty band in the middle of the screen.
+      // Matching the side padding puts the text at the top and leaves the wordmark
+      // where it was, at the bottom. The section carries data-nav-hide, so nothing
+      // is sitting over the top edge to collide with.
+      foot.style.padding = m ? '20px 20px 0' : '110px 48px 0';
       foot.style.height = m ? 'auto' : '100svh';
       foot.style.minHeight = m ? '100svh' : '560px';
       const grid = foot.firstElementChild as HTMLElement;
