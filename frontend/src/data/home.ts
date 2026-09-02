@@ -158,5 +158,5 @@ export const footer = {
     ...social,
     { label: 'INFO@ALLOFITNOW.COM', href: 'mailto:info@allofitnow.com' },
   ] as SocialLink[],
-  address: ['1651 S CENTRAL AVE, SUITE F,', 'GLENDALE, CA 91204'],
+  address: ['1651 S CENTRAL AVE, SUITE F', 'GLENDALE, CA 91204'],
 };
