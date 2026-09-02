@@ -290,10 +290,14 @@ const rows = Math.ceil(members.length / columns);
      Motion is code, not content — tune it here. */
   const STAGGER = 0.022; // seconds between consecutive blocks
   const DURATION = 0.62; // per-block travel
+  // The band stills travel their own height behind the clip, and at ~360px tall
+  // that is roughly ten times the distance a line of copy covers. At DURATION the
+  // wipe crossed them too fast to read as a reveal at all, so they get their own.
+  const BAND_DURATION = 1.5;
   const EASE = 'expo.out'; // hard settle; --ease-brand is the softer alternative
   const RISE = 45; // percent of its own height a line starts below
 
-  type Target = { node: HTMLElement; plain: boolean; above?: boolean };
+  type Target = { node: HTMLElement; plain: boolean; slow?: boolean; above?: boolean };
 
   const root = document.querySelector<HTMLElement>('[data-reveal-root]');
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -325,7 +329,8 @@ const rows = Math.ceil(members.length / columns);
        on scroll, where a clip would read as a glitch rather than a reveal. */
     const collect = (el: HTMLElement, out: Target[]): void => {
       if (el.tagName === 'IMG') {
-        out.push({ node: el, plain: !el.closest('.band') });
+        const band = !!el.closest('.band');
+        out.push({ node: el, plain: !band, slow: band });
         return;
       }
       const display = getComputedStyle(el).display;
@@ -353,7 +358,7 @@ const rows = Math.ceil(members.length / columns);
         : {
             yPercent: 0,
             clipPath: 'inset(0% 0% -15% 0%)',
-            duration: DURATION,
+            duration: t.slow ? BAND_DURATION : DURATION,
             clearProps: 'clipPath',
           };
 
