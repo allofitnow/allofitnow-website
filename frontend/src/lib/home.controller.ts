@@ -666,9 +666,17 @@ export class HomeController {
 
     const foot = this.ref('footer');
     if (foot) {
-      foot.style.padding = m ? '96px 20px 0' : '110px 48px 0';
+      // Phones: the nav hides over the footer (data-nav-hide), so [INFO] can sit
+      // near the top — 96px of pad left a hole where the nav wasn't. And the
+      // footer should be exactly the screen once it is scrolled fully into
+      // view, which on a phone is a moving target: the browser chrome retracts
+      // as you reach the bottom. dvh follows the chrome in and out; svh (the
+      // chrome-in height) is the floor for browsers without it, since setting
+      // an unsupported value is a no-op and the earlier assignment stands.
+      foot.style.padding = m ? '64px 20px 0' : '110px 48px 0';
       foot.style.height = m ? 'auto' : '100svh';
       foot.style.minHeight = m ? '100svh' : '560px';
+      if (m) foot.style.minHeight = '100dvh';
       const grid = foot.firstElementChild as HTMLElement;
       grid.style.gridTemplateColumns = m ? '1fr 1fr' : '1.6fr 1fr 1fr .9fr';
       grid.style.rowGap = m ? '40px' : '';
