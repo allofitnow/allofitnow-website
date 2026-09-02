@@ -42,25 +42,29 @@ export const statement: string[] = [
 // neon plates either side of a 16:9 studio drawing). width/height are the
 // intrinsic pixels; they go on the <img> so the band reserves its space before
 // the files land, AND they drive the --ar flex ratio that equalises the heights,
-// so they must match the real files. Two of the three carry alpha and are drawn
+// so they must match the real files. That coupling is why the filenames carry a
+// -vN: /assets is served `Cache-Control: public, immutable, max-age=2592000`, so
+// overwriting an image in place leaves returning browsers holding the old pixels
+// against the new ratios, and the row silently stops lining up. Changing a plate
+// means a new filename, not just a new file. Two of the three carry alpha and are drawn
 // straight onto the page black — do not give them a background plate.
 export const band: MediaRef[] = [
   {
-    url: '/assets/about-band-all-of-it-now.webp',
-    width: 1861,
-    height: 1660,
+    url: '/assets/about-band-all-of-it-now-v2.webp',
+    width: 2008,
+    height: 1627,
     alt: 'ALL OF IT NOW spelled out in white neon tubing',
   },
   {
-    url: '/assets/about-band-studio.webp',
+    url: '/assets/about-band-studio-v2.webp',
     width: 3840,
     height: 2160,
     alt: 'Line drawing of the studio floor: edit desks, monitors, racked servers and shelved road cases',
   },
   {
-    url: '/assets/about-band-vr.webp',
-    width: 1706,
-    height: 1645,
+    url: '/assets/about-band-vr-v2.webp',
+    width: 1725,
+    height: 1669,
     alt: 'VIRTUAL REALITY spelled out in white neon tubing',
   },
 ];

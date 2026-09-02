@@ -17,12 +17,11 @@ const rows = Math.ceil(members.length / columns);
 
 <Base title={meta.title} description={meta.description}>
   <main class="about" data-reveal-root>
-    <section id="about" class="statement">
+    <section id="about" class="about-head">
       <div class="label-row" data-reveal>
         <span class="label">{labels.about}</span>
         <span class="rule"></span>
       </div>
-      {statement.map((line) => <div class="line" data-reveal>{line}</div>)}
     </section>
 
     <section class="band">
@@ -38,6 +37,10 @@ const rows = Math.ceil(members.length / columns);
           decoding="async"
         />
       ))}
+    </section>
+
+    <section class="statement">
+      {statement.map((line) => <div class="line" data-reveal>{line}</div>)}
     </section>
 
     <section class="col">
@@ -109,7 +112,8 @@ const rows = Math.ceil(members.length / columns);
   }
 
   .statement {
-    padding-top: clamp(120px, 16vh, 220px);
+    /* Sits under the band now, so it takes the smaller inter-section gap. */
+    padding-top: clamp(56px, 7vw, 104px);
     font-family: var(--font-headline);
     font-weight: var(--weight-headline);
     font-size: clamp(18px, 2.5vw, 46px);
@@ -129,12 +133,18 @@ const rows = Math.ceil(members.length / columns);
      at any container width and for any mix of aspects. The gap is taken off every
      item equally so it does not skew that. justify-content centres the group.
      No aspect-ratio and no object-fit here on purpose: `cover` is what crops. */
+  /* The ABOUT rule sits directly above the band and already carries its own
+     margin-bottom, so the band adds no top gap of its own -- otherwise the two
+     stack and the images drift away from the label that introduces them. */
+  .about-head {
+    padding-top: clamp(120px, 16vh, 220px);
+  }
   .band {
     display: flex;
     justify-content: center;
     align-items: flex-start;
     gap: clamp(12px, 1.4vw, 22px);
-    padding-top: clamp(56px, 7vw, 104px);
+    padding-top: 0;
   }
   .band img {
     flex: var(--ar, 1) 1 0;
