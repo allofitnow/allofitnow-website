@@ -153,6 +153,12 @@ const flightOrder = JSON.stringify(projects.map((p) => p.slug));
       import '@/lib/flight';
       import '@/lib/hovercard';
       import { ensureLenis } from '@/lib/smooth-scroll';
+      import { initMuteMedia } from '@/lib/mute-media';
+
+      // Nothing on this site is meant to make noise. Enforced here rather than
+      // trusted to every render site remembering the muted attribute — see
+      // lib/mute-media.ts for why the attribute alone is not enough.
+      initMuteMedia();
 
       // Site-wide smooth scroll: ensure the shared Lenis exists and is measured on each page,
       // and sync its position to the top after a ClientRouter swap (Astro resets native scroll,
