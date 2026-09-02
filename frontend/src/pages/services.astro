@@ -142,7 +142,7 @@ const mrVidAttrs = (g: (typeof MR)[number]) => {
 <meta charset="utf-8" />
 <script is:inline>
   (function () {
-    var c = navigator.connection;
+    var c = navigator.connection || {};
     var light = c.saveData || /^(slow-)?2g$/.test(c.effectiveType || '');
         if (!light) return;
     if (c.saveData) document.documentElement.setAttribute('data-save-data', '1');
