@@ -86,6 +86,63 @@ export function isVideoDoc(doc: MediaDoc): boolean {
   return /\.(webm|mp4|m4v|mov)(\?|$)/i.test(doc.filename ?? '');
 }
 
+/** #103: video rendition rungs from a media doc's sizes map — the video
+ *  counterpart of buildSrcset(). Returns entries with a usable filename +
+ *  positive width (the ladder hook registers w1280/w854 with measured
+ *  geometry; field-initialized empty image-style keys return null and are
+ *  skipped), sibling keys resolved as /media/<filename> — RELATIVE by the
+ *  #56 convention, so the publish translate stage passes them through
+ *  unchanged (same-origin by construction; never derived from API_URL, whose
+ *  build-env value points at 127.0.0.1 and is never rewritten — #99 lesson).
+ *  The caller's master URL (also derived from filename) tops the ladder. */
+export function videoRungs(doc: MediaDoc): { w: number; url: string }[] {
+  const rungs: { w: number; url: string }[] = [];
+  if (doc.sizes && typeof doc.sizes === 'object') {
+    for (const k of Object.keys(doc.sizes)) {
+      const e = doc.sizes[k];
+      if (
+        e && typeof e === 'object' &&
+        typeof e.filename === 'string' && e.filename !== '' &&
+        typeof e.width === 'number' && e.width > 0
+      ) {
+        rungs.push({ w: e.width, url: mediaHref(e.filename) });
+      }
+    }
+  }
+  rungs.sort((a, b) => a.w - b.w);
+  return rungs;
+}
+
+/** #103: append the master as the ladder's top rung (the #99 contract —
+ *  a >=1280px viewport chooses the master; a ladder-less doc still degrades
+ *  to single-source via the master fallback). Callers pass THEIR master URL
+ *  form (relative /media/… or the absolute URL the publish translate stage
+ *  rewrites) so data-rungs and data-master-src always agree. */
+export function appendMasterRung(
+  rungs: { w: number; url: string }[],
+  masterUrl: string,
+  masterW?: number
+): { w: number; url: string }[] {
+  const w = typeof masterW === 'number' && masterW > 0 ? masterW : 1920;
+  rungs.push({ w, url: masterUrl });
+  rungs.sort((a, b) => a.w - b.w);
+  return rungs;
+}
+
+/** #103: poster URL for a wired video doc, by FILENAME CONVENTION — the
+ *  ladder hook writes <stem>-poster.webp next to every wired master's rungs
+ *  (verified 2026-09-02: 167 wired masters on disk ↔ 167 poster files; no
+ *  poster registration exists in the sizes map — posters are NOT mongo docs
+ *  except the #99 hero). Callers emit the poster only when videoRungs() is
+ *  non-empty: rungs-present ⇒ poster-present is the hook's invariant. */
+export function videoPosterHref(doc: MediaDoc): string | null {
+  const stem = doc.filename ?? '';
+  if (!stem) return null;
+  const base = stem.replace(/\.[^.]+$/, '');
+  if (!base) return null;
+  return mediaHref(`${base}-poster.webp`);
+}
+
 /** Compact MediaDoc from a raw Payload REST doc (drops url — untrusted). */
 export function toMediaDoc(raw: any): MediaDoc | null {
   if (!raw || typeof raw !== 'object' || typeof raw.filename !== 'string' || raw.filename === '') return null;

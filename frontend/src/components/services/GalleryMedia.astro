@@ -7,7 +7,7 @@
    into srcset at load time (same moment as data-lazysrc -> src), so the browser picks the
    right ladder rung for the slot instead of the full-res original. URLs derive from
    filename (SSOT); video docs fall back to plain data-lazysrc (no rungs). */
-import { buildSrcset } from '@/lib/media';
+import { appendMasterRung, buildSrcset, videoPosterHref, videoRungs } from '@/lib/media';
 import type { GalleryItem } from '../../data/services';
 
 interface Props {
@@ -23,6 +23,15 @@ const finalAr = itemAr || ar;
 const parts = item.doc ? buildSrcset(item.doc) : null;
 const lazySrc = parts?.src || src;
 const lazySrcset = parts?.srcset || undefined;
+// #103: video rendition ladder — a wired video doc (sizes w1280/w854) carries
+// data-rungs + poster; services-effects.js loadMedia() picks the rung at
+// section entry (same moment it swaps data-lazysrc), so the deferral contract
+// is unchanged and only the chosen rendition hits the wire. The master tops
+// the ladder (#99 contract) and also stays in data-lazysrc as the engine's
+// fallback of record.
+const vRungs = video && item.doc ? videoRungs(item.doc) : [];
+if (vRungs.length) appendMasterRung(vRungs, lazySrc, item.doc?.width);
+const vPoster = vRungs.length > 0 && item.doc ? videoPosterHref(item.doc) : null;
 ---
 {/* Media is DEFERRED: the real URL lives in data-lazysrc, not src, so nothing loads
     until the scroll engine (services-effects.js) reaches this still's section and swaps
@@ -34,6 +43,9 @@ const lazySrcset = parts?.srcset || undefined;
     style={`aspect-ratio:${finalAr}`}
     data-lazymedia
     data-lazysrc={lazySrc}
+    data-master-src={vRungs.length ? lazySrc : undefined}
+    data-rungs={vRungs.length ? JSON.stringify(vRungs) : undefined}
+    poster={vPoster || undefined}
     muted
     loop
     playsinline
