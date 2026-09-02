@@ -96,14 +96,27 @@ R2_ENDPOINT="${ENDPOINT_OVERRIDE:-$R2_ENDPOINT}"
 EP=(--endpoint-url "$R2_ENDPOINT")
 CLI_OPTS=(--cli-connect-timeout 10 --cli-read-timeout 120)
 
-ATTEMPT_SEEN=0
 aws_retry() {  # aws_retry <phase> <args...>
   local phase="$1" n=1 rc=0
+  # #107: R2 html-sync PUTs can stall forever (two consecutive cf11cec runs
+  # died at the same final PUT, exit 124, at BOTH 300s and 1800s budgets).
+  # Without a per-attempt bound the outer target timeout is the only killer
+  # and aws_retry never gets an rc to act on. sync/cp PUTs are idempotent,
+  # so a timed-out attempt is safe to backoff-and-retry. Budgets scale with
+  # payload: html sync ~1.4 MiB (+/- per-layout churn), asset sync larger,
+  # ls/listings can list the whole bucket tree. Default 600s per attempt.
+  local perattempt="${AOIN_AWS_ATTEMPT_TIMEOUT:-600}"
+  # listing/verify phases pass through unchanged unless explicitly raised
+  local tmo="$perattempt"
+  case "$phase" in
+    assets|html) tmo="${AOIN_SYNC_ATTEMPT_TIMEOUT:-$(( perattempt * 2 ))}" ;;
+  esac
   shift
   while [ "$n" -le "$ATTEMPTS" ]; do
-    ATTEMPT_SEEN=$n
-    aws "${EP[@]}" "${CLI_OPTS[@]}" "$@"
+    timeout --foreground "$tmo" aws "${EP[@]}" "${CLI_OPTS[@]}" "$@"
     rc=$?
+    # 124/137 = attempt killed by our timeout (stalled transfer), not aws's
+    # own rc; treat as retryable. Actual aws errors also retry via loop.
     if [ "$rc" -eq 0 ]; then break; fi
     if [ "$n" -ge "$ATTEMPTS" ]; then break; fi
     local backoff=5
