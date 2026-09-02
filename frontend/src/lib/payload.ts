@@ -321,11 +321,15 @@ export async function getHomepageReel(): Promise<Reel | null> {
       if (!src) return null;
       // #99: rendition ladder from the media doc's sizes map, ascending by
       // width, master pushed as the top rung (so a ladder-less upload still
-      // yields one rung = today's single-source behaviour). Rung URLs mirror
-      // src's absolute form on purpose — the publish translate stage rewrites
-      // this host prefix to /media/ exactly like it does for src.
+      // yields one rung = today's single-source behaviour). Rung URLs are
+      // derived from the master src by filename substitution — SAME ORIGIN as
+      // src by construction, so the publish translate stage rewrites them
+      // exactly like it rewrites src (deriving from API_URL instead breaks:
+      // build envs point PAYLOAD_URL at 127.0.0.1, which translate never
+      // rewrites).
       const rungs: { w: number; url: string }[] = [];
       const sizes = reel.video && typeof reel.video === 'object' ? reel.video.sizes : null;
+      const srcDir = src.slice(0, src.lastIndexOf('/') + 1);
       if (sizes && typeof sizes === 'object') {
         for (const k of Object.keys(sizes)) {
           const e = sizes[k];
@@ -334,7 +338,7 @@ export async function getHomepageReel(): Promise<Reel | null> {
             typeof e.filename === 'string' && e.filename !== '' &&
             typeof e.width === 'number' && e.width > 0
           ) {
-            rungs.push({ w: e.width, url: mediaUrl({ url: '/media/' + e.filename }) });
+            rungs.push({ w: e.width, url: srcDir + e.filename });
           }
         }
       }
