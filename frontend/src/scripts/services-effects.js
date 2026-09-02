@@ -654,13 +654,31 @@ function initEquipment(root) {
     'custom-media-servers':    { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
     'silverdraft-a6000-nodes': { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
     'laptop-flypacks':         { x: 0.104, r: 0.864, y: 0.156, b: 0.864 },
-    'vfc-cards':               { x: 0.083, r: 0.959, y: 0.333, b: 0.656 },
+    // Re-measured 2026-09-02 against the tight re-export (1000x400, was a
+    // 1000x1000 square with the strip floating in black). ffmpeg cropdetect
+    // agrees at limit 0.10 and 0.16: crop=748:316:126:42.
+    'vfc-cards':               { x: 0.126, r: 0.874, y: 0.105, b: 0.895 },
     'custom-rack-builds':      { x: 0.042, r: 0.886, y: 0.037, b: 0.889 },
     'renderstream-hardware':   { x: 0.031, r: 0.979, y: 0.208, b: 1.000 },
   };
 
+  // Per-item size trim, applied on top of PLATE_FILL. 1 (the default) fills like
+  // everything else; 0.85 draws 15% smaller. The VFC plate is a 2.5:1 strip of
+  // five cards where the rest of the fleet is a near-square turntable of a single
+  // box, so filling the cell to the same 96% makes it read louder than its
+  // neighbours even when it measures the same.
+  const FILL_SCALE = {
+    'vfc-cards': 0.85,
+  };
+
   let plateBox = FULL_FRAME;
-  const setScale = (r) => { plateBox = (r && SUBJECT[r.dataset.slug]) || FULL_FRAME; fitPlate(); };
+  let plateFill = PLATE_FILL;
+  const setScale = (r) => {
+    const slug = r && r.dataset.slug;
+    plateBox = (slug && SUBJECT[slug]) || FULL_FRAME;
+    plateFill = PLATE_FILL * ((slug && FILL_SCALE[slug]) || 1);
+    fitPlate();
+  };
 
   // Recomputed from measured pixels every time the cell or the media can have
   // changed, which is what makes it follow a resize instead of being baked once.
@@ -680,7 +698,7 @@ function initEquipment(root) {
       const sw = (plateBox.r - plateBox.x) * pw;
       const sh = (plateBox.b - plateBox.y) * ph;
       if (sw <= 0 || sh <= 0) return;
-      const k = PLATE_FILL * Math.min(W / sw, H / sh);
+      const k = plateFill * Math.min(W / sw, H / sh);
       const ox = ((plateBox.x + plateBox.r) / 2 - 0.5) * pw;
       const oy = ((plateBox.y + plateBox.b) / 2 - 0.5) * ph;
       m.style.transform =
