@@ -1411,9 +1411,18 @@ class ServicesController {
     if (this._settleRaf) { cancelAnimationFrame(this._settleRaf); this._settleRaf = 0; }
     const end = performance.now() + (ms || 520); // 340ms letter-spacing + the bar's own reflow
     const step = () => {
-      // _gl is absent until buildAscii has run once; nothing to repaint yet.
-      if (!this._gl) { this._settleRaf = 0; return; }
-      this.drawAscii();
+      // Mark the buffer dirty and let tickAscii do the drawing. Calling drawAscii
+      // straight from here skips _applyDissolve(), which tickAscii deliberately runs
+      // FIRST -- so the field gets painted at full strength even when it should be
+      // dissolved or asleep. That is mostly invisible on a desktop, where a resize
+      // only happens when you drag the window and you are usually still on the hero;
+      // on a phone the address bar showing and hiding fires resize all through a
+      // scroll, so it repainted an undissolved field over and over.
+      //
+      // Going through the tick also gets the sleep gate for free: it only runs on the
+      // hero and only while the field is awake, so a resize inside a section costs
+      // nothing and the flag is simply consumed by the next tick that does run.
+      this._glDirty = true;
       this._settleRaf = performance.now() < end ? requestAnimationFrame(step) : 0;
     };
     this._settleRaf = requestAnimationFrame(step);
