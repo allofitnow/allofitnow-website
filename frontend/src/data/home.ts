@@ -145,7 +145,7 @@ export const footer = {
   info: [
     'AOIN IS A CREATIVE TECHNOLOGY STUDIO, PARTNERING WITH AGENCIES AND ARTISTS TO PUSH THE BOUNDARIES OF REAL-TIME DESIGN ACROSS TV, FILM, CORPORATE EVENTS, AND LIVE MUSIC.',
   ],
-  legal: ['ALL OF IT NOW. ESTD. 2014.', '2026 ALL RIGHTS RESERVED.'],
+  legal: ['ALL OF IT NOW. EST. 2014.', '2026 ALL RIGHTS RESERVED.'],
   navPrimary: [
     { label: 'WORK', href: '/work' },
     { label: 'SERVICES', href: '/services' },
