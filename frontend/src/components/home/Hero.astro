@@ -26,13 +26,14 @@ const cueWord = (w: string) => w.split('');
             isUpload ? (
               <video
                 data-ref="reelVideo"
-                src={reel.src}
+                data-rungs={JSON.stringify(reel.rungs)}
+                data-master-src={reel.src}
                 poster={reel.poster || undefined}
                 autoplay
                 loop
                 muted
                 playsinline
-                preload="auto"
+                preload="none"
                 aria-label="AOIN reel"></video>
             ) : (
               <iframe

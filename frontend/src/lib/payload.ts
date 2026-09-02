@@ -318,10 +318,34 @@ export async function getHomepageReel(): Promise<Reel | null> {
     if (!reel) return null;
     if (reel.source === 'upload') {
       const src = mediaUrl(reel.video);
-      return src ? { source: 'upload', src, poster: mediaUrl(reel.poster), vimeoId: '', hash: '' } : null;
+      if (!src) return null;
+      // #99: rendition ladder from the media doc's sizes map, ascending by
+      // width, master pushed as the top rung (so a ladder-less upload still
+      // yields one rung = today's single-source behaviour). Rung URLs mirror
+      // src's absolute form on purpose — the publish translate stage rewrites
+      // this host prefix to /media/ exactly like it does for src.
+      const rungs: { w: number; url: string }[] = [];
+      const sizes = reel.video && typeof reel.video === 'object' ? reel.video.sizes : null;
+      if (sizes && typeof sizes === 'object') {
+        for (const k of Object.keys(sizes)) {
+          const e = sizes[k];
+          if (
+            e && typeof e === 'object' &&
+            typeof e.filename === 'string' && e.filename !== '' &&
+            typeof e.width === 'number' && e.width > 0
+          ) {
+            rungs.push({ w: e.width, url: mediaUrl({ url: '/media/' + e.filename }) });
+          }
+        }
+      }
+      const masterW =
+        typeof reel.video?.width === 'number' && reel.video.width > 0 ? reel.video.width : 1920;
+      rungs.push({ w: masterW, url: src });
+      rungs.sort((a, b) => a.w - b.w);
+      return { source: 'upload', src, poster: mediaUrl(reel.poster), vimeoId: '', hash: '', rungs };
     }
     const { id, hash } = parseVimeo(reel.vimeoUrl);
-    return id ? { source: 'vimeo', src: '', poster: '', vimeoId: id, hash } : null;
+    return id ? { source: 'vimeo', src: '', poster: '', vimeoId: id, hash, rungs: [] } : null;
   } catch {
     return null;
   }
