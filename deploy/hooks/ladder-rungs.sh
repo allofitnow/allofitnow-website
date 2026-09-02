@@ -72,7 +72,9 @@ for M in "${MASTERS[@]}"; do
   [ -f "$r720" ] || { awk -v m="$mbps" 'BEGIN{exit !(m>3.0)}' && { do720=1; n_enc720=$((n_enc720+1)); } || n_skip720=$((n_skip720+1)); }
   [ -f "$r480" ] || { awk -v m="$mbps" 'BEGIN{exit !(m>1.5)}' && { do480=1; n_enc480=$((n_enc480+1)); } || n_skip480=$((n_skip480+1)); }
   po=0
-  if { [ -f "$r720" ] || [ $do720 -eq 1 ]; } && [ ! -f "$poster" ]; then po=1; n_poster=$((n_poster+1)); fi
+  # poster accompanies ANY wired master (any rung present or planned; #103 renders
+  # poster=<stem>-poster.webp for every src-less video, 480-only included)
+  if { [ -f "$r720" ] || [ $do720 -eq 1 ] || [ -f "$r480" ] || [ $do480 -eq 1 ]; } && [ ! -f "$poster" ]; then po=1; n_poster=$((n_poster+1)); fi
 
   printf '%s\t%s\t%s\t%s\t%s\t%s\t%s\n' "$stem" "$GOP" "$mbps" "$do720" "$do480" "$po" "$base" >> "$PLAN"
 done
