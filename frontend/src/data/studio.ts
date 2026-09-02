@@ -36,22 +36,32 @@ export const statement: string[] = [
   'TV, FILM, CORPORATE EVENTS, AND LIVE MUSIC.',
 ];
 
-// The pair of stills under the statement. Exactly two, 16:9, cool-cast or B&W
-// live-show photography. width/height are the intrinsic pixels — they go on the
-// <img> so the band reserves its space before the files land. The two files in
-// /public/assets are TEMPORARY placeholders — swap for real show photography.
-export const band: [MediaRef, MediaRef] = [
+// The stills under the statement. Three, laid out left to right and never
+// cropped: the row is sized so every image shares one height while keeping its
+// own width, so the aspect ratios may differ freely (they do — two near-square
+// neon plates either side of a 16:9 studio drawing). width/height are the
+// intrinsic pixels; they go on the <img> so the band reserves its space before
+// the files land, AND they drive the --ar flex ratio that equalises the heights,
+// so they must match the real files. Two of the three carry alpha and are drawn
+// straight onto the page black — do not give them a background plate.
+export const band: MediaRef[] = [
   {
-    url: '/assets/about-band-1.webp',
-    width: 1920,
-    height: 1080,
-    alt: 'LED volume mid-show, cool cast',
+    url: '/assets/about-band-all-of-it-now.webp',
+    width: 1861,
+    height: 1660,
+    alt: 'ALL OF IT NOW spelled out in white neon tubing',
   },
   {
-    url: '/assets/about-band-2.webp',
-    width: 1920,
-    height: 1080,
-    alt: 'Stage rig from the floor, crowd silhouetted',
+    url: '/assets/about-band-studio.webp',
+    width: 3840,
+    height: 2160,
+    alt: 'Line drawing of the studio floor: edit desks, monitors, racked servers and shelved road cases',
+  },
+  {
+    url: '/assets/about-band-vr.webp',
+    width: 1706,
+    height: 1645,
+    alt: 'VIRTUAL REALITY spelled out in white neon tubing',
   },
 ];
 
@@ -104,8 +114,8 @@ function assertStudio(): void {
   if (statement.length !== 4) {
     problems.push(`statement: expected 4 lines, got ${statement.length}`);
   }
-  if (band.length !== 2) {
-    problems.push(`band: expected 2 images, got ${band.length}`);
+  if (band.length !== 3) {
+    problems.push(`band: expected 3 images, got ${band.length}`);
   }
   band.forEach((image, i) => {
     if (!image.url || !image.alt || !image.width || !image.height) {
