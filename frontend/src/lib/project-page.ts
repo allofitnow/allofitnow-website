@@ -26,6 +26,8 @@ export function initProjectPage(root: HTMLElement) {
   const toggleLabel = q('[data-pp-toggle-label]');
   const titleRow = q('[data-pp-title-row]')!;
   const titleSpan = q('[data-pp-title]')!;
+  const tour = q('[data-pp-tour]');
+  const TOUR_GAP = 48; // .pp__titleRow's gap — the breathing room the name keeps from the tour
   const h1 = titleSpan.parentElement as HTMLElement; // .pp__title
   const hero = q('[data-pp-hero]')!;
   const aside = q('[data-pp-aside]')!;
@@ -91,7 +93,15 @@ export function initProjectPage(root: HTMLElement) {
     // floor so the fitted name never overshoots its column.
     // On mobile the write-up is a screen-slide, not a compress, so the title
     // never narrows — always fit to the row (no scaling as screens slide).
-    const avail = !mobile && expanded ? 0.49 * frameW - 24 : titleRow.clientWidth;
+    //
+    // Closed, on desktop, the tour line sits on the SAME row, hard against the
+    // right edge (.pp__tour, absolute), so the room the name actually has is
+    // the row minus the tour and the row's gap — fitting to the whole row is
+    // what let "MORGAN WALLEN" run straight through "STILL THE PROBLEM TOUR".
+    // Expanded, the tour has slid to the far side of the name's column, and
+    // on a phone it sits on its own line under the name: nothing to subtract.
+    const tourW = !mobile && !expanded && tour ? tour.offsetWidth + TOUR_GAP : 0;
+    const avail = !mobile && expanded ? 0.49 * frameW - 24 : titleRow.clientWidth - tourW;
 
     // One line is the preference, not the rule. Shrinking had no floor, so a
     // long name on a narrow column kept getting smaller until it was set at
