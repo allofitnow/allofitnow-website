@@ -15,6 +15,7 @@
 import '../styles/services.css';
 import { buildSrcset } from '../lib/media';
 import Nav from '../components/chrome/Nav.astro';
+import Cursor from '../components/chrome/Cursor.astro';
 import HoverCard from '../components/chrome/HoverCard.astro';
 import Preloader from '../components/home/Preloader.astro';
 import PageTitle from '../components/services/PageTitle.astro';
@@ -25,9 +26,6 @@ import ServicesBar from '../components/services/ServicesBar.astro';
 import InquiryModal from '../components/chrome/InquiryModal.astro';
 import { getServiceSections, getServiceGalleries, type GalleryItem } from '../data/services';
 import { getEquipment } from '../data/equipment';
-
-// #67: canonical origin, same source as Base.astro (astro.config site / SITE_URL env).
-const SITE_URL = Astro.site?.toString().replace(/\/$/, '') ?? 'https://46009.someofitlater.com';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
@@ -122,7 +120,7 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
 <meta charset="utf-8" />
 <script is:inline>
   (function () {
-    var c = navigator.connection || {};
+    var c = navigator.connection;
     var light = c.saveData || /^(slow-)?2g$/.test(c.effectiveType || '');
         if (!light) return;
     if (c.saveData) document.documentElement.setAttribute('data-save-data', '1');
@@ -171,21 +169,6 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
 <title>Services — All Of It Now</title>
 {/* This page is a full HTML document outside Base.astro, so every <head> tag
     Base provides has to be repeated here. Keep these two in step with Base. */}
-<meta name="description" content="Real-time content and show production services — real-time content, screens, LED, lighting, and stage design." />
-{/* #67 OG/Twitter meta — same set as Base.astro, kept in step. */}
-<meta property="og:title" content="Services — All Of It Now" />
-<meta property="og:description" content="Real-time content and show production services — real-time content, screens, LED, lighting, and stage design." />
-<meta property="og:type" content="website" />
-<meta property="og:site_name" content="All Of It Now" />
-<meta property="og:image" content={`${SITE_URL}/assets/og-image.png`} />
-<meta property="og:image:width" content="1200" />
-<meta property="og:image:height" content="630" />
-<meta property="og:url" content={`${SITE_URL}/services`} />
-<link rel="canonical" href={`${SITE_URL}/services`} />
-<meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Services — All Of It Now" />
-<meta name="twitter:description" content="Real-time content and show production services — real-time content, screens, LED, lighting, and stage design." />
-<meta name="twitter:image" content={`${SITE_URL}/assets/og-image.png`} />
 <link rel="icon" href="/favicon.ico" sizes="32x32" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 {/* Preloader count face — its @font-face is block, and the count animates from
@@ -210,6 +193,11 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
     so there's no flash; the bottom script lifts it once the stage is set. */}
 <Preloader />
 <Nav />
+{/* Site-wide crosshair cursor. Base.astro mounts this for every other page; this
+    one is a standalone document outside Base, so it has to mount it itself or the
+    page falls back to the OS arrow. It also carries the global `cursor: none` rule,
+    which is why its absence showed up as the native cursor rather than no cursor. */}
+<Cursor />
 {/* Cursor-following project card — shows over project-linked stills (same rich card as the home
     marquee: name / tour / capabilities). Populated by lib/hovercard.ts from each still's data-*. */}
 <HoverCard />
@@ -330,6 +318,11 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
   import { mountServices } from '../scripts/services-controller.js';
   import { mountEffects } from '../scripts/services-effects.js';
   import '../lib/hovercard'; // cursor project card over project-linked stills (binds its own listeners)
+  import { initMuteMedia } from '../lib/mute-media';
+
+  // Standalone document, outside Base.astro, so it mounts its own copy — the
+  // gallery and equipment plates are the densest video on the site.
+  initMuteMedia();
 
   const ctrl = mountServices({ introOnly: true });
   // mountEffects positions every gallery off-stage synchronously (master.progress(0)),

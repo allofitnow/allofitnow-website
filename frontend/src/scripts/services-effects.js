@@ -378,33 +378,33 @@ export function mountEffects(ctrl) {
 function buildRealtime(root, master, reparks) {
   const el = root.querySelector('.mwg_effect083');
   if (!el) return;
-  const mob = window.innerWidth < 768;
   const medias = [...el.querySelectorAll('.media')];
   const n = medias.length;
-  // Phones fly the same stream as desktop — every still, the same depth mechanic — at ~80vw a
-  // card (services.css), but the cards must never overlap each other. Two things buy that:
-  // TWO lanes (31% / 69%), far enough apart that a card in one cannot reach the other, and one
-  // depth layer PER LANE, so every card in a lane moves at the same speed and stays exactly the
-  // stagger apart — in the desktop pile a fast layer overtakes a slow one, which is the overlap.
-  // Same-lane cards are two stagger steps apart; at this stagger/flight ratio that is ~0.4 of the
-  // flight path, ~410px on a 375 phone against a 300px card. The flight is shorter than desktop's
-  // so the section still hands off to Screens at the same progress (last card gone ≈0.40).
-  const stag = mob ? 0.017 : RTC.stag;
-  const travel = mob ? 0.085 : RTC.travel;
+  const mob = window.innerWidth < 768;
   medias.forEach((m, i) => {
-    const lane2 = i % 2;                              // phones: alternate the two lanes
-    const L = mob ? LAYERS[lane2] : LAYERS[i % LAYERS.length]; // depth: reach (speed) + scale
-    const lane = (i * 7) % n;                         // desktop: shuffle into evenly-spread lanes
-    // Keep the stream in a centred band so large stills don't hang off the top/bottom edges (the
-    // top lane used to sit at 5% and get cropped). On a phone the two lanes run under the title
-    // and the copy on purpose — the faint section scrim and the type's text-shadows carry legibility.
-    const top = mob ? (lane2 ? 69 : 31) : 22 + (lane / Math.max(1, n - 1)) * 54;
+    const L = LAYERS[i % LAYERS.length];             // depth: reach (speed) + scale
+    const lane = (i * 7) % n;                         // shuffle into evenly-spread vertical lanes
+    // Keep the stream in a centred band so large stills don't hang off the top/bottom
+    // edges (the top lane used to sit at 5% and get cropped).
+    //
+    // Phones get the lanes too now. They did not before because every still was a
+    // full-height slab, which left nothing to spread into — so all of them were
+    // parked dead-centre at natural size and simply covered one another. The slab is
+    // gone (services.css lets the 16/9 aspect stand again), so the band and the
+    // per-layer depth scale both come back; the phone band is a little tighter and
+    // sits lower, because the title and the stacked capability bar own the top.
+    // The phone band starts high enough that the top lanes pass BEHIND the title
+    // rather than beginning under the capability bar -- the section reads as one
+    // field of movement instead of a gallery bolted below the chrome. Safe because
+    // ::before lays 0.82 black over the top 40% on phones, so the title still holds.
+    const band = mob ? { top: 10, span: 76 } : { top: 22, span: 54 };
+    const top = band.top + (lane / Math.max(1, n - 1)) * band.span;
     const scale = L.scale;
     const fromX = () => window.innerWidth * L.reach + 140;
     const toX = () => -window.innerWidth * L.reach - 140;
     gsap.set(m, { top: top.toFixed(2) + '%', yPercent: -50, zIndex: L.z, scale, x: fromX });
     if (reparks) reparks.push(() => gsap.set(m, { x: fromX }));
-    master.fromTo(m, { x: fromX }, { x: toX, ease: 'none', duration: travel }, RTC.start + i * stag);
+    master.fromTo(m, { x: fromX }, { x: toX, ease: 'none', duration: RTC.travel }, RTC.start + i * RTC.stag);
   });
 }
 
@@ -417,39 +417,32 @@ function buildScreens(root, master, reparks) {
   if (!n) return;
   const mob = window.innerWidth < 768;
   // Organic parallax spread kept: stills tile into `nc` lanes (the (i*3)%n shuffle), each lane a depth
-  // layer (reach + scale). The lanes sit at a FIXED centre-to-centre PITCH that clears the widest
-  // layer + a gap, so nothing overlaps horizontally even as the stills grow — the trade (per the
-  // brief) is that the outer lanes BLEED off the viewport edges instead of packing in, so the
-  // horizontal distance is preserved. Phones run the same maths with TWO lanes instead of four:
-  // at ~56vw a card (services.css) the four-lane pitch would put the outer lanes entirely
-  // off-screen, whereas two lanes bleed ~13% off their edges — desktop's outer lanes, in effect.
-  // Cards alternate lanes, and each lane carries ONE depth layer, so every card in a lane rises at
-  // the same speed and stays two stagger steps (~400px) behind the one before it — a faster layer
-  // in the same lane would overtake and overlap, which is what the desktop pile is allowed to do.
+  // layer (reach + scale). On desktop the lanes sit at a FIXED centre-to-centre PITCH that clears the
+  // widest layer + a gap, so nothing overlaps horizontally even as the stills grow — the trade (per the
+  // brief) is that the outer lanes BLEED off the viewport edges instead of packing in, so the horizontal
+  // distance is preserved. Phones keep the old on-screen packing (mobile is a deferred pass).
   const uniq = [...new Set(medias.map((_, i) => (i * 3) % n))].sort((a, b) => a - b);
-  const nc = mob ? Math.min(2, uniq.length) : uniq.length;
-  const layers = mob ? LAYERS.slice(0, nc) : LAYERS;        // phones: layer k lives in lane k
+  const nc = uniq.length;
   const sampleW = medias[0] ? medias[0].getBoundingClientRect().width : window.innerWidth * 0.22;
   const imgPct = (sampleW / window.innerWidth) * 100;       // image width as % of viewport
-  const maxScale = Math.max(...layers.map((l) => l.scale)); // widest depth layer in play
-  const GAP = 1.5;                                          // gap between adjacent lane footprints (%)
+  const maxScale = Math.max(...LAYERS.map((l) => l.scale)); // widest depth layer
+  const GAP = mob ? 1 : 1.5;                                // gap between adjacent lane footprints (%)
   const pitch = imgPct * maxScale + GAP;                    // lane centre-to-centre spacing ⇒ no h-overlap
   const mid = (nc - 1) / 2;                                 // centre the lane group; wider-than-100% ⇒ bleed
-  // Phones: bigger cards, so fewer in frame per scroll — a wider stagger and a shorter rise keep
-  // it to ~4 on screen (two per lane), and the section still clears at the same progress as
-  // desktop (last card gone ≈0.59 either way).
-  const stag = mob ? 0.014 : SCR.stag;
-  const travel = mob ? 0.13 : SCR.travel;
+  const MARGIN = 4;
+  const packTravel = Math.max(0, 100 - 2 * MARGIN - imgPct);
   medias.forEach((m, i) => {
-    const col = uniq.indexOf((i * 3) % n) % nc;
-    const L = mob ? layers[col] : LAYERS[i % LAYERS.length];
-    const left = 50 + (col - mid) * pitch - imgPct / 2;
-    const scale = L.scale;
+    const L = LAYERS[i % LAYERS.length];
+    const col = uniq.indexOf((i * 3) % n);
+    const left = mob
+      ? MARGIN + (nc > 1 ? col / (nc - 1) : 0.5) * packTravel   // phones: keep everything on-screen
+      : 50 + (col - mid) * pitch - imgPct / 2;                  // desktop: fixed pitch, outer lanes bleed off-edge
+    const scale = mob ? L.scale * 1.0 : L.scale;
     const fromY = () => window.innerHeight * L.reach + 120;
     const toY = () => -window.innerHeight * L.reach - 120;
     gsap.set(m, { left: left.toFixed(2) + '%', zIndex: L.z, scale, y: fromY });
     if (reparks) reparks.push(() => gsap.set(m, { y: fromY }));
-    master.fromTo(m, { y: fromY }, { y: toY, ease: 'none', duration: travel }, SCR.start + i * stag);
+    master.fromTo(m, { y: fromY }, { y: toY, ease: 'none', duration: SCR.travel }, SCR.start + i * SCR.stag);
   });
 }
 
@@ -647,15 +640,89 @@ function initEquipment(root) {
   const SUBJECT = {
     'disguise-gx3':            { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
     'x-series-servers':        { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
+    // The fleet item carrying the silverdraft turntable was renamed to CUSTOM
+    // MEDIA SERVERS in the CMS. Keyed by the live slug; the old slug is kept so
+    // any environment still serving it keeps its measured box rather than
+    // silently falling back to FULL_FRAME (which renders it at ~half size).
+    'custom-media-servers':    { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
     'silverdraft-a6000-nodes': { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
     'laptop-flypacks':         { x: 0.104, r: 0.864, y: 0.156, b: 0.864 },
-    'vfc-cards':               { x: 0.083, r: 0.959, y: 0.333, b: 0.656 },
+    // Re-measured 2026-09-02 against the tight re-export (1000x400, was a
+    // 1000x1000 square with the strip floating in black). ffmpeg cropdetect
+    // agrees at limit 0.10 and 0.16: crop=748:316:126:42.
+    'vfc-cards':               { x: 0.126, r: 0.874, y: 0.105, b: 0.895 },
     'custom-rack-builds':      { x: 0.042, r: 0.886, y: 0.037, b: 0.889 },
     'renderstream-hardware':   { x: 0.031, r: 0.979, y: 0.208, b: 1.000 },
   };
 
+  // Per-item size trim, applied on top of PLATE_FILL. 1 (the default) fills like
+  // everything else; 0.85 draws 15% smaller. The VFC plate is a 2.5:1 strip of
+  // five cards where the rest of the fleet is a near-square turntable of a single
+  // box, so filling the cell to the same 96% makes it read louder than its
+  // neighbours even when it measures the same.
+  const FILL_SCALE = {
+    'vfc-cards': 0.85,
+  };
+
   let plateBox = FULL_FRAME;
-  const setScale = (r) => { plateBox = (r && SUBJECT[r.dataset.slug]) || FULL_FRAME; fitPlate(); };
+  let plateFill = PLATE_FILL;
+  const setScale = (r) => {
+    const slug = r && r.dataset.slug;
+    plateBox = (slug && SUBJECT[slug]) || FULL_FRAME;
+    plateFill = PLATE_FILL * ((slug && FILL_SCALE[slug]) || 1);
+    fitPlate();
+  };
+
+  // The tip copy sits absolutely inside the panel and its height is a function of
+  // the text, which changes every time the fleet scrubs. Two things are wanted at
+  // once: the copy should sit directly under the name it describes, and the render
+  // should stay as large as the panel allows.
+  //
+  // So the copy hangs from just below the marquee and grows DOWNWARD, away from the
+  // names -- it cannot collide with them however long it runs -- and the cell above
+  // is shortened ONLY when the copy would otherwise run off the panel floor. Short
+  // tips leave the stylesheet's own bottom alone, which is what keeps the render
+  // full size for most of the fleet.
+  function fitCopy() {
+    if (!wrap || !copy) return;
+    // Off-stage the panel has no width, the tip wraps to about a character a line,
+    // and the measurement is nonsense. setActive re-runs this on arrival.
+    if (copy.offsetWidth < 120) return;
+
+    // Measure with our own overrides lifted, so the breakpoint keeps ownership of
+    // both numbers: the copy's floor (44 desktop, 104 on mobile to clear the CTA)
+    // and the cell's resting bottom.
+    const prevTop = copy.style.top;
+    const prevBottom = copy.style.bottom;
+    copy.style.top = '';
+    copy.style.bottom = '';
+    const floor = parseFloat(getComputedStyle(copy).bottom) || 0;
+    const need = copy.offsetHeight;
+    copy.style.top = prevTop;
+    copy.style.bottom = prevBottom;
+
+    const prevWrapBottom = wrap.style.bottom;
+    wrap.style.bottom = '';
+    const restingBottom = parseFloat(getComputedStyle(wrap).bottom) || 0;
+    wrap.style.bottom = prevWrapBottom;
+
+    const gap = parseFloat(getComputedStyle(wrap).rowGap) || 24;
+    // Only ever GROW the reservation: max(), not a sum, is what stops a short tip
+    // from stealing height the render could have used.
+    let reserve = Math.max(restingBottom, floor + need + gap);
+    const panelH = wrap.parentElement ? wrap.parentElement.clientHeight : 0;
+    if (panelH) reserve = Math.min(reserve, panelH * 0.55);
+    wrap.style.bottom = Math.round(reserve) + 'px';
+
+    // Read after the reserve lands, so the marquee is already in its final place.
+    const mq = wrap.querySelector('[data-equip-marquee]');
+    if (mq && wrap.parentElement) {
+      const top = mq.getBoundingClientRect().bottom
+        - wrap.parentElement.getBoundingClientRect().top + gap;
+      copy.style.top = Math.round(top) + 'px';
+      copy.style.bottom = 'auto';
+    }
+  }
 
   // Recomputed from measured pixels every time the cell or the media can have
   // changed, which is what makes it follow a resize instead of being baked once.
@@ -675,7 +742,7 @@ function initEquipment(root) {
       const sw = (plateBox.r - plateBox.x) * pw;
       const sh = (plateBox.b - plateBox.y) * ph;
       if (sw <= 0 || sh <= 0) return;
-      const k = PLATE_FILL * Math.min(W / sw, H / sh);
+      const k = plateFill * Math.min(W / sw, H / sh);
       const ox = ((plateBox.x + plateBox.r) / 2 - 0.5) * pw;
       const oy = ((plateBox.y + plateBox.b) / 2 - 0.5) * ph;
       m.style.transform =
@@ -719,7 +786,7 @@ function initEquipment(root) {
     if (i === activeIdx) return;
     activeIdx = i;
     rows.forEach((r, k) => r.classList.toggle('is-active', k === i));
-    if (copy) copy.textContent = rows[i].dataset.tip;
+    if (copy) { copy.textContent = rows[i].dataset.tip; fitCopy(); fitPlate(); }
     if (immediate) { setPlate(rows[i]); return; }
     if (img) img.style.opacity = '0';
     if (vid) vid.style.opacity = '0';
@@ -737,11 +804,13 @@ function initEquipment(root) {
   };
 
   // Center the default item (CUSTOM RACK BUILDS) once fonts — and thus item widths — settle.
-  const center = () => { const i = activeIdx < 0 ? defaultIdx : activeIdx; setX(xForIndex(i)); swap(i, true); };
+  const center = () => { const i = activeIdx < 0 ? defaultIdx : activeIdx; setX(xForIndex(i)); swap(i, true); fitCopy(); fitPlate(); };
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(center); else center();
   window.addEventListener('resize', () => {
     const i = activeIdx < 0 ? defaultIdx : activeIdx;
     setX(clampU(bounds().min, bounds().max, xForIndex(i)));
+    fitCopy();
+    fitPlate();
   });
 
   // pointer drag (touch-action:pan-y in CSS lets vertical page scroll pass through)
@@ -805,6 +874,9 @@ function initEquipment(root) {
     const on = !!v;
     if (on === active) return;
     active = on;
+    // The panel only has its real width once it is on stage, and fitCopy needs
+    // that width to wrap the tip, so re-measure on arrival.
+    if (on) { fitCopy(); fitPlate(); }
     if (!vid) return;
     if (on && plateIsVideo) { try { vid.currentTime = 0; } catch (_) {} vid.play && vid.play().catch(() => {}); }
     else if (!on) { vid.pause && vid.pause(); }
@@ -830,6 +902,7 @@ function initEquipment(root) {
       const gap = parseFloat(getComputedStyle(wrap).rowGap) || 24;
       wrap.style.top = Math.round(barBottom + gap) + 'px';
     }
+    fitCopy();
     fitPlate();
   };
 

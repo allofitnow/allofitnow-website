@@ -105,23 +105,50 @@ class ServicesController {
         if (this._introOnly) { this.scrollToSection(+b.dataset.i); return; }
         if (this.active < 0) this.go(+b.dataset.i);
       });
-      const shift = () => 0;
+      // The hover gesture is the wiping bar (CapabilityBar.astro) plus black text,
+      // matching the Work page filters. The tracking no longer widens: it changed
+      // the button's width mid-wipe, so the bar grew sideways while it rose.
+      //
+      // The colour is written HERE and not left to sweep(). sweep only runs on the
+      // hero of the scrolling build; in the intro build it never runs at all and the
+      // labels are painted with a plain colour, so a sweep-only hover state left
+      // cool-white text on the cool-white bar -- invisible. Setting it directly
+      // works in every mode, and sweep's own __hov branch paints the same black for
+      // the case where it IS running and would otherwise repaint over this.
+      //
+      // webkitTextFillColor as well as color: in gradient mode the fill is
+      // transparent so the clipped background shows through, and colour alone would
+      // have nothing to act on.
       b.addEventListener('mouseenter', () => {
         if (this.active >= 0) return;
         b.__hov = true;
-        b.classList.add('is-hov'); // the Work-page plate wipe (services.css); sweep() drops the clip for it
-        if (b.__lsWide != null) {
-          b.style.letterSpacing = b.__lsWide + 'em';
-          b.style.transform = 'translateX(' + shift() + 'px)';
-        }
+        // Snapshot rather than assume a resting value: colour here is owned by
+        // setActiveService or sweep depending on mode, and leaving must hand it back
+        // exactly as found rather than making this a third writer.
+        b.__preHov = {
+          color: b.style.color,
+          fill: b.style.webkitTextFillColor,
+          filter: b.style.filter,
+          shadow: b.style.textShadow,
+        };
+        b.style.color = '#000';
+        b.style.webkitTextFillColor = '#000';
+        b.style.filter = 'none';   // the halo separates the label from the field; on white it muddies
+        b.style.textShadow = 'none';
       });
       b.addEventListener('mouseleave', () => {
         b.__hov = false;
-        b.classList.remove('is-hov');
-        if (b.__lsTight != null) {
-          b.style.letterSpacing = b.__lsTight + 'em';
-          b.style.transform = 'translateX(0)';
+        const pre = b.__preHov;
+        if (pre) {
+          b.style.color = pre.color;
+          b.style.webkitTextFillColor = pre.fill;
+          b.style.filter = pre.filter;
+          b.style.textShadow = pre.shadow;
+          b.__preHov = null;
         }
+        // Force sweep, if it is running, to re-run its gradient branch rather than
+        // trusting the snapshot to match what it would have painted.
+        if (b.__sw === 2) b.__sw = 0;
       });
     });
     // Panel-navigation handlers (clicks into subcategories, inventory rows, drag,
@@ -372,6 +399,7 @@ class ServicesController {
     this._resize = () => {
       this.layout();
       this.queueAscii();
+      this.repaintFieldAfterSettle();
     };
     window.addEventListener('resize', this._resize);
     requestAnimationFrame(() => this.layout());
@@ -399,6 +427,7 @@ class ServicesController {
     clearInterval(this._tick);
     if (this._raf) cancelAnimationFrame(this._raf);
     if (this._asciiRaf) { cancelAnimationFrame(this._asciiRaf); this._asciiRaf = 0; }
+    if (this._settleRaf) { cancelAnimationFrame(this._settleRaf); this._settleRaf = 0; }
   }
 
   componentDidUpdate() {
@@ -1254,10 +1283,18 @@ class ServicesController {
       // keep their plain inline color until playIntro() unwraps them, then the shine takes over.
       if (b.firstElementChild) return;
       const r = b.getBoundingClientRect();
-      // Hovered label: drop the shine entirely and burn it in at full strength.
-      // The sweep is a DARKENING mask (see below), so a label caught under the
-      // band was being read through a hole in itself — the one moment you most
-      // want it legible is the moment you are pointing at it.
+      // Hovered label: drop the shine entirely and paint it BLACK, over the white
+      // bar CapabilityBar.astro wipes up behind it -- the Work page filter
+      // treatment. It used to burn in at full cool-white here, which was right when
+      // the label sat on the dark field (the sweep is a DARKENING mask, so a label
+      // caught under the band was read through a hole in itself, at exactly the
+      // moment you are pointing at it) but is invisible once the bar is behind it:
+      // cool-white type on a cool-white bar.
+      //
+      // This is the branch that actually runs. Both fills are set because in
+      // gradient mode webkitTextFillColor is transparent so the clipped background
+      // shows through, and colour alone would have nothing to act on. The halo goes
+      // too: it separates the label from the field, and only muddies black on white.
       if (b.__hov) {
         if (b.__sw !== 2) {
           b.__sw = 2;
@@ -1266,15 +1303,17 @@ class ServicesController {
           b.style.backgroundColor = 'transparent';
           b.style.backgroundClip = '';
           b.style.webkitBackgroundClip = '';
-          b.style.webkitTextFillColor = '';
-          b.style.color = 'rgb(217,225,234)';
-          b.style.textShadow = '0 0 18px rgba(217,225,234,0.45)';
+          b.style.webkitTextFillColor = '#000';
+          b.style.color = '#000';
+          b.style.textShadow = 'none';
+          b.style.filter = 'none';
         }
         return;
       }
       if (b.__sw !== 1) {
         b.__sw = 1;
         b.style.textShadow = 'none';
+        b.style.filter = 'drop-shadow(var(--cap-sep))'; // restored after a hover
         // The shine is a black gradient clipped to the glyphs, so every stop is
         // subtracting light. At 0.88 the leading band took the label down to
         // 0.03 effective alpha — it read as a word blinking out rather than as
@@ -1307,7 +1346,6 @@ class ServicesController {
     root.querySelectorAll('[data-slot]').forEach((b) => {
       b.__sw = 0;
       b.__hov = false;
-      b.classList.remove('is-hov'); // a tap on a phone never gets a mouseleave; the section boundary clears it
       b.__bg = null;
       b.style.backgroundImage = 'none';
       b.style.backgroundColor = 'transparent';
@@ -1386,6 +1424,44 @@ class ServicesController {
       this._asciiH = h;
       this.buildAscii();
     });
+  }
+
+  /*
+   * Redraw the field across a resize's settle.
+   *
+   * drawAscii() places the four per-word luminance pools from the labels' LIVE
+   * rects, so it already has everything it needs -- but it only runs when
+   * tickAscii sees _glDirty, and a resize never sets that. The one draw a resize
+   * does get is buildAscii's, on the next frame, which lands in the middle of the
+   * move: fitSlots transitions letter-spacing for 340ms and the bar is still
+   * redistributing. So the pools were placed where the labels had just been and
+   * then nothing redrew them, leaving the four names sitting on unlit field until
+   * something else dirtied the buffer -- moving the cursor over it, or a reload.
+   * That is why a refresh always looked right and a resize never did.
+   *
+   * Redrawing across the whole settle rather than betting on one frame is the same
+   * approach the project page takes for its title fit, and for the same reason: the
+   * cascade is longer than any single measurement.
+   */
+  repaintFieldAfterSettle(ms) {
+    if (this._settleRaf) { cancelAnimationFrame(this._settleRaf); this._settleRaf = 0; }
+    const end = performance.now() + (ms || 520); // 340ms letter-spacing + the bar's own reflow
+    const step = () => {
+      // Mark the buffer dirty and let tickAscii do the drawing. Calling drawAscii
+      // straight from here skips _applyDissolve(), which tickAscii deliberately runs
+      // FIRST -- so the field gets painted at full strength even when it should be
+      // dissolved or asleep. That is mostly invisible on a desktop, where a resize
+      // only happens when you drag the window and you are usually still on the hero;
+      // on a phone the address bar showing and hiding fires resize all through a
+      // scroll, so it repainted an undissolved field over and over.
+      //
+      // Going through the tick also gets the sleep gate for free: it only runs on the
+      // hero and only while the field is awake, so a resize inside a section costs
+      // nothing and the flag is simply consumed by the next tick that does run.
+      this._glDirty = true;
+      this._settleRaf = performance.now() < end ? requestAnimationFrame(step) : 0;
+    };
+    this._settleRaf = requestAnimationFrame(step);
   }
 
   buildAscii() {

@@ -36,30 +36,44 @@ export const statement: string[] = [
   'TV, FILM, CORPORATE EVENTS, AND LIVE MUSIC.',
 ];
 
-// The pair of stills under the statement. Exactly two, 16:9, cool-cast or B&W
-// live-show photography. width/height are the intrinsic pixels — they go on the
-// <img> so the band reserves its space before the files land. The two files in
-// /public/assets are TEMPORARY placeholders — swap for real show photography.
-export const band: [MediaRef, MediaRef] = [
+// The stills under the statement. Three, laid out left to right and never
+// cropped: the row is sized so every image shares one height while keeping its
+// own width, so the aspect ratios may differ freely (they do — two near-square
+// neon plates either side of a 16:9 studio drawing). width/height are the
+// intrinsic pixels; they go on the <img> so the band reserves its space before
+// the files land, AND they drive the --ar flex ratio that equalises the heights,
+// so they must match the real files. That coupling is why the filenames carry a
+// -vN: /assets is served `Cache-Control: public, immutable, max-age=2592000`, so
+// overwriting an image in place leaves returning browsers holding the old pixels
+// against the new ratios, and the row silently stops lining up. Changing a plate
+// means a new filename, not just a new file. Two of the three carry alpha and are drawn
+// straight onto the page black — do not give them a background plate.
+export const band: MediaRef[] = [
   {
-    url: '/assets/about-band-1.webp',
-    width: 1920,
-    height: 1080,
-    alt: 'LED volume mid-show, cool cast',
+    url: '/assets/about-band-all-of-it-now-v2.webp',
+    width: 2008,
+    height: 1627,
+    alt: 'ALL OF IT NOW spelled out in white neon tubing',
   },
   {
-    url: '/assets/about-band-2.webp',
-    width: 1920,
-    height: 1080,
-    alt: 'Stage rig from the floor, crowd silhouetted',
+    url: '/assets/about-band-studio-v2.webp',
+    width: 3840,
+    height: 2160,
+    alt: 'Line drawing of the studio floor: edit desks, monitors, racked servers and shelved road cases',
+  },
+  {
+    url: '/assets/about-band-vr-v2.webp',
+    width: 1725,
+    height: 1669,
+    alt: 'VIRTUAL REALITY spelled out in white neon tubing',
   },
 ];
 
 // Studio profile. Two paragraphs render as the intended two-column set; one or
 // three still lay out. Plain text, no markup.
 export const profile: string[] = [
-  "All of it Now (AOIN) is a cutting-edge creative agency based in Los Angeles, California. With a rich background in film/TV production, information technology, and brand marketing, we specialize in crafting immersive digital experiences that captivate and inspire. From live event production and virtual/augmented reality (VR/AR) to interactive installations and custom motion graphics, our team pushes the boundaries of what's possible through technology-driven design.",
-  "Our passion lies at the intersection of creativity and innovation, partnering with top brands, artists, and events to deliver unforgettable experiences. Utilizing industry-leading tools such as Notch and Disguise, we bring projects to life in real-time, whether it's for concerts, permanent installations, or virtual production. At AOIN, we strive to exceed expectations and redefine the potential of digital storytelling.",
+  "All of it Now is a creative technology studio based in Los Angeles, partnering with agencies and artists to develop real-time systems, content, and technical solutions for TV, film, corporate events, and live music. Our work sits at the intersection of creative ideas and technical development. We design and build the systems that bring real-time visuals into live production, from Notch and Unreal Engine content to camera-driven graphics, interactive environments, mixed reality, and large-scale screen systems. We also provide the programming, integration, and infrastructure required to take those systems from development into the live environment.",
+  "AOIN works alongside creative directors, show designers, artists, and production teams throughout the process, translating creative concepts into flexible technical systems that can perform at scale. Whether developing a real-time visual system, building a custom media server, integrating tracked cameras, or creating a pipeline for augmented reality, our approach is grounded in finding practical technical solutions that support ambitious creative ideas. Our work has spanned global tours, major festivals, broadcast, film and television, and large-scale live productions. As productions continue to grow in scale and complexity, AOIN builds the technology and workflows that allow creative teams to work at the edge of what is possible in real time.",
 ];
 
 // Roster SEED — the fallback when the CMS `about` global is empty/unreachable (getRoster()
@@ -104,8 +118,8 @@ function assertStudio(): void {
   if (statement.length !== 4) {
     problems.push(`statement: expected 4 lines, got ${statement.length}`);
   }
-  if (band.length !== 2) {
-    problems.push(`band: expected 2 images, got ${band.length}`);
+  if (band.length !== 3) {
+    problems.push(`band: expected 3 images, got ${band.length}`);
   }
   band.forEach((image, i) => {
     if (!image.url || !image.alt || !image.width || !image.height) {
