@@ -95,7 +95,7 @@ worker() {
   ff_free() { df -B M --output=avail "$MEDIA" | tail -1 | tr -dc '0-9'; }
 
   enc() { # $1 out-path  $2 W  $3 H  $4 bv  $5 maxrate  $6 bufsize
-    local out="$1" W="$2" H="$3" bv="$4" mr="$5" bs="$6" part="$1.part"
+    local out="$1" W="$2" H="$3" bv="$4" mr="$5" bs="$6" part="$1.part.mp4"
     [ "$(ff_free)" -lt "$MIN_FREE_MB" ] && { echo "$(date -u +%FT%TZ) WARN: disk guard hit (<${MIN_FREE_MB}MB), skipping $stem" >> "$LOG"; return 3; }
     local cmd="nice -n 10 ffmpeg -nostdin -y -v error -i \"$M\" -vf \"scale=${W}:${H}:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=${W}:${H}:(ow-iw)/2:(oh-ih)/2\" -c:v libx264 -profile:v high -pix_fmt yuv420p -b:v ${bv} -maxrate ${mr} -bufsize ${bs} -g ${GOP} -keyint_min ${GOP} -sc_threshold 0 -movflags +faststart -an \"${part}\""
     echo "$(date -u +%FT%TZ) CMD $stem: $cmd" >> "$LOG"
@@ -125,7 +125,7 @@ worker() {
   if [ "$do720" = "0" ] && [ -f "$MEDIA/$stem-1280x720.mp4" ] && [ ! -f "$REG_DIR/$stem.w1280.js" ]; then reg w1280 "$stem-1280x720.mp4" 1280 720; fi
   if [ "$do480" = "0" ] && [ -f "$MEDIA/$stem-854x480.mp4" ] && [ ! -f "$REG_DIR/$stem.w854.js" ]; then reg w854 "$stem-854x480.mp4" 854 480; fi
   if [ "$po" = "1" ]; then
-    part="$MEDIA/$stem-poster.webp.part"
+    part="$MEDIA/$stem-poster.webp.part.webp"
     if nice -n 10 ffmpeg -nostdin -y -v error -ss 1 -i "$M" -frames:v 1 \
         -vf "scale=1280:720:force_original_aspect_ratio=decrease:force_divisible_by=2,pad=1280:720:(ow-iw)/2:(oh-ih)/2" \
         "$part" </dev/null >> "$LOG" 2>&1; then mv -f "$part" "$MEDIA/$stem-poster.webp";
