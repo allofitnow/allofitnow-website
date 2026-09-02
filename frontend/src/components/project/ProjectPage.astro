@@ -242,14 +242,6 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     line-height: 0.9;
     letter-spacing: 0.01em;
     font-size: clamp(46px, 9.4cqw, 148px);
-    /* The name and the tour share the row's bottom edge, but at 148px/0.9 the
-       name's baseline sat ~15px above its box and the 21px mono tour's ~5px
-       above its own — a visible stair-step between "MORGAN WALLEN" and "STILL
-       THE PROBLEM TOUR". Trimming both boxes to cap-height/baseline makes the
-       bottom edge THE baseline, so bottom-aligned means baseline-aligned at
-       any pair of sizes. (Same trim .pp__metaCol uses; browsers without it
-       keep the old bottom-alignment.) The trim itself is on the span below —
-       the block that owns the line boxes. */
     /* The name scales with the reflow, on the same stage-0 timing as the hero.
        The fit script sets an explicit px target; this transitions between them. */
     transition: font-size var(--dl);
@@ -262,7 +254,6 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     display: block;
     white-space: nowrap;
     max-width: 100%;
-    text-box: trim-both cap alphabetic;
   }
   /* The fit script breaks the name across two lines rather than shrink it past
      a floor (see fit() in lib/project-page.ts). `balance` so the two lines come
@@ -285,7 +276,6 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     line-height: 1;
     letter-spacing: 0.14em;
     white-space: nowrap;
-    text-box: trim-both cap alphabetic; /* baseline = box bottom, paired with .pp__title */
     transform: translateX(calc(46cqw - 100%));
     transition: transform var(--dl);
     transition-delay: 168ms;
@@ -1041,36 +1031,12 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     .pp__desc {
       width: 100% !important;
     }
-    /* A long SERVICES list was a sliver beside YEAR and COLLABORATOR, every
-       entry broken over two or three lines. It gets its own row instead: the
-       meta row wraps, the flowed column drops under the other two at full
-       width and runs in TWO columns, and it grows as tall as it needs — the
-       row budget and the scroll are desktop measures for a block with a
-       summary beside it; on a phone the page simply gets longer. YEAR and
-       COLLABORATOR pack left on the first row and may shrink (min-width:0),
-       so a long collaborator wraps in place rather than taking a row of its
-       own. Short lists keep the three-across layout. */
-    .pp__metaCols:has(.pp__metaCol[data-flow]) {
-      flex-wrap: wrap;
-      justify-content: flex-start;
-      gap: 24px 36px;
-    }
-    .pp__metaCols:has(.pp__metaCol[data-flow]) .pp__metaCol:not([data-flow]) {
-      flex: 0 1 auto;
-      min-width: 0;
-    }
-    .pp__metaCol[data-flow] {
-      flex: 1 1 100%;
-    }
+    /* A phone gets one track, so the budget is the only thing holding the list
+       down — and it can be looser here, because on mobile the meta block has
+       the full width to itself and nothing sits beside it competing. */
     .pp__metaCol[data-flow] .pp__metaVals {
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      column-gap: 16px;
-      max-height: none;
-      overflow: visible;
-    }
-    .pp__metaCol[data-flow] .pp__metaVals[data-pp-more] {
-      -webkit-mask-image: none;
-      mask-image: none;
+      --pp-meta-rows: 8;
+      --pp-svc-col: 100%;
     }
     .pp__desc {
       margin-top: 4px;
