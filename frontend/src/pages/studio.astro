@@ -33,6 +33,7 @@ const rows = Math.ceil(members.length / columns);
           alt={image.alt}
           width={image.width}
           height={image.height}
+          style={`--ar:${image.width / image.height}`}
           loading="lazy"
           decoding="async"
         />
@@ -121,19 +122,28 @@ const rows = Math.ceil(members.length / columns);
     white-space: nowrap;
   }
 
+  /* One row of stills, every one at the SAME height and its OWN width, so nothing
+     is cropped. flex-basis 0 with flex-grow set to each image aspect ratio (--ar,
+     written inline from the intrinsic pixels) makes each width proportional to its
+     aspect -- which is precisely the condition for the heights to come out equal,
+     at any container width and for any mix of aspects. The gap is taken off every
+     item equally so it does not skew that. justify-content centres the group.
+     No aspect-ratio and no object-fit here on purpose: `cover` is what crops. */
   .band {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
     gap: clamp(12px, 1.4vw, 22px);
     padding-top: clamp(56px, 7vw, 104px);
   }
   .band img {
-    width: 100%;
+    flex: var(--ar, 1) 1 0;
+    min-width: 0;
+    width: auto;
     height: auto;
-    aspect-ratio: 16 / 9;
-    object-fit: cover;
     display: block;
-    background: rgba(217, 225, 234, 0.06);
+    /* No background plate: two of the three carry alpha and are neon drawn
+       straight onto the page black; a tint would box them in grey rectangles. */
   }
 
   .col {
@@ -247,6 +257,17 @@ const rows = Math.ceil(members.length / columns);
       grid-auto-flow: row;
       grid-template-columns: 1fr;
       grid-template-rows: none;
+    }
+    /* Band: three side by side on a phone leaves each one tiny, so only the middle
+       still (the studio drawing) is kept, full width. */
+    .band {
+      display: block;
+    }
+    .band img:not(:nth-child(2)) {
+      display: none;
+    }
+    .band img {
+      width: 100%;
     }
     /* No hover on touch — reveal the titles by default so they aren't stuck hidden below the mask. */
     .words > span {
