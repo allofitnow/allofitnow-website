@@ -680,6 +680,57 @@ function initEquipment(root) {
     fitPlate();
   };
 
+  // The tip copy sits absolutely inside the panel and its height is a function of
+  // the text, which changes every time the fleet scrubs. Two things are wanted at
+  // once: the copy should sit directly under the name it describes, and the render
+  // should stay as large as the panel allows.
+  //
+  // So the copy hangs from just below the marquee and grows DOWNWARD, away from the
+  // names -- it cannot collide with them however long it runs -- and the cell above
+  // is shortened ONLY when the copy would otherwise run off the panel floor. Short
+  // tips leave the stylesheet's own bottom alone, which is what keeps the render
+  // full size for most of the fleet.
+  function fitCopy() {
+    if (!wrap || !copy) return;
+    // Off-stage the panel has no width, the tip wraps to about a character a line,
+    // and the measurement is nonsense. setActive re-runs this on arrival.
+    if (copy.offsetWidth < 120) return;
+
+    // Measure with our own overrides lifted, so the breakpoint keeps ownership of
+    // both numbers: the copy's floor (44 desktop, 104 on mobile to clear the CTA)
+    // and the cell's resting bottom.
+    const prevTop = copy.style.top;
+    const prevBottom = copy.style.bottom;
+    copy.style.top = '';
+    copy.style.bottom = '';
+    const floor = parseFloat(getComputedStyle(copy).bottom) || 0;
+    const need = copy.offsetHeight;
+    copy.style.top = prevTop;
+    copy.style.bottom = prevBottom;
+
+    const prevWrapBottom = wrap.style.bottom;
+    wrap.style.bottom = '';
+    const restingBottom = parseFloat(getComputedStyle(wrap).bottom) || 0;
+    wrap.style.bottom = prevWrapBottom;
+
+    const gap = parseFloat(getComputedStyle(wrap).rowGap) || 24;
+    // Only ever GROW the reservation: max(), not a sum, is what stops a short tip
+    // from stealing height the render could have used.
+    let reserve = Math.max(restingBottom, floor + need + gap);
+    const panelH = wrap.parentElement ? wrap.parentElement.clientHeight : 0;
+    if (panelH) reserve = Math.min(reserve, panelH * 0.55);
+    wrap.style.bottom = Math.round(reserve) + 'px';
+
+    // Read after the reserve lands, so the marquee is already in its final place.
+    const mq = wrap.querySelector('[data-equip-marquee]');
+    if (mq && wrap.parentElement) {
+      const top = mq.getBoundingClientRect().bottom
+        - wrap.parentElement.getBoundingClientRect().top + gap;
+      copy.style.top = Math.round(top) + 'px';
+      copy.style.bottom = 'auto';
+    }
+  }
+
   // Recomputed from measured pixels every time the cell or the media can have
   // changed, which is what makes it follow a resize instead of being baked once.
   function fitPlate() {
@@ -742,7 +793,7 @@ function initEquipment(root) {
     if (i === activeIdx) return;
     activeIdx = i;
     rows.forEach((r, k) => r.classList.toggle('is-active', k === i));
-    if (copy) copy.textContent = rows[i].dataset.tip;
+    if (copy) { copy.textContent = rows[i].dataset.tip; fitCopy(); fitPlate(); }
     if (immediate) { setPlate(rows[i]); return; }
     if (img) img.style.opacity = '0';
     if (vid) vid.style.opacity = '0';
@@ -760,11 +811,13 @@ function initEquipment(root) {
   };
 
   // Center the default item (CUSTOM RACK BUILDS) once fonts — and thus item widths — settle.
-  const center = () => { const i = activeIdx < 0 ? defaultIdx : activeIdx; setX(xForIndex(i)); swap(i, true); };
+  const center = () => { const i = activeIdx < 0 ? defaultIdx : activeIdx; setX(xForIndex(i)); swap(i, true); fitCopy(); fitPlate(); };
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(center); else center();
   window.addEventListener('resize', () => {
     const i = activeIdx < 0 ? defaultIdx : activeIdx;
     setX(clampU(bounds().min, bounds().max, xForIndex(i)));
+    fitCopy();
+    fitPlate();
   });
 
   // pointer drag (touch-action:pan-y in CSS lets vertical page scroll pass through)
@@ -828,6 +881,9 @@ function initEquipment(root) {
     const on = !!v;
     if (on === active) return;
     active = on;
+    // The panel only has its real width once it is on stage, and fitCopy needs
+    // that width to wrap the tip, so re-measure on arrival.
+    if (on) { fitCopy(); fitPlate(); }
     if (!vid) return;
     if (on && plateIsVideo) { try { vid.currentTime = 0; } catch (_) {} vid.play && vid.play().catch(() => {}); }
     else if (!on) { vid.pause && vid.pause(); }
@@ -853,6 +909,7 @@ function initEquipment(root) {
       const gap = parseFloat(getComputedStyle(wrap).rowGap) || 24;
       wrap.style.top = Math.round(barBottom + gap) + 'px';
     }
+    fitCopy();
     fitPlate();
   };
 
