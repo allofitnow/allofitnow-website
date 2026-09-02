@@ -7,8 +7,8 @@
 //   REJECT action, Tab cycles the three controls, Escape does nothing, no
 //   focus escape. Three EQUAL buttons: DO NOT TRACK (initial focus, focus
 //   order only - never visual emphasis), Accept all, Customize.
-// - Everywhere else (incl. US): notice regime - analytics live from first
-//   visit, NO modal. Slim non-blocking notice line + persistent footer
+// - Everywhere else (incl. US): silent regime (#109) - analytics live from
+//   first visit, NO banner of any kind. Persistent footer
 //   "Cookie settings" control with one-click opt-out (exactly as easy as
 //   tracking was on).
 //
@@ -22,7 +22,7 @@ import { isOptIn } from "./gate.mjs";
 // same-source rule (#77): handlers compose the shared snippet module
 import { acceptBodyJs, optOutBodyJs } from "./inject-snippet.mjs";
 
-const BANNER_VERSION = 2; // bump when banner text/controls change materially (#79 tracks v2); 2 = notice Accept/Deny + brand font
+const BANNER_VERSION = 3; // bump when banner text/controls change materially (#79); 3 = EU-only appearance (#109): non-EU silent, no notice bar
 
 const FONT_BODY = 'var(--font-body,"Denim INK WD",-apple-system,"Helvetica Neue",Arial,sans-serif)';
 
@@ -39,11 +39,6 @@ const STYLE = [
   '.aoin-cs-panel{margin-top:14px;display:none;}',
   '.aoin-cs-panel.open{display:block;}',
   '.aoin-cs-row{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0;border-top:1px solid var(--rule,rgba(217,225,234,.22));font-size:.92rem;}',
-  '.aoin-cs-notice{position:fixed;left:0;right:0;bottom:0;z-index:2147482999;background:var(--aoin-ink,rgb(10,10,10));color:var(--aoin-cool-white-80,rgba(217,225,234,.8));font-size:.85rem;padding:10px 16px;text-align:center;border-top:1px solid var(--rule,rgba(217,225,234,.22));font-family:' + FONT_BODY + ';}',
-  '.aoin-cs-notice a{color:var(--aoin-cool-white,#dde7f4);}',
-  '.aoin-cs-notice-btns{display:inline-flex;gap:8px;margin-left:10px;vertical-align:middle;white-space:nowrap;}',
-  '.aoin-cs-nbtn{min-height:36px;padding:0 16px;border:1px solid var(--rule,rgba(217,225,234,.22));border-radius:0;background:transparent;color:var(--text-primary,#dde7f4);font-size:.85rem;font-weight:var(--weight-body,400);cursor:pointer;font-family:' + FONT_BODY + ';}',
-  '.aoin-cs-nbtn:focus-visible{outline:3px solid var(--aoin-cool-white-80,rgba(217,225,234,.8));outline-offset:2px;}',
   '.aoin-cs-settings-btn{background:none;border:none;color:var(--aoin-cool-white,#dde7f4);font-size:.85rem;cursor:pointer;padding:4px 8px;text-decoration:underline;font-family:' + FONT_BODY + ';}',
   '.aoin-cs-settings-btn:focus-visible{outline:3px solid var(--aoin-cool-white-80,rgba(217,225,234,.8));outline-offset:2px;}',
   '.aoin-cs-fab{position:fixed;right:20px;bottom:20px;z-index:2147482998;width:52px;height:52px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(10,10,10,.92);border:1px solid var(--rule,rgba(217,225,234,.22));box-shadow:0 6px 20px rgba(0,0,0,.45),0 0 0 8px rgba(10,10,10,.28);cursor:pointer;transition:transform .15s ease,box-shadow .15s ease;backdrop-filter:blur(6px);padding:0;}',
@@ -54,7 +49,7 @@ const STYLE = [
   // our overlay/notice/fab stack above it, which buried the ONLY visible
   // cursor -> lift the brand cursor above our layer so it stays visible
   '.aoin-cursor{z-index:2147483600!important}',
-  '@media (prefers-reduced-motion: reduce){.aoin-cs-overlay,.aoin-cs-notice{transition:none;}}',
+  '@media (prefers-reduced-motion: reduce){.aoin-cs-overlay{transition:none;}}',
   '</style>',
 ].join("");
 
@@ -77,8 +72,7 @@ function runtimeJs(id) {
     'function gtagOn(){' + acceptBodyJs(id) + '}',
     'function gtagOff(){' + optOutBodyJs() + '}',
     'function closeBanner(){',
-    ' var o=document.getElementById("aoin-cs-overlay");if(o){o.remove();}',
-    ' var n=document.getElementById("aoin-cs-notice");if(n){n.remove();}}',
+    ' var o=document.getElementById("aoin-cs-overlay");if(o){o.remove();}}',
     'function applyChoice(on){writeConsent(on);if(on){gtagOn();}else{gtagOff();}closeBanner();}',
     // focus trap (modal): Tab cycles the 3 controls + panel toggle; Escape does nothing
     'window.__aoinCsTrap=function(root){',
@@ -93,7 +87,6 @@ function runtimeJs(id) {
     // banner wiring: runs after DOM insertion
     'window.__aoinCsWire=function(){',
     ' var overlay=document.getElementById("aoin-cs-overlay");',
-    ' var notice=document.getElementById("aoin-cs-notice");',
     ' if(overlay){window.__aoinCsTrap(overlay);',
     '  var g=function(id){return document.getElementById(id);};',
     '  g("aoin-cs-reject").addEventListener("click",function(){applyChoice(false);});',
@@ -101,19 +94,12 @@ function runtimeJs(id) {
     '  g("aoin-cs-customize").addEventListener("click",function(){g("aoin-cs-panel").classList.toggle("open");g("aoin-cs-panel").setAttribute("aria-hidden","false");});',
     '  g("aoin-cs-save").addEventListener("click",function(){applyChoice(g("aoin-cs-analytics").checked===true);});',
     ' }',
-    ' if(notice){',
-      '  var d=document.getElementById("aoin-cs-notice-deny");',
-      '  if(d&&!d.dataset.wired){d.dataset.wired=1;d.addEventListener("click",function(){applyChoice(false);});}',
-      '  var a=document.getElementById("aoin-cs-notice-accept");',
-      '  if(a&&!a.dataset.wired){a.dataset.wired=1;a.addEventListener("click",function(){applyChoice(true);});}',
-    '  var r=document.getElementById("aoin-cs-reopen");',
-    '  if(r&&!r.dataset.wired){r.dataset.wired=1;r.addEventListener("click",function(){var o=document.getElementById("aoin-cs-overlay");if(o){o.remove();}',
-    '   document.body.insertAdjacentHTML("beforeend",window.__aoinCsModalHtml);window.__aoinCsWire();});}',
-    ' }',
-    ' var fab=document.getElementById("aoin-cs-fab");',
+    ' var r=document.getElementById("aoin-cs-reopen");',
+ '  if(r&&!r.dataset.wired){r.dataset.wired=1;r.addEventListener("click",function(){var o=document.getElementById("aoin-cs-overlay");if(o){o.remove();}',
+ '   document.body.insertAdjacentHTML("beforeend",window.__aoinCsModalHtml);window.__aoinCsWire();});}',
+' var fab=document.getElementById("aoin-cs-fab");',
     ' if(fab){',
-    '  if(notice){fab.style.bottom="64px";}',
-    '  if(!fab.dataset.wired){fab.dataset.wired=1;fab.addEventListener("click",function(){',
+       '  if(!fab.dataset.wired){fab.dataset.wired=1;fab.addEventListener("click",function(){',
     '   var o=document.getElementById("aoin-cs-overlay");',
     '   if(o){o.remove();return;}',
     '   document.body.insertAdjacentHTML("beforeend",window.__aoinCsModalHtml);window.__aoinCsWire();});}',
@@ -143,16 +129,7 @@ const MODAL_HTML = [
   '</div></div></div></div>',
 ].join("");
 
-const NOTICE_HTML = [
-  '<div id="aoin-cs-notice" class="aoin-cs-notice">',
-  'We use analytics cookies to improve this site. ',
-  '<a href="/privacy">Privacy policy</a>',
-  '<span class="aoin-cs-notice-btns">',
-  '<button id="aoin-cs-notice-deny" class="aoin-cs-nbtn" type="button">Deny</button>',
-  '<button id="aoin-cs-notice-accept" class="aoin-cs-nbtn" type="button">Accept</button>',
-  '</span>',
-  '</div>',
-].join("");
+
 
 const FAB_HTML = [
   '<button id="aoin-cs-fab" class="aoin-cs-fab" type="button" aria-label="Cookie settings (design preview)" title="Cookie settings">',
@@ -184,10 +161,11 @@ export function bannerFor(country, ga4id, cookieHeader, preview) {
       html: STYLE + runtimeJs(ga4id) + fab + MODAL_HTML.replace("<div ", '<div data-bv="' + BANNER_VERSION + '" ') + footWireModal(),
     };
   }
+  // #109: non-EU + no choice = silent. No banner of any kind; footer control
+  // is the only surface (same shape as settled; distinct kind for tests/logs).
   return {
-    kind: "notice",
-    html: STYLE + runtimeJs(ga4id) + NOTICE_HTML + fab + '<div id="aoin-cs-footer">' + SETTINGS_BTN_HTML + "</div>" + wireFooterOnly(),
-    notice: true,
+    kind: "silent",
+    html: STYLE + runtimeJs(ga4id) + fab + '<div id="aoin-cs-footer">' + SETTINGS_BTN_HTML + "</div>" + wireFooterOnly(),
   };
 }
 

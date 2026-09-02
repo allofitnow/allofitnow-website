@@ -61,10 +61,11 @@ test("OPT_IN set matches wiki list (32)", () => {
 
 // ---- #77 banner plane selection ----
 
-test("bannerFor US -> notice (no modal, footer settings present)", () => {
+test("bannerFor US -> silent (#109: no banner at all, footer settings present)", () => {
   const b = bannerFor("US", "G-TEST", null);
-  assert.equal(b.kind, "notice");
-  assert.ok(b.html.includes("aoin-cs-notice"));
+  assert.equal(b.kind, "silent");
+  assert.ok(!b.html.includes("aoin-cs-notice"));
+  assert.ok(!b.html.includes('id="aoin-cs-overlay"'));
   // no LIVE modal markup (the re-open copy is an escaped JS string, fine)
   assert.ok(!b.html.includes('<div id="aoin-cs-overlay"'));
   assert.ok(b.html.includes("aoin-cs-reopen"));
@@ -95,11 +96,12 @@ test("bannerFor with choice already recorded -> settled (no re-presentation)", (
   }
 });
 
-test("notice plane: Accept/Deny buttons + /privacy linked, brand font on all controls", () => {
+test("silent plane: zero banner markup, footer settings control, runtime embeds shared bodies (#109)", () => {
   const b = bannerFor("US", "G-TEST", null);
-  assert.ok(b.html.includes("aoin-cs-notice-deny"));
-  assert.ok(b.html.includes("aoin-cs-notice-accept"));
-  assert.ok(b.html.includes('href="/privacy"'));
+  assert.ok(!b.html.includes("aoin-cs-notice"));
+  // no live overlay/notice NODES; the modal survives only as JSON for footer re-open
+  assert.ok(!b.html.includes('id="aoin-cs-overlay"'));
+  assert.ok(b.html.includes("aoin-cs-reopen")); // footer settings control present
   assert.ok(!b.html.includes("aoin-cs-out")); // v1 one-click link removed
   assert.ok(b.html.includes("Denim INK WD")); // brand font (fallback stack)
 });
