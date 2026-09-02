@@ -289,7 +289,7 @@ html.lenis, html.lenis body { height: auto; }
      the depth scale need, and buildRealtime puts both back.
      Both galleries also come down a size: the point on a phone is to see the
      staggering, and overlap at 56/52vw was hiding it. */
-  .mwg_effect083 .media { width: clamp(168px, 48vw, 260px); }
+  .mwg_effect083 .media { width: clamp(182px, 52vw, 285px); }
   .mwg_effect051 .media { width: clamp(150px, 44vw, 250px); }
   /* Ghetto-but-correct: zoom the WHOLE composited ring with a 2D scale instead of
      enlarging the slot (--mr-w), which would tighten the arc spacing and worsen the
@@ -303,9 +303,14 @@ html.lenis, html.lenis body { height: auto; }
      viewport that gap is only ~160px — a 2× band (~175px) can't fit and rode up into
      the last sub. 1.5 keeps it bold but always clears the chrome above and copy below. */
   .mwg_effect061 { --mr-w: 46vw; --mr-h: 25.875vw; transform: translateY(44px) scale(2.2); transform-origin: 50% 50%; } /* bigger + re-centered now the one-line marquee shortened the chrome */
-  /* The scrim between the galleries and the type is deliberately faint on phones — 5% black at
-     the very edges, gone by a third of the way in — so the cards read at full strength under
-     the title and the copy. Legibility is the type's text-shadow, not a band over the images. */
+  /* SCREENS columns rise through the FULL height, phone included. Confining them to
+     the lower 68% meant a column hit a hard black edge at 32% and vanished mid-travel,
+     which read as the scroll being cut off rather than as depth. The chrome does not
+     need the clip to stay legible: ::before below already lays 0.82 black over the top
+     40% on phones, so a column passes BEHIND the title and fades into it. */
+  .svc-panel--screens .mwg_effect051 { top: 0; }
+  /* Top gradient keeps the chrome zone clean; the bottom gradient is stronger + taller
+     on mobile so the ~2× galleries can't wash out the description sitting over them. */
   .svc-panel--realtime::before, .svc-panel--screens::before {
     background:
       linear-gradient(to bottom, rgba(0, 0, 0, 0.05) 0%, rgba(0, 0, 0, 0) 30%),

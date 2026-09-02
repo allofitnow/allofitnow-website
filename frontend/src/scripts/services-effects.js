@@ -403,7 +403,11 @@ function buildRealtime(root, master, reparks) {
     // gone (services.css lets the 16/9 aspect stand again), so the band and the
     // per-layer depth scale both come back; the phone band is a little tighter and
     // sits lower, because the title and the stacked capability bar own the top.
-    const band = mob ? { top: 34, span: 52 } : { top: 22, span: 54 };
+    // The phone band starts high enough that the top lanes pass BEHIND the title
+    // rather than beginning under the capability bar -- the section reads as one
+    // field of movement instead of a gallery bolted below the chrome. Safe because
+    // ::before lays 0.82 black over the top 40% on phones, so the title still holds.
+    const band = mob ? { top: 10, span: 76 } : { top: 22, span: 54 };
     const top = band.top + (lane / Math.max(1, n - 1)) * band.span;
     const scale = L.scale;
     const fromX = () => window.innerWidth * L.reach + 140;
