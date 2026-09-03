@@ -30,6 +30,7 @@ STAGING_TREE=/opt/aoin-astro
 PROD_TREE=/opt/aoin-astro-prod
 PUBLISH_ID=""
 PREFIX=""
+SOFT=0
 DRY_RUN=0
 MEDIA_SRC=/root/projects/allofitnow-website/backend/media
 BUCKET=46009
@@ -43,6 +44,7 @@ while [ $# -gt 0 ]; do
     --publish-id)     PUBLISH_ID="${2:-}"; shift 2 ;;
     --media-src)      MEDIA_SRC="${2:-}"; shift 2 ;;
     --prefix)         PREFIX="${2:-}"; shift 2 ;;
+    --soft)           SOFT=1; PREFIX="soft/"; shift ;;
     --dry-run)        DRY_RUN=1; shift ;;
     --endpoint-url)   ENDPOINT_OVERRIDE="${2:-}"; shift 2 ;;
     *) shift ;;
@@ -60,6 +62,7 @@ STARTED=$(date +%s)
 PUBLISH_ID="${PUBLISH_ID:-manual-$(date +%s)}"
 MODE="live-root"
 [ -n "$PREFIX" ] && MODE="rehearsal"
+[ "$SOFT" -eq 1 ] && MODE="soft"
 [ "$DRY_RUN" -eq 1 ] && MODE="$MODE-dryrun"
 LOGJSON="$LOGDIR/prod-$PUBLISH_ID.json"
 PHASES_JSON="[]"
@@ -81,6 +84,15 @@ note_phase() {  # note_phase <name> <rc> <attempts> [duration_s]
 
 # --- host / gate guard (live root only; rehearsals and dry-runs pass) -------
 TAG=$(ip -o -4 addr show 2>/dev/null | grep -oE '192\.168\.30\.(245|246)' | head -1 | grep -oE '(245|246)$' || true)
+# --soft (#128): .245-only. NOT gated by AOIN_R2_LIVE_ROOT — the soft
+# namespace is additive and live-root bytes are never touched (media phase
+# below is new-key-only). Promotion to the live root stays E4-gated.
+if [ "$SOFT" -eq 1 ]; then
+  if [ "$DRY_RUN" -ne 1 ] && { [ "$TAG" != "245" ] || [ -n "${AOIN_R2_LIVE_ROOT:-}" ]; }; then
+    echo "prod: soft mode is reserved for .245 (AOIN_R2_LIVE_ROOT must be unset; soft is additive-only); skipping" >&2
+    exit 0
+  fi
+fi
 if [ -z "$PREFIX" ] && [ "$DRY_RUN" -ne 1 ]; then
   if [ "$TAG" != "245" ] || [ "${AOIN_R2_LIVE_ROOT:-0}" != "1" ]; then
     echo "prod: live-root mode is reserved for .245 with AOIN_R2_LIVE_ROOT=1 (first live-root sync stays user-gated); skipping"
@@ -215,7 +227,53 @@ MEDIA_RC=0
 TOMB_N=0
 PHASE_START=$(date +%s)
 if [ -d "$MEDIA_SRC" ]; then
-  if [ "$DRY_RUN" -ne 1 ] && [ -n "$PREV_MAN" ]; then
+  if [ "$SOFT" -eq 1 ]; then
+    # #128 soft: media OVERLAY. Compare src vs the ROOT media set (names+
+    # sizes from one listing); upload ONLY new-or-resized keys into
+    # soft/media/. Root bytes are never written by a soft publish; the
+    # worker overlay serves soft/media/<k> ahead of root on 46009 only.
+    # Same-size-replaced bytes are invisible until E4 (same compromise as
+    # the root sync's --size-only).
+    ROOT_MEDIA_LIST="/tmp/prod-rootmedia-$PUBLISH_ID.txt"
+    : >"$ROOT_MEDIA_LIST"
+    aws_retry rootmedia-ls s3 ls "s3://$BUCKET/media/" --recursive >>"$ROOT_MEDIA_LIST" || MEDIA_RC=1
+    OVERLAY_MAN="/tmp/prod-overlay-$PUBLISH_ID.txt"
+    : >"$OVERLAY_MAN"
+    if [ "$MEDIA_RC" -eq 0 ]; then
+      "$PY" - "$MEDIA_SRC" "$ROOT_MEDIA_LIST" "$OVERLAY_MAN" <<'PYK'
+import os, sys
+src, listfile, out = sys.argv[1:4]
+root = {}
+for line in open(listfile):
+    parts = line.split(None, 3)
+    if len(parts) >= 4 and parts[3].startswith("media/"):
+        root[parts[3][len("media/"):].rstrip("\n")] = int(parts[2])
+for rel, _dirs, files in os.walk(src):
+    for f in files:
+        full = os.path.join(rel, f)
+        k = os.path.relpath(full, src)
+        if k not in root or root[k] != os.path.getsize(full):
+            print(k)
+PYK
+      SOFT_MEDIA_N=0
+      while IFS= read -r k; do
+        [ -n "$k" ] || continue
+        if [ "$DRY_RUN" -eq 1 ]; then
+          echo "prod: [dryrun] soft media soft/media/$k"
+        else
+          aws_retry media-soft s3 cp "$MEDIA_SRC/$k" "s3://$BUCKET/${PREFIX}media/$k" || MEDIA_RC=1
+        fi
+        SOFT_MEDIA_N=$((SOFT_MEDIA_N + 1))
+      done <"$OVERLAY_MAN"
+      # overlay list: consumed by promote.sh (media plan input) + soft verify
+      if [ "$DRY_RUN" -ne 1 ]; then
+        aws_retry overlay-put s3 cp "$OVERLAY_MAN" "s3://$BUCKET/${PREFIX}manifests/$PUBLISH_ID-overlay.txt" || MEDIA_RC=1
+      fi
+      echo "phase: media(soft) done rc=$MEDIA_RC overlay=$SOFT_MEDIA_N root=$(grep -c ' media/' "$ROOT_MEDIA_LIST" || true)"
+    else
+      echo "prod: root media listing failed; overlay upload skipped" >&2
+    fi
+  elif [ "$DRY_RUN" -ne 1 ] && [ -n "$PREV_MAN" ]; then
     # #72: concurrent pre-archive via xargs -P (helper takes argv only).
     # if-wrap: with pipefail, a bare `live_has && printf` makes the while loop
     # exit 1 whenever the last key is not live -> false phase failure.
@@ -227,25 +285,27 @@ if [ -d "$MEDIA_SRC" ]; then
       "$LIB/archive-one.sh" "$R2_ENDPOINT" "$BUCKET" \
       "${PREFIX}media/" "${PREFIX}archive/$PUBLISH_ID/media/" || MEDIA_RC=1
   fi
-  DRYFLAG=()
-  [ "$DRY_RUN" -eq 1 ] && DRYFLAG=(--dryrun)
-  aws_retry media s3 sync "$MEDIA_SRC" "s3://$BUCKET/${PREFIX}media/" --size-only "${DRYFLAG[@]}" || MEDIA_RC=1
-  while IFS= read -r k; do
-    [ -n "$k" ] || continue
-    if [ "$DRY_RUN" -eq 1 ]; then
-      echo "prod: [dryrun] tombstone media/$k -> archive/$PUBLISH_ID/media/$k"
-    elif live_has "media/$k"; then
-      # #107: s3 cp s3://->s3:// sends a tagging directive R2 rejects with
-      # NotImplemented (same class archive-one.sh hit); s3api copy-object
-      # carries no tagging directive and is verified on R2 (live 2026-09-03).
-      aws_retry tombstone-copy s3api copy-object --bucket "$BUCKET" \
-        --key "${PREFIX}archive/$PUBLISH_ID/media/$k" \
-        --copy-source "$BUCKET/${PREFIX}media/$k" \
-        && aws_retry tombstone-rm s3api delete-object --bucket "$BUCKET" --key "${PREFIX}media/$k" || MEDIA_RC=1
-    fi
-    TOMB_N=$((TOMB_N + 1))
-  done < <(tombstone_keys)
-  echo "phase: media done rc=$MEDIA_RC tombstones=$TOMB_N"
+  if [ "$SOFT" -ne 1 ]; then
+    DRYFLAG=()
+    [ "$DRY_RUN" -eq 1 ] && DRYFLAG=(--dryrun)
+    aws_retry media s3 sync "$MEDIA_SRC" "s3://$BUCKET/${PREFIX}media/" --size-only "${DRYFLAG[@]}" || MEDIA_RC=1
+    while IFS= read -r k; do
+      [ -n "$k" ] || continue
+      if [ "$DRY_RUN" -eq 1 ]; then
+        echo "prod: [dryrun] tombstone media/$k -> archive/$PUBLISH_ID/media/$k"
+      elif live_has "media/$k"; then
+        # #107: s3 cp s3://->s3:// sends a tagging directive R2 rejects with
+        # NotImplemented (same class archive-one.sh hit); s3api copy-object
+        # carries no tagging directive and is verified on R2 (live 2026-09-03).
+        aws_retry tombstone-copy s3api copy-object --bucket "$BUCKET" \
+          --key "${PREFIX}archive/$PUBLISH_ID/media/$k" \
+          --copy-source "$BUCKET/${PREFIX}media/$k" \
+          && aws_retry tombstone-rm s3api delete-object --bucket "$BUCKET" --key "${PREFIX}media/$k" || MEDIA_RC=1
+      fi
+      TOMB_N=$((TOMB_N + 1))
+    done < <(tombstone_keys)
+    echo "phase: media done rc=$MEDIA_RC tombstones=$TOMB_N"
+  fi
 else
   echo "prod: media source missing: $MEDIA_SRC (skipping media sync)" >&2
 fi
@@ -312,7 +372,12 @@ PHASE_START=$(date +%s)
 SWEEP_RATIO="${AOIN_SWEEP_MAX_RATIO:-0.25}"
 SWEEP_KEYS_LOG="$LOGDIR/sweep-$PUBLISH_ID.txt"
 : >"$SWEEP_KEYS_LOG"
-if [ "$DRY_RUN" -eq 1 ]; then
+if [ "$SOFT" -eq 1 ]; then
+  # soft (#128): the sweep is a ROOT-space operation (root-manifest keys
+  # absent from the soft manifest are NOT orphans — deleting them would
+  # break live). Soft-namespace hygiene = promote-time (promote.sh).
+  echo "phase: sweep skipped (soft mode; root orphans are root-publish-only)"
+elif [ "$DRY_RUN" -eq 1 ]; then
   echo "prod: [dryrun] sweep skipped (would diff live _astro/+html vs manifest)"
 else
   SWEEP_LIST="/tmp/prod-sweep-$PUBLISH_ID.txt"
@@ -400,6 +465,46 @@ fi
 echo "phase: sweep done rc=$SWEEP_RC removed=$SWEEP_N"
 note_phase sweep "$SWEEP_RC" "$ATTEMPTS" "$(( $(date +%s) - PHASE_START ))"
 
+if [ "$SOFT" -eq 1 ]; then
+  # soft (#128): verify scope = the soft namespace itself. Expected under
+  # soft/: ALL tree keys (assets+html sync the full tree) + overlay media
+  # (subset of media/). The live root is NOT soft's responsibility (it
+  # belongs to the last root publish / next E4 promote).
+  VERIFY_RC=0
+  PHASE_START=$(date +%s)
+  BUCKET_LIST="/tmp/prod-bucketlist-$PUBLISH_ID.txt"
+  : >"$BUCKET_LIST"
+  aws_retry verify-soft s3 ls "s3://$BUCKET/${PREFIX}" --recursive >>"$BUCKET_LIST" || VERIFY_RC=1
+  if [ "$VERIFY_RC" -eq 0 ]; then
+    "$PY" - "$LOCAL_MAN" "$BUCKET_LIST" "$PREFIX" <<'PYK'
+import json, sys
+man = json.load(open(sys.argv[1]))
+tree = {k["key"] for k in man["keys"]}
+soft = set()
+for line in open(sys.argv[2]):
+    parts = line.split(None, 3)
+    if len(parts) >= 4:
+        soft.add(parts[3].rstrip("\n"))
+prefix = sys.argv[3]
+def strip(k):
+    return k[len(prefix):] if prefix and k.startswith(prefix) else k
+skip = (prefix + "archive/", prefix + "manifests/")
+soft_keys = {strip(k) for k in soft if not k.startswith(skip)}
+missing = sorted(tree - soft_keys)
+n_media = sum(1 for k in soft_keys if k.startswith("media/"))
+print("soft-verify: tree %d/%d present, %d overlay media keys" % (
+    len(tree) - len(missing), len(tree), n_media))
+if missing:
+    print("soft-verify: MISSING tree keys: %s" % ", ".join(missing[:10]))
+    if len(missing) > 10:
+        print("soft-verify: ... %d more" % (len(missing) - 10))
+    sys.exit(1)
+PYK
+    [ "$?" -ne 0 ] && VERIFY_RC=1
+  fi
+  echo "phase: verify(soft) done rc=$VERIFY_RC"
+  note_phase verify "$VERIFY_RC" "$ATTEMPTS" "$(( $(date +%s) - PHASE_START ))"
+else
 # --- phase 4: verify (reconciliation: manifest vs bucket) --------------------
 echo "phase: verify"
 VERIFY_RC=0
@@ -463,6 +568,7 @@ if [ "$VERIFY_RC" -eq 0 ]; then
 fi
 echo "phase: verify done rc=$VERIFY_RC"
 note_phase verify "$VERIFY_RC" "$ATTEMPTS" "$(( $(date +%s) - PHASE_START ))"
+fi
 
 # --- ledger + exit contract --------------------------------------------------
 FINISHED=$(date +%s)

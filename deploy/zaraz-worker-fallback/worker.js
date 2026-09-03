@@ -106,15 +106,37 @@ function redirect301(location) {
     headers: {
       "location": location,
       "cache-control": "public, max-age=86400",
-      "x-46009-worker": "v3o",
+      "x-46009-worker": "v3r",
     },
   });
+}
+
+// ---- v3r (#128): soft-launch overlay ------------------------------------
+
+// The soft-launch host (46009) serves the soft/ namespace (written by
+// prod.sh --soft) ahead of the live root, with per-request fallback.
+// Promotion (promote.sh) copies soft/ -> root; afterwards soft == root and
+// the overlay is transparent. Other hosts never read soft/.
+const SOFT_PREFIX = "soft/";
+const SOFT_HOST = "46009.someofitlater.com";
+
+// Single resolution stage for one key: in soft mode try soft/<key> first
+// (hit wins, tagged), else root <key>. Null only when BOTH miss.
+async function assetLookup(env, key, soft) {
+  if (soft) {
+    const s = await env.ASSETS.get(SOFT_PREFIX + key);
+    if (s !== null) return { obj: s, key: SOFT_PREFIX + key, softHit: true };
+  }
+  const o = await env.ASSETS.get(key);
+  if (o !== null) return { obj: o, key, softHit: false };
+  return null;
 }
 
 export default {
   async fetch(request, env) {
     const url = new URL(request.url);
     const host = (request.headers.get("host") || url.hostname).toLowerCase();
+    const soft = host === SOFT_HOST;
 
     // v3m (#112): contact API — sole POST surface, must sit ABOVE the generic
     // GET/HEAD method gate. Host-pinned like every other path; robots.txt
@@ -123,13 +145,13 @@ export default {
       if (request.method !== "POST") {
         return new Response("method not allowed", {
           status: 405,
-          headers: { "allow": "POST", "x-46009-worker": "v3o" },
+          headers: { "allow": "POST", "x-46009-worker": "v3r" },
         });
       }
       if (!SERVING_HOSTS.has(host)) {
         return new Response("host not served", {
           status: 403,
-          headers: { "x-46009-worker": "v3o" },
+          headers: { "x-46009-worker": "v3r" },
         });
       }
       return handleContact(request, env);
@@ -150,7 +172,7 @@ export default {
     if (!SERVING_HOSTS.has(host)) {
       return new Response("host not served", {
         status: 403,
-        headers: { "x-46009-worker": "v3o" },
+        headers: { "x-46009-worker": "v3r" },
       });
     }
 
@@ -180,38 +202,47 @@ export default {
     if (url.pathname.startsWith("/archive/")) {
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3o" },
+        headers: { "x-46009-worker": "v3r" },
+      });
+    }
+
+    // v3r (#128): the soft namespace itself is never publicly served —
+    // it exists only as the overlay source for the soft-launch host.
+    if (url.pathname.startsWith("/soft/")) {
+      return new Response("not found", {
+        status: 404,
+        headers: { "x-46009-worker": "v3r" },
       });
     }
 
     let key = url.pathname.replace(/^\/+/, "");
     if (key === "" || key.endsWith("/")) key += "index.html";
 
-    let obj = await env.ASSETS.get(key);
-    if (obj === null) {
+    // v3r (#128): soft overlay at every resolution stage.
+    let hit = await assetLookup(env, key, soft);
+    if (hit === null) {
       // #53: R2 keys uploaded from CMS may contain literal spaces; URL.pathname
       // keeps %20. Decode-on-miss only: zero change for clean keys.
       try {
         const dec = decodeURIComponent(key);
         if (dec !== key) {
-          const o2 = await env.ASSETS.get(dec);
-          if (o2 !== null) {
+          const h2 = await assetLookup(env, dec, soft);
+          if (h2 !== null) {
             key = dec;
-            obj = o2;
+            hit = h2;
           }
         }
       } catch (_) {} // malformed escape - fall through to 404 path
     }
-    if (obj === null && hasExt(key) === false) {
+    if (hit === null && hasExt(key) === false) {
       // extensionless path (Astro hrefs): /work/bad-bunny -> /work/bad-bunny/index.html
-      const retry = key + "/index.html";
-      const obj2 = await env.ASSETS.get(retry);
-      if (obj2 !== null) {
-        key = retry;
-        obj = obj2;
+      const h3 = await assetLookup(env, key + "/index.html", soft);
+      if (h3 !== null) {
+        key = key + "/index.html";
+        hit = h3;
       }
     }
-    if (obj === null) {
+    if (hit === null) {
       const notFound = await env.ASSETS.get("404.html");
       if (notFound !== null) {
         const buf = await notFound.arrayBuffer();
@@ -220,34 +251,35 @@ export default {
           headers: {
             "content-type": MIME.html,
             "cache-control": "no-cache",
-            "x-46009-worker": "v3o",
+            "x-46009-worker": "v3r",
           },
         });
       }
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3o" },
+        headers: { "x-46009-worker": "v3r" },
       });
     }
 
     const ext = key.slice(key.lastIndexOf(".") + 1).toLowerCase();
     const headers = new Headers();
-    headers.set("etag", obj.httpEtag);
+    headers.set("etag", hit.obj.httpEtag);
     headers.set("content-type", MIME[ext] || "application/octet-stream");
-    headers.set("x-46009-worker", "v3o");
+    headers.set("x-46009-worker", "v3r");
+    if (soft) headers.set("x-46009-soft", hit.softHit ? "hit" : "fallback");
     if (ext === "html") {
       headers.set("cache-control", "no-cache");
     } else {
       headers.set("cache-control", "public, max-age=86400");
     }
-    if (request.headers.get("if-none-match") === obj.httpEtag) {
+    if (request.headers.get("if-none-match") === hit.obj.httpEtag) {
       return new Response(null, { status: 304, headers });
     }
     if (ext === "html") {
-      const buf = await obj.arrayBuffer();
+      const buf = await hit.obj.arrayBuffer();
       return new Response(injectAnalytics(buf, host, request.headers.get("cf-ipcountry"), request.headers.get("cookie")), { status: 200, headers });
     }
-    return new Response(obj.body, { status: 200, headers });
+    return new Response(hit.obj.body, { status: 200, headers });
   },
 };
 
