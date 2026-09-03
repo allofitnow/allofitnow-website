@@ -81,9 +81,31 @@ import Base from '@/layouts/Base.astro';
         <h2><span>Where data goes</span><span class="rule" aria-hidden="true"></span></h2>
         <p>
           Google (script hosting googletagmanager.com; collection
-          google-analytics.com) and Cloudflare (edge hosting). No other
+          google-analytics.com) and Cloudflare (edge hosting). If you use the
+          contact form, Amazon SES delivers your message to our inbox. No other
           recipients.
         </p>
+      </section>
+
+      <section>
+        <h2><span>The contact form</span><span class="rule" aria-hidden="true"></span></h2>
+        <ul>
+          <li>
+            What you submit (name, email address, subject, message) is used only
+            to read and answer your inquiry. It is delivered via Amazon SES to
+            our inbox and is not added to any mailing list.
+          </li>
+          <li>
+            The form is protected by Cloudflare Turnstile, a bot check that runs
+            without cookies and without tracking you. It is an essential,
+            security function, so it works the same whether or not analytics
+            consent is given.
+          </li>
+          <li>
+            A hidden anti-bot field and a simple timing measure are part of the
+            same security check; they contain nothing about you.
+          </li>
+        </ul>
       </section>
 
       <section>
