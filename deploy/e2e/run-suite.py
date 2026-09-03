@@ -194,9 +194,9 @@ if not A.skip_parity:
     fresh_base = os.path.join(OUTDIR, "baseline-fresh")
     fresh_replay = os.path.join(OUTDIR, "baseline-replay")
     boxes = os.path.join(OUTDIR, "post-boxes")
-    stage("capture-baseline", [sys.executable, os.path.join(HERE, "baseline-20260830", "capture-boxes.py"), fresh_base], 900)
-    stage("capture-replay", [sys.executable, os.path.join(HERE, "baseline-20260830", "capture-boxes.py"), fresh_replay], 900)
-    stage("capture-boxes", [sys.executable, os.path.join(HERE, "baseline-20260830", "capture-boxes.py"), boxes], 900)
+    stage("capture-baseline", [sys.executable, os.path.join(HERE, "baseline-20260830", "capture.py"), fresh_base], 1200)
+    stage("capture-replay", [sys.executable, os.path.join(HERE, "baseline-20260830", "capture.py"), fresh_replay], 1200)
+    stage("capture-boxes", [sys.executable, os.path.join(HERE, "baseline-20260830", "capture-boxes.py"), boxes], 1200)
     stage("parity", [sys.executable, os.path.join(HERE, "parity.py"),
                      os.path.join(boxes, "boxes.json"),
                      fresh_base,
