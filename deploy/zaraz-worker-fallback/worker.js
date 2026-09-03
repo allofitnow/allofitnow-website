@@ -1,12 +1,12 @@
-// 46009 routing worker v3l - deploy/zaraz-worker-fallback/worker.js
-// v3l -> v3l (#109 banner v3: EU-only appearance, non-EU silent plane):
+// 46009 routing worker v3m - deploy/zaraz-worker-fallback/worker.js
+// v3m -> v3m (#109 banner v3: EU-only appearance, non-EU silent plane):
 // geo-aware consent gate in
 // injectZaraz() + worker-injected geo-split consent banner. Gate = single
 // choke point for all tracking vectors (wiki cookie-compliance section 6).
 import { gateOpen } from "./src/gate.mjs";
 import { bannerFor } from "./src/banner.mjs";
-// same-source: worker head-injection uses the shared snippet primitives
 import { loaderScriptTag, gtagInitJs } from "./src/inject-snippet.mjs";
+import { handleContact } from "./src/contact.mjs";
 
 // v3d -> v3f (#71 CUT-2 + #73 CUT-5), 2026-08-31:
 //   1. Per-host GA4: Host header -> measurement id map. 46009 keeps
@@ -106,7 +106,7 @@ function redirect301(location) {
     headers: {
       "location": location,
       "cache-control": "public, max-age=86400",
-      "x-46009-worker": "v3l",
+      "x-46009-worker": "v3m",
     },
   });
 }
@@ -130,8 +130,14 @@ export default {
     if (!SERVING_HOSTS.has(host)) {
       return new Response("host not served", {
         status: 403,
-        headers: { "x-46009-worker": "v3l" },
+        headers: { "x-46009-worker": "v3m" },
       });
+    }
+
+    // v3m (#112): POST /api/contact on the existing zone worker. Robots.txt
+    // disallows /api/ for all agents; this is the sole API surface.
+    if (url.pathname === "/api/contact" && request.method === "POST") {
+      return handleContact(request, env);
     }
 
     // 2. legacy redirects (#73): after www-301, before R2 fetch.
@@ -160,7 +166,7 @@ export default {
     if (url.pathname.startsWith("/archive/")) {
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3l" },
+        headers: { "x-46009-worker": "v3m" },
       });
     }
 
@@ -200,13 +206,13 @@ export default {
           headers: {
             "content-type": MIME.html,
             "cache-control": "no-cache",
-            "x-46009-worker": "v3l",
+            "x-46009-worker": "v3m",
           },
         });
       }
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3l" },
+        headers: { "x-46009-worker": "v3m" },
       });
     }
 
@@ -214,7 +220,7 @@ export default {
     const headers = new Headers();
     headers.set("etag", obj.httpEtag);
     headers.set("content-type", MIME[ext] || "application/octet-stream");
-    headers.set("x-46009-worker", "v3l");
+    headers.set("x-46009-worker", "v3m");
     if (ext === "html") {
       headers.set("cache-control", "no-cache");
     } else {

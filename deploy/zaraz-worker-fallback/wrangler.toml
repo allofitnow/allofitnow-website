@@ -11,3 +11,8 @@ routes = [
 [[r2_buckets]]
 binding = "ASSETS"
 bucket_name = "46009"
+
+# v3m (#111/#112): rate-limit counters + MX negative cache for /api/contact
+[[kv_namespaces]]
+binding = "CONTACT_KV"
+id = "57dd736e7e23469d9dbc68165e9cf986"
