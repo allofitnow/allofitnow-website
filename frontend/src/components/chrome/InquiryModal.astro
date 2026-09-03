@@ -591,6 +591,12 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
       tabs.forEach((t, n) => t.setAttribute('aria-selected', n === i ? 'true' : 'false'));
       place();
       scramble(to, (emails[i] || '').toUpperCase());
+      // Status/fallback from another tab is stale (old result, wrong inbox).
+      // Reset the plate unless that tab's send is still mid-flight.
+      if (!send.hasAttribute('data-sending')) {
+        setStatus('');
+        fallback.hidden = true;
+      }
     }
 
     tabs.forEach((t, i) => t.addEventListener('click', () => pick(i)));
