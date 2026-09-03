@@ -8,6 +8,9 @@ import {
   sesPayload,
   sesSend,
   handleContact,
+  sanitizeFilename,
+  vetFiles,
+  buildRawMime,
 } from "../src/contact.mjs";
 
 // ---- fixtures ------------------------------------------------------------
@@ -246,4 +249,93 @@ test("sesSend: real SigV4 round-trip against moto-like stub (signature shape)", 
   await sesSend(sesPayload(validateFields(JSON.parse(JSON.stringify(GOOD)))), "AKIAUNIT", "unitsecret", stub);
   assert.ok(captured.init.headers.authorization.startsWith("AWS4-HMAC-SHA256 Credential=AKIAUNIT/"));
   assert.ok(captured.url.includes("email.us-east-1.amazonaws.com"));
+});
+
+// ---- #125: attachments ---------------------------------------------------
+
+test("sanitizeFilename: basename, control chars, empties", () => {
+  assert.equal(sanitizeFilename("../../etc/passwd"), "passwd");
+  assert.equal(sanitizeFilename('C:\\Users\\h\\evil".exe'), "evil.exe"); // basename first, quote stripped
+  assert.equal(sanitizeFilename("   "), "attachment");
+  assert.equal(sanitizeFilename("résumé.pdf"), "résumé.pdf");
+});
+
+test("vetFiles: count/ext/size gates", () => {
+  const f = (name, size) => ({ name, size });
+  assert.equal(vetFiles([]).length, 0);
+  assert.equal(vetFiles(null).length, 0);
+  assert.ok(vetFiles([f("a.pdf", 100)]));
+  assert.equal(vetFiles([f("a.pdf", 100), f("b.png", 100), f("c.mov", 100), f("d.jpg", 100)]), null); // >3
+  assert.equal(vetFiles([f("a.exe", 100)]), null);      // bad ext
+  assert.equal(vetFiles([f("a.pdf", 0)]), null);        // empty file
+  assert.equal(vetFiles([f("a.pdf", 26 * 1024 * 1024)]), null); // per/total cap
+});
+
+test("buildRawMime: multipart/mixed structure + base64 attachment", async () => {
+  const v = validateFields(JSON.parse(JSON.stringify(GOOD)));
+  const raw = atob(await buildRawMime(v, [{ name: "spec.pdf", bytes: new TextEncoder().encode("%PDF-1.4 test") }]));
+  assert.ok(raw.includes("Content-Type: multipart/mixed;"));
+  assert.ok(raw.includes('From: "AOIN Knowledge" <support@allofitnow.com>') || raw.includes('From: "AOIN Website" <support@allofitnow.com>'));
+  assert.ok(raw.includes('filename="spec.pdf"'));
+  assert.ok(raw.includes("JVBERi0")); // %PDF base64 prefix
+  assert.ok(raw.includes("Content-Type: text/plain;"));
+  assert.ok(raw.endsWith("--" + raw.match(/boundary="([^"]+)"/)[1] + "--\r\n"));
+});
+
+function multipartReq(fd, ip) {
+  const enc2 = new Response(fd); // sets content-type w/ REAL boundary
+  return new Request("https://allofitnow.com/api/contact", {
+    method: "POST",
+    body: enc2.body,
+    duplex: "half", // node stream body
+    headers: {
+      "content-type": enc2.headers.get("content-type"),
+      "x-aoin-e2e": "1",
+      "cf-connecting-ip": ip,
+    },
+  });
+}
+test("multipart intake: valid files accepted, e2e returns Raw + metadata", async () => {
+  const fd = new FormData();
+  for (const [k, val] of Object.entries(GOOD)) fd.append(k, String(val));
+  fd.append("files", new File(["%PDF-1.4 attachment test"], "pitch.pdf", { type: "application/pdf" }));
+  const r = await handleContact(multipartReq(fd, "10.4.0.1"), mkEnv(new FakeKV()), okFetchers);
+  assert.equal(r.status, 202);
+  const j = JSON.parse(await r.text());
+  assert.ok(j.e2e.payload.Content.Raw, "Raw MIME payload expected");
+  const mime = atob(j.e2e.payload.Content.Raw.Data);
+  assert.ok(mime.includes('filename="pitch.pdf"'));
+  assert.deepEqual(j.e2e.attachments, [{ name: "pitch.pdf", size: 24, type: "application/pdf" }]);
+});
+
+test("multipart intake: exe + oversize rejected with 400", async () => {
+  const mk = async (fname, content) => {
+    const fd = new FormData();
+    for (const [k, val] of Object.entries(GOOD)) fd.append(k, String(val));
+    fd.append("files", new File([content], fname, { type: "application/x-msdownload" }));
+    return handleContact(multipartReq(fd, "10.4.0.2"), mkEnv(new FakeKV()), okFetchers);
+  };
+  assert.equal((await mk("evil.exe", "MZ")).status, 400);
+  // 25.5MB passes the (absent-in-node) upload gate but fails the 25MB total vet -> 400
+  const fat = new Uint8Array(25 * 1024 * 1024 + 512 * 1024);
+  assert.equal((await mk("fat.pdf", fat)).status, 400);
+  // 26MB upload with content-length declared -> 413 upload gate (browser path)
+  {
+    const fd = new FormData();
+    for (const [k, val] of Object.entries(GOOD)) fd.append(k, String(val));
+    fd.append("files", new File([new Uint8Array(26 * 1024 * 1024)], "big.pdf"));
+    const enc2 = new Response(fd);
+    const text = await enc2.text();
+    const r = await handleContact(new Request("https://allofitnow.com/api/contact", {
+      method: "POST",
+      body: text,
+      headers: {
+        "content-type": enc2.headers.get("content-type"),
+        "x-aoin-e2e": "1",
+        "cf-connecting-ip": "10.4.0.3",
+        "content-length": String(text.length),
+      },
+    }), mkEnv(new FakeKV()), okFetchers);
+    assert.equal(r.status, 413);
+  }
 });

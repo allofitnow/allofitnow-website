@@ -1,9 +1,113 @@
 // src/contact.mjs — POST /api/contact (#112) — vet L1-L4 + SES SendEmail + E2E mode.
 // SSOT: wiki "contact-form". Vet order pinned: shape/size -> L1 -> L3 -> L2 -> L4 -> send.
 // v3p (#124): display-name From, sanitized ReplyTo display name, structured body.
+// v3q (#125): secure file attachments — multipart intake + Raw MIME to SES.
+
+// ---- #125: attachments ----------------------------------------------------
+const FILE_MAX = 3;
+const FILES_TOTAL_MAX = 25 * 1024 * 1024;   // raw; base64 ≈ 33MB < SES 40MB cap
+const MULTIPART_CAP = 26 * 1024 * 1024;     // upload gate incl. multipart overhead
+const FILE_EXTS = new Set([
+  "pdf", "doc", "docx", "ppt", "pptx", "key", "jpg", "jpeg", "png", "gif",
+  "webp", "mp4", "mov", "webm", "zip",
+]);
+const MIME_BY_EXT = {
+  pdf: "application/pdf", doc: "application/msword",
+  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ppt: "application/vnd.ms-powerpoint",
+  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
+  key: "application/vnd.apple.keynote", jpg: "image/jpeg", jpeg: "image/jpeg",
+  png: "image/png", gif: "image/gif", webp: "image/webp", mp4: "video/mp4",
+  mov: "video/quicktime", webm: "video/webm", zip: "application/zip",
+};
+
+export function sanitizeFilename(raw) {
+  let n = String(raw || "")
+    .split(/[\\/]/).pop()                      // basename only — no path traversal
+    .replace(/[\u0000-\u001f"<>;:]/g, "")      // control + header-breaker chars
+    .replace(/\s+/g, " ").trim()
+    .slice(0, 80);
+  return n || "attachment";
+}
+const extOf = (name) => {
+  const i = String(name).lastIndexOf(".");
+  return i === -1 ? "" : String(name).slice(i + 1).toLowerCase();
+};
+export function vetFiles(files) {
+  if (!files || files.length === 0) return [];
+  if (files.length > FILE_MAX) return null;
+  let total = 0;
+  for (const f of files) {
+    if (!FILE_EXTS.has(extOf(f.name))) return null;
+    if (f.size <= 0 || f.size > FILES_TOTAL_MAX) return null;
+    total += f.size;
+    if (total > FILES_TOTAL_MAX) return null;
+  }
+  return files.map((f) => ({ name: sanitizeFilename(f.name), bytes: new Uint8Array(), raw: f }));
+}
+export async function fileBytes(file) {
+  return new Uint8Array(await file.arrayBuffer());
+}
+function b64Chunks(bytes) {
+  // 32766 = 3 x 10922: multiple of 3 so only the LAST chunk base64-pads.
+  let out = "";
+  const CHUNK = 32766;
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    out += btoa(String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK)));
+  }
+  return out;
+}
+function wrap76(s) {
+  const lines = [];
+  for (let i = 0; i < s.length; i += 76) lines.push(s.slice(i, i + 76));
+  return lines.join("\r\n");
+}
+const rfc2047 = (s) =>
+  /^[\x20-\x7e]*$/.test(s) ? s : "=?UTF-8?B?" + btoa(unescape(encodeURIComponent(s))) + "?=";
+
+export async function buildRawMime(v, atts) {
+  // atts: [{name, bytes}] pre-sanitized + vetted
+  const bound = "aoin-" + crypto.randomUUID().replace(/-/g, "");
+  const H = [];
+  H.push('From: "AOIN Website" <support@allofitnow.com>');
+  H.push(`Reply-To: ${replyToAddr(v)}`);
+  H.push(`To: ${TO_BY_TOPIC[v.topic] || TO_BY_TOPIC.general}`);
+  H.push(`Subject: ${rfc2047(`[AOIN/${v.topic}] ${v.name} - website inquiry`)}`);
+  H.push("MIME-Version: 1.0");
+  H.push(`Content-Type: multipart/mixed; boundary="${bound}"`);
+  const parts = [];
+  parts.push([
+    "--" + bound,
+    'Content-Type: text/plain; charset="UTF-8"',
+    "Content-Transfer-Encoding: 8bit",
+    "",
+    bodyText(v),
+  ].join("\r\n"));
+  for (const a of atts) {
+    parts.push([
+      "--" + bound,
+      `Content-Type: ${MIME_BY_EXT[extOf(a.name)] || "application/octet-stream"}; name="${a.name}"`,
+      `Content-Disposition: attachment; filename="${a.name}"`,
+      "Content-Transfer-Encoding: base64",
+      "",
+      wrap76(b64Chunks(a.bytes)),
+    ].join("\r\n"));
+  }
+  parts.push("--" + bound + "--");
+  const raw = H.join("\r\n") + "\r\n\r\n" + parts.join("\r\n") + "\r\n";
+  // SES v2 Raw.Data = base64 of the full MIME message
+  return b64Chunks(new TextEncoder().encode(raw));
+}
+export function attachmentSummary(files) {
+  return (files || []).map((f) => ({
+    name: sanitizeFilename(f.name),
+    size: f.size,
+    type: MIME_BY_EXT[extOf(f.name)] || "application/octet-stream",
+  }));
+}
 // Zero npm deps: SigV4 via WebCrypto, DoH/Turnstile/SES via plain fetch.
 
-const STAMP = "v3p";
+const STAMP = "v3q";
 // #124: display-name From (static, no injection surface) + sanitized ReplyTo.
 const FROM = '"AOIN Website" <support@allofitnow.com>';
 export function replyToAddr(v) {
@@ -249,21 +353,47 @@ export async function handleContact(request, env, fetchers) {
   const fx = fetchers || {};
   const e2e = request.headers.get("x-aoin-e2e") === "1";
   const declared = parseInt(request.headers.get("content-length") || "0", 10);
-  if (declared > BODY_CAP) return json(413, { ok: false, error: "validation" });
-
-  let raw;
-  try {
-    raw = await request.text();
-  } catch (_) {
-    return badRequest();
+  const isMultipart = (request.headers.get("content-type") || "").startsWith("multipart/form-data");
+  if (declared > (isMultipart ? MULTIPART_CAP : BODY_CAP)) {
+    return json(413, { ok: false, error: "validation" });
   }
-  if (enc.encode(raw).length > BODY_CAP) return json(413, { ok: false, error: "validation" });
 
   let parsed;
-  try {
-    parsed = JSON.parse(raw);
-  } catch (_) {
-    return badRequest();
+  let files = [];
+  if (isMultipart) {
+    let fd;
+    try {
+      fd = await request.formData();
+    } catch (_) {
+      return badRequest();
+    }
+    const obj = {};
+    for (const [k, val] of fd.entries()) {
+      if (typeof val === "string") obj[k] = val;
+      else if (val && typeof val === "object" && typeof (val).arrayBuffer === "function") {
+        if (k === "files") files.push(val);
+        else return badRequest(); // unexpected binary part
+      }
+    }
+    // numeric + boolean fields arrive as strings from formData
+    if (obj.elapsed !== undefined) obj.elapsed = Number(obj.elapsed);
+    if (obj.company !== undefined && obj.company === "") delete obj.company;
+    parsed = obj;
+    const vetted = vetFiles(files);
+    if (vetted === null) return badRequest();
+  } else {
+    let raw;
+    try {
+      raw = await request.text();
+    } catch (_) {
+      return badRequest();
+    }
+    if (enc.encode(raw).length > BODY_CAP) return json(413, { ok: false, error: "validation" });
+    try {
+      parsed = JSON.parse(raw);
+    } catch (_) {
+      return badRequest();
+    }
   }
 
   const v = validateFields(parsed); // shape + L1 (honeypot + elapsed)
@@ -291,8 +421,31 @@ export async function handleContact(request, env, fetchers) {
     : ((env && env.TURNSTILE_SECRET) || TS_TEST_SECRET);
   if (!(await turnstileOk(secret, v.token, ip, fx.turnstile))) return badRequest();
 
-  const payload = sesPayload(v);
-  if (e2e) return json(202, { ok: true, e2e: { payload } });
+  // #125: attachments present -> Raw MIME via SendRawEmail (IAM grants both
+  // SendEmail + SendRawEmail). No attachments -> existing Simple path.
+  let payload;
+  let attMeta = [];
+  if (isMultipart && files.length > 0) {
+    try {
+      const atts = [];
+      for (const f of files) {
+        atts.push({ name: sanitizeFilename(f.name), bytes: await fileBytes(f) });
+      }
+      const rawB64 = await buildRawMime(v, atts);
+      payload = {
+        FromEmailAddress: FROM,
+        ReplyToAddresses: [replyToAddr(v)],
+        Destination: { ToAddresses: [TO_BY_TOPIC[v.topic] || TO_BY_TOPIC.general] },
+        Content: { Raw: { Data: rawB64 } },
+      };
+      attMeta = attachmentSummary(files);
+    } catch (_) {
+      return json(502, { ok: false, error: "upstream" });
+    }
+  } else {
+    payload = sesPayload(v);
+  }
+  if (e2e) return json(202, { ok: true, e2e: { payload, attachments: attMeta } });
 
   try {
     await sesSend(payload, env.SES_KEY, env.SES_SECRET, fx.ses);
