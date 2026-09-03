@@ -295,17 +295,32 @@ function multipartReq(fd, ip) {
     },
   });
 }
-test("multipart intake: valid files accepted, e2e returns Raw + metadata", async () => {
+test("multipart intake: valid files accepted, e2e returns vault shape + metadata", async () => {
   const fd = new FormData();
   for (const [k, val] of Object.entries(GOOD)) fd.append(k, String(val));
   fd.append("files", new File(["%PDF-1.4 attachment test"], "pitch.pdf", { type: "application/pdf" }));
-  const r = await handleContact(multipartReq(fd, "10.4.0.1"), mkEnv(new FakeKV()), okFetchers);
+  const req = multipartReq(fd, "10.4.0.1");
+  req.headers.set("cookie", "aoin_cs=11111111-2222-3333-4444-555555555555");
+  const r = await handleContact(req, mkEnv(new FakeKV()), okFetchers);
   assert.equal(r.status, 202);
   const j = JSON.parse(await r.text());
-  assert.ok(j.e2e.payload.Content.Raw, "Raw MIME payload expected");
-  const mime = atob(j.e2e.payload.Content.Raw.Data);
-  assert.ok(mime.includes('filename="pitch.pdf"'));
+  // v4a (#130): Simple SES payload with Attachment Folder line — no Raw MIME
+  assert.ok(!j.e2e.payload.Content.Raw, "Raw MIME must be gone in v4a");
+  const bodyText = j.e2e.payload.Content.Simple.Body.Text.Data;
+  assert.ok(bodyText.includes("Attachment Folder:"), "folder link line present");
+  assert.ok(bodyText.includes("pitch.pdf"), "manifest lists file");
   assert.deepEqual(j.e2e.attachments, [{ name: "pitch.pdf", size: 24, type: "application/pdf" }]);
+  assert.ok(j.e2e.vault.sessionId === "11111111-2222-3333-4444-555555555555");
+});
+
+test("multipart intake: no session cookie -> 400 session error (#130)", async () => {
+  const fd = new FormData();
+  for (const [k, val] of Object.entries(GOOD)) fd.append(k, String(val));
+  fd.append("files", new File(["x"], "a.pdf", { type: "application/pdf" }));
+  const r = await handleContact(multipartReq(fd, "10.4.0.9"), mkEnv(new FakeKV()), okFetchers);
+  assert.equal(r.status, 400);
+  const j = JSON.parse(await r.text());
+  assert.equal(j.error, "session");
 });
 
 test("multipart intake: exe + oversize rejected with 400", async () => {

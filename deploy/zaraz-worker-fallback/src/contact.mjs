@@ -1,11 +1,16 @@
-// src/contact.mjs — POST /api/contact (#112) — vet L1-L4 + SES SendEmail + E2E mode.
+// src/contact.mjs — POST /api/contact (#112) — vet L1-L4 + SES + Vault (#130).
 // SSOT: wiki "contact-form". Vet order pinned: shape/size -> L1 -> L3 -> L2 -> L4 -> send.
 // v3p (#124): display-name From, sanitized ReplyTo display name, structured body.
-// v3q (#125): secure file attachments — multipart intake + Raw MIME to SES.
+// v4a (#130): attachments -> Google Drive session folder + link in email body
+//             (supersedes v3q Raw MIME transport; spec wiki Contact-Attachments-Vault FINAL v3).
 
-// ---- #125: attachments ----------------------------------------------------
+import {
+  getDriveToken, ensureSessionFolder, uploadVaultFile, folderUrl, quotaCheck,
+} from "./vault.mjs";
+
+// ---- #125/#130: attachments ----------------------------------------------
 const FILE_MAX = 3;
-const FILES_TOTAL_MAX = 25 * 1024 * 1024;   // raw; base64 ≈ 33MB < SES 40MB cap
+const FILES_TOTAL_MAX = 25 * 1024 * 1024;   // per submission (spec ruled cap)
 const MULTIPART_CAP = 26 * 1024 * 1024;     // upload gate incl. multipart overhead
 const FILE_EXTS = new Set([
   "pdf", "doc", "docx", "ppt", "pptx", "key", "jpg", "jpeg", "png", "gif",
@@ -66,7 +71,8 @@ const rfc2047 = (s) =>
   /^[\x20-\x7e]*$/.test(s) ? s : "=?UTF-8?B?" + btoa(unescape(encodeURIComponent(s))) + "?=";
 
 export async function buildRawMime(v, atts) {
-  // atts: [{name, bytes}] pre-sanitized + vetted
+  // LEGACY v3q transport — retained for reference until #130 ships to prod,
+  // then removed (spec rollout step 9). Not called by the v4a handler.
   const bound = "aoin-" + crypto.randomUUID().replace(/-/g, "");
   const H = [];
   H.push('From: "AOIN Website" <support@allofitnow.com>');
@@ -107,7 +113,7 @@ export function attachmentSummary(files) {
 }
 // Zero npm deps: SigV4 via WebCrypto, DoH/Turnstile/SES via plain fetch.
 
-const STAMP = "v3q";
+const STAMP = "v4a";
 // #124: display-name From (static, no injection surface) + sanitized ReplyTo.
 const FROM = '"AOIN Website" <support@allofitnow.com>';
 export function replyToAddr(v) {
@@ -119,19 +125,23 @@ export function replyToAddr(v) {
 }
 export function bodyText(v) {
   const line = "-".repeat(46);
-  return [
+  const rows = [
     `[AOIN/${String(v.topic).toUpperCase()}] WEBSITE INQUIRY`,
     line,
     `Name:    ${v.name}`,
     `Email:   ${v.email}`,
     `Topic:   ${v.topic}`,
-    line,
-    "",
-    v.message,
-    "",
-    line,
-    "Sent via the allofitnow.com contact form. Reply directly to respond.",
-  ].join("\n");
+  ];
+  if (v.attachmentCount > 0) {
+    rows.push(`Files:   ${v.attachmentCount} (secure upload)`);
+    rows.push(`Attachment Folder: ${v.attachmentFolderUrl}`);
+    for (const f of v.files || []) {
+      rows.push(`  - ${f.name} (${f.size} bytes, ${f.type})`);
+    }
+  }
+  rows.push(line, "", v.message, "", line,
+    "Sent via the allofitnow.com contact form. Reply directly to respond.");
+  return rows.join("\n");
 }
 // 2026-09-03 user decision: per-topic routing (all three mailboxes exist in
 // Google Workspace). Supersedes D3 single-funnel. SSOT: wiki "contact-form".
@@ -167,6 +177,14 @@ function json(status, body, extra) {
 const badRequest = () => json(400, { ok: false, error: "validation" });
 
 // ---- field validation (shape + L1) --------------------------------------
+
+// #130: aoin_cs session cookie (HttpOnly, Secure, Lax, 400d) — worker sets it
+// on HTML responses; this parses it back on the API side.
+export function parseSessionCookie(cookieHeader) {
+  if (!cookieHeader) return null;
+  const m = cookieHeader.match(/(?:^|;\s*)aoin_cs=([A-Za-z0-9-]{36})/);
+  return m ? m[1] : null;
+}
 
 export function validateFields(p) {
   if (p === null || typeof p !== "object" || Array.isArray(p)) return null;
@@ -421,24 +439,63 @@ export async function handleContact(request, env, fetchers) {
     : ((env && env.TURNSTILE_SECRET) || TS_TEST_SECRET);
   if (!(await turnstileOk(secret, v.token, ip, fx.turnstile))) return badRequest();
 
-  // #125: attachments present -> Raw MIME via SendRawEmail (IAM grants both
-  // SendEmail + SendRawEmail). No attachments -> existing Simple path.
+  // #130 Vault: attachments -> Drive session folder (Strict-Drive).
+  // Drive failure fails the submission: no email without files, no files
+  // without email. aoin_cs cookie identifies the session folder.
   let payload;
   let attMeta = [];
   if (isMultipart && files.length > 0) {
-    try {
-      const atts = [];
-      for (const f of files) {
-        atts.push({ name: sanitizeFilename(f.name), bytes: await fileBytes(f) });
-      }
-      const rawB64 = await buildRawMime(v, atts);
-      payload = {
-        FromEmailAddress: FROM,
-        ReplyToAddresses: [replyToAddr(v)],
-        Destination: { ToAddresses: [TO_BY_TOPIC[v.topic] || TO_BY_TOPIC.general] },
-        Content: { Raw: { Data: rawB64 } },
-      };
+    if (!kv) return json(503, { ok: false, error: "vault_unavailable" });
+    // L5 first: daily byte quota BEFORE any Drive write
+    const totalBytes = files.reduce((n, f) => n + f.size, 0);
+    const q = await quotaCheck(kv, salt, ip, totalBytes, Date.now());
+    if (!q.ok) return json(429, { ok: false, error: "quota" });
+    const sessionId = parseSessionCookie(request.headers.get("cookie"));
+    if (!sessionId) return json(400, { ok: false, error: "session" });
+    if (e2e) {
+      // e2e mode: NO Drive write, NO send — would-be folder + manifest
       attMeta = attachmentSummary(files);
+      const e2ePayload = sesPayload(v);
+      e2ePayload.Content.Simple.Body.Text.Data = bodyText({
+        ...v,
+        attachmentCount: files.length,
+        attachmentFolderUrl: "https://drive.google.com/drive/folders/<e2e-would-create>",
+        files: attMeta,
+      });
+      return json(202, {
+        ok: true,
+        e2e: {
+          payload: e2ePayload,
+          attachments: attMeta,
+          vault: {
+            sessionId,
+            folderUrl: "(would ensure 46017_inbox/" + sessionId + ")",
+            uploaded: [],
+          },
+        },
+      });
+    }
+    try {
+      const token = await getDriveToken(env, fx.drive);
+      const folderId = await ensureSessionFolder(token, sessionId, kv, fx.drive);
+      const uploaded = [];
+      for (const f of files) {
+        const bytes = await fileBytes(f);
+        uploaded.push(await uploadVaultFile(token, folderId,
+          { name: sanitizeFilename(f.name), type: f.type, bytes }, fx.drive));
+      }
+      const enriched = {
+        ...v,
+        attachmentCount: uploaded.length,
+        attachmentFolderUrl: folderUrl(folderId),
+        files: uploaded.map((u) => ({ name: u.name, size: u.size, type: "drive" })),
+      };
+      payload = sesPayload(enriched);
+      payload.FromEmailAddress = FROM;
+      payload.ReplyToAddresses = [replyToAddr(v)];
+      payload.Destination = { ToAddresses: [TO_BY_TOPIC[v.topic] || TO_BY_TOPIC.general] };
+      payload.Content.Simple.Body.Text.Data = bodyText(enriched);
+      attMeta = uploaded.map((u) => ({ name: u.name, size: Number(u.size), type: "drive" }));
     } catch (_) {
       return json(502, { ok: false, error: "upstream" });
     }

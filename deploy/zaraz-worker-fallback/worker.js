@@ -106,8 +106,26 @@ function redirect301(location) {
     headers: {
       "location": location,
       "cache-control": "public, max-age=86400",
-      "x-46009-worker": "v3r",
+      "x-46009-worker": "v3s",
     },
+  });
+}
+
+// #130: aoin_cs session cookie — set on HTML responses when absent. Identifies
+// the Drive upload folder sandbox (HttpOnly, Secure, Lax, 400d; consent class:
+// essential — functional-only identifier, no tracking; wiki
+// Contact-Attachments-Vault FINAL v3 §session cookie).
+function ensureSessionCookie(request, response) {
+  const cookie = request.headers.get("cookie") || "";
+  if (/(?:^|;\s*)aoin_cs=/.test(cookie)) return response;
+  const val = crypto.randomUUID();
+  const headers = new Headers(response.headers);
+  headers.append("set-cookie",
+    `aoin_cs=${val}; Max-Age=34560000; Path=/; HttpOnly; Secure; SameSite=Lax`);
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
   });
 }
 
@@ -145,13 +163,13 @@ export default {
       if (request.method !== "POST") {
         return new Response("method not allowed", {
           status: 405,
-          headers: { "allow": "POST", "x-46009-worker": "v3r" },
+          headers: { "allow": "POST", "x-46009-worker": "v3s" },
         });
       }
       if (!SERVING_HOSTS.has(host)) {
         return new Response("host not served", {
           status: 403,
-          headers: { "x-46009-worker": "v3r" },
+          headers: { "x-46009-worker": "v3s" },
         });
       }
       return handleContact(request, env);
@@ -172,7 +190,7 @@ export default {
     if (!SERVING_HOSTS.has(host)) {
       return new Response("host not served", {
         status: 403,
-        headers: { "x-46009-worker": "v3r" },
+        headers: { "x-46009-worker": "v3s" },
       });
     }
 
@@ -202,7 +220,7 @@ export default {
     if (url.pathname.startsWith("/archive/")) {
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3r" },
+        headers: { "x-46009-worker": "v3s" },
       });
     }
 
@@ -211,7 +229,7 @@ export default {
     if (url.pathname.startsWith("/soft/")) {
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3r" },
+        headers: { "x-46009-worker": "v3s" },
       });
     }
 
@@ -246,18 +264,18 @@ export default {
       const notFound = await env.ASSETS.get("404.html");
       if (notFound !== null) {
         const buf = await notFound.arrayBuffer();
-        return new Response(injectAnalytics(buf, host, request.headers.get("cf-ipcountry"), request.headers.get("cookie")), {
+        return ensureSessionCookie(request, new Response(injectAnalytics(buf, host, request.headers.get("cf-ipcountry"), request.headers.get("cookie")), {
           status: 404,
           headers: {
             "content-type": MIME.html,
             "cache-control": "no-cache",
-            "x-46009-worker": "v3r",
+            "x-46009-worker": "v3s",
           },
-        });
+        }));
       }
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3r" },
+        headers: { "x-46009-worker": "v3s" },
       });
     }
 
@@ -277,7 +295,7 @@ export default {
     }
     if (ext === "html") {
       const buf = await hit.obj.arrayBuffer();
-      return new Response(injectAnalytics(buf, host, request.headers.get("cf-ipcountry"), request.headers.get("cookie")), { status: 200, headers });
+      return ensureSessionCookie(request, new Response(injectAnalytics(buf, host, request.headers.get("cf-ipcountry"), request.headers.get("cookie")), { status: 200, headers }));
     }
     return new Response(hit.obj.body, { status: 200, headers });
   },
