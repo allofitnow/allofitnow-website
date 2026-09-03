@@ -235,7 +235,12 @@ if [ -d "$MEDIA_SRC" ]; then
     if [ "$DRY_RUN" -eq 1 ]; then
       echo "prod: [dryrun] tombstone media/$k -> archive/$PUBLISH_ID/media/$k"
     elif live_has "media/$k"; then
-      aws_retry tombstone-copy s3 cp "s3://$BUCKET/${PREFIX}media/$k" "s3://$BUCKET/${PREFIX}archive/$PUBLISH_ID/media/$k" \
+      # #107: s3 cp s3://->s3:// sends a tagging directive R2 rejects with
+      # NotImplemented (same class archive-one.sh hit); s3api copy-object
+      # carries no tagging directive and is verified on R2 (live 2026-09-03).
+      aws_retry tombstone-copy s3api copy-object --bucket "$BUCKET" \
+        --key "${PREFIX}archive/$PUBLISH_ID/media/$k" \
+        --copy-source "$BUCKET/${PREFIX}media/$k" \
         && aws_retry tombstone-rm s3api delete-object --bucket "$BUCKET" --key "${PREFIX}media/$k" || MEDIA_RC=1
     fi
     TOMB_N=$((TOMB_N + 1))
