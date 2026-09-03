@@ -21,7 +21,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 EDGE_IP = "104.21.90.237"          # CF anycast edge serving the worker (46009 lane)
 EDGE_SNI = "46009.someofitlater.com"  # valid edge cert + worker route; Host header carries the target zone
-GA4_ID = "G-1TVWRSCCLN"            # prod measurement id (property 552018344)
+GA4_ID = "G-1TVWRSCCLN"            # staging lane id (property 552018344; --target 46009.someofitlater.com)
+GA4_ID_PROD = "G-NDWE8QHK9W"      # prod id (property 552145556; --target allofitnow.com)
 PAGES = ["/", "/services", "/work", "/work/martin-garrix"]
 REAL_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 # CUT-5 explicit MATCH 301 map (source: wiki Legacy-URL-correlation-map, DECIDED 2026-08-30)
@@ -44,6 +45,9 @@ for s in ("bfs", "bytes", "parity", "invariants"):
     ap.add_argument(f"--skip-{s}", action="store_true")
 A = ap.parse_args()
 TARGET, PINNED = A.target, A.pinned
+# per-host GA4 id (worker v3e+ maps Host -> Measurement ID; #71 AC3): staging lane keeps
+# the 46009 id, allofitnow.com asserts the prod id. Falls back to staging id (legacy behavior).
+GA4_ID = GA4_ID_PROD if TARGET == "allofitnow.com" else GA4_ID
 BASE = f"https://{TARGET}"
 MODE = "pinned" if PINNED else "live"
 STAMP = datetime.datetime.utcnow().strftime("%Y%m%d")
