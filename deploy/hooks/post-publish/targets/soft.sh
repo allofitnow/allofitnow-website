@@ -35,7 +35,8 @@ if pgrep -f "[p]rod.sh.*--soft" >/dev/null 2>&1; then
 fi
 
 # detached, fully survived (setsid: nohup + immune to fan-out timeout kill)
-setsid nohup bash "$DIR/targets/prod.sh" --soft --publish-id "soft-$PUBLISH_ID" \
+# ($DIR is .../targets — prod.sh is a sibling, not under targets/targets)
+setsid nohup bash "$DIR/prod.sh" --soft --publish-id "soft-$PUBLISH_ID" \
   >>"$LOG" 2>&1 < /dev/null &
 echo "soft: detached soft publish started (pid $!, log $LOG)"
 exit 0
