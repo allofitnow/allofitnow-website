@@ -136,6 +136,22 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
         <textarea data-im-message spellcheck="false" rows="5" maxlength="5000"></textarea>
       </label>
 
+      {/* #125: secure attachment upload — files go straight to the team inbox, nothing stored. */}
+      <div class="im__files" data-im-files>
+        <input
+          type="file"
+          data-im-file
+          multiple
+          hidden
+          accept=".pdf,.doc,.docx,.ppt,.pptx,.key,.jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.webm,.zip"
+        />
+        <div class="im__files-row">
+          <button type="button" class="im__attach" data-im-attach>+ ATTACH FILES</button>
+          <span class="im__secure">SECURE — FILES GO DIRECTLY TO OUR TEAM. NOTHING IS STORED.</span>
+        </div>
+        <div class="im__chips" data-im-chips></div>
+      </div>
+
       {/* L1 honeypot -- humans never see it; the server rejects anything that fills it. */}
       <div class="im__hp" aria-hidden="true">
         <label>
@@ -381,6 +397,81 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
     height: 1px;
     overflow: hidden;
   }
+
+  /* ── #125: attachments — secure direct-to-inbox upload ─────────────────── */
+  .im__files {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .im__files-row {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .im__attach {
+    background: none;
+    border: 0;
+    border-bottom: var(--bar-stroke-w, 1px) solid rgba(217, 225, 234, var(--bar-stroke-o, 0.16));
+    padding: 0 0 6px;
+    margin: 0;
+    color: rgba(217, 225, 234, 0.45);
+    font-family: var(--font-mono, 'SN Ja Mono'), monospace;
+    font-weight: 300;
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: border-color var(--bar-fill-ms, 420ms) linear, color var(--bar-fill-ms, 420ms) linear;
+  }
+  .im__attach:hover,
+  .im__attach:focus-visible {
+    outline: none;
+    color: var(--aoin-cool-white, rgb(217, 225, 234));
+    border-bottom-color: var(--aoin-cool-white, rgb(217, 225, 234));
+  }
+  .im__secure {
+    font-family: var(--font-mono, 'SN Ja Mono'), monospace;
+    font-weight: 300;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: rgba(217, 225, 234, 0.3);
+    text-transform: uppercase;
+  }
+  .im__chips {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .im__chip {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-family: var(--font-mono, 'SN Ja Mono'), monospace;
+    font-weight: 300;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: rgba(217, 225, 234, 0.7);
+  }
+  .im__chip-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 60%;
+  }
+  .im__chip-size { color: rgba(217, 225, 234, 0.35); }
+  .im__chip-x {
+    background: none;
+    border: 0;
+    padding: 0 0 0 4px;
+    margin: 0;
+    color: rgba(217, 225, 234, 0.45);
+    font: inherit;
+    cursor: pointer;
+  }
+  .im__chip-x:hover { color: var(--aoin-cool-white, rgb(217, 225, 234)); }
+
   .im__ts:empty { display: none; }
   .im__post {
     display: flex;
@@ -567,6 +658,9 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
     const emailIn = dlg.querySelector<HTMLInputElement>('[data-im-email]')!;
     const hp = dlg.querySelector<HTMLInputElement>('[data-im-company]')!;
     const send = dlg.querySelector<HTMLButtonElement>('[data-im-send]')!;
+    const attachBtn = dlg.querySelector<HTMLButtonElement>('[data-im-attach]')!;
+    const fileIn = dlg.querySelector<HTMLInputElement>('[data-im-file]')!;
+    const chips = dlg.querySelector<HTMLElement>('[data-im-chips]')!;
     let active = 0;
 
     // The markup ships the TO line empty (the address is encoded — see the
@@ -702,6 +796,52 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
       } catch (_) { /* never block UX */ }
     }
 
+    // ── #125: attachments — client vet mirrors server (max 3, 25MB total, ext allow-list) ──
+    const FILE_MAX = 3;
+    const FILES_TOTAL_MAX = 25 * 1024 * 1024;
+    const FILE_EXTS = /\.(pdf|doc|docx|ppt|pptx|key|jpg|jpeg|png|gif|webp|mp4|mov|webm|zip)$/i;
+    const fmtMB = (b: number) => (b / (1024 * 1024)).toFixed(b < 10 * 1024 * 1024 ? 1 : 0) + ' MB';
+    let picked: File[] = [];
+    function renderChips() {
+      chips.textContent = '';
+      picked.forEach((f, i) => {
+        const row = document.createElement('div');
+        row.className = 'im__chip';
+        const nm = document.createElement('span');
+        nm.className = 'im__chip-name';
+        nm.textContent = f.name;
+        const sz = document.createElement('span');
+        sz.className = 'im__chip-size';
+        sz.textContent = fmtMB(f.size);
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'im__chip-x';
+        x.setAttribute('aria-label', 'Remove ' + f.name);
+        x.textContent = '×';
+        x.addEventListener('click', () => {
+          picked.splice(i, 1);
+          renderChips();
+        });
+        row.append(nm, sz, x);
+        chips.append(row);
+      });
+    }
+    attachBtn.addEventListener('click', () => fileIn.click());
+    fileIn.addEventListener('change', () => {
+      const inFiles = Array.from(fileIn.files || []);
+      const next = [...picked];
+      for (const f of inFiles) {
+        if (!FILE_EXTS.test(f.name)) { setStatus('UNSUPPORTED FILE TYPE — ' + f.name.toUpperCase(), 'err'); continue; }
+        if (next.length >= FILE_MAX) { setStatus('MAX ' + FILE_MAX + ' FILES', 'err'); break; }
+        next.push(f);
+      }
+      const total = next.reduce((s, f) => s + f.size, 0);
+      if (total > FILES_TOTAL_MAX) { setStatus('FILES EXCEED 25 MB TOTAL', 'err'); return; }
+      picked = next;
+      renderChips();
+      fileIn.value = '';
+    });
+
     send.addEventListener('click', async () => {
       if (send.hasAttribute('data-sending')) return;
       const nameV = nameIn.value.trim();
@@ -731,23 +871,40 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
         setStatus('SENDING…');
         gaev('contact_submit', { topic: TOPICS[active] });
         try {
-          const res = await fetch('/api/contact', {
-            method: 'POST',
-            headers: { 'content-type': 'application/json' },
-            body: JSON.stringify({
-              name: nameV,
-              email: emailV,
-              message: (subject.value.trim() ? '[' + subject.value.trim() + '] ' : '') + bodyV,
-              topic: TOPICS[active],
-              company: hp.value,
-              elapsed: elapsedMs(),
-              cf_turnstile: token,
-            }),
-          });
+          let res: Response;
+          if (picked.length > 0) {
+            // #125: multipart when attachments present; server vets identically
+            const fd = new FormData();
+            fd.append('name', nameV);
+            fd.append('email', emailV);
+            fd.append('message', (subject.value.trim() ? '[' + subject.value.trim() + '] ' : '') + bodyV);
+            fd.append('topic', TOPICS[active]);
+            fd.append('company', hp.value);
+            fd.append('elapsed', String(elapsedMs()));
+            fd.append('cf_turnstile', token);
+            for (const f of picked) fd.append('files', f, f.name);
+            res = await fetch('/api/contact', { method: 'POST', body: fd });
+          } else {
+            res = await fetch('/api/contact', {
+              method: 'POST',
+              headers: { 'content-type': 'application/json' },
+              body: JSON.stringify({
+                name: nameV,
+                email: emailV,
+                message: (subject.value.trim() ? '[' + subject.value.trim() + '] ' : '') + bodyV,
+                topic: TOPICS[active],
+                company: hp.value,
+                elapsed: elapsedMs(),
+                cf_turnstile: token,
+              }),
+            });
+          }
           if (res.status === 202) {
             setStatus('SENT — WE WILL BE IN TOUCH', 'ok');
             gaev('contact_success', { topic: TOPICS[active] });
             [nameIn, emailIn, subject, message, hp].forEach((el) => ((el as HTMLInputElement).value = ''));
+            picked = []; // #125
+            renderChips();
             t0map.clear();
             refreshLive();
             // Teardown is best-effort and ISOLATED: a widget hiccup must never
