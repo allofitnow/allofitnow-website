@@ -65,12 +65,18 @@ const {
 // the addresses are public, we just decline to publish them pre-chewed.
 const emails = tabs.map((t) => t.email);
 const emailsEnc = emails.map((e) => Buffer.from(e, 'utf8').toString('base64'));
+// #113: send path is POST /api/contact on the zone worker (L1-L4 vet + SES).
+// The encoded per-tab addresses survive as the FALLBACK link shown when the
+// API path fails -- never a dead end.
+// Public Turnstile sitekey (the secret lives on the worker only).
+const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
 ---
 
 <dialog
   class="im"
   data-inquiry
   data-emails={JSON.stringify(emailsEnc)}
+  data-sitekey={SITEKEY}
   data-subject-prefix={subjectPrefix}
   aria-label="Contact"
 >
@@ -116,8 +122,24 @@ const emailsEnc = emails.map((e) => Buffer.from(e, 'utf8').toString('base64'));
 
       <label class="im__field">
         <span class="im__label">BODY</span>
-        <textarea data-im-message spellcheck="false" rows="5"></textarea>
+        <textarea data-im-message spellcheck="false" rows="5" maxlength="5000"></textarea>
       </label>
+
+      {/* L1 honeypot -- humans never see it; the server rejects anything that fills it. */}
+      <div class="im__hp" aria-hidden="true">
+        <label>
+          COMPANY
+          <input type="text" data-im-company tabindex="-1" autocomplete="off" />
+        </label>
+      </div>
+
+      {/* Turnstile (Managed) -- lazy-rendered on first open; invisible for most visitors. */}
+      <div class="im__ts" data-im-ts></div>
+
+      <div class="im__post">
+        <p class="im__status" data-im-status role="status" aria-live="polite"></p>
+        <a class="im__fallback" data-im-fallback href="#" hidden>OR EMAIL US DIRECTLY</a>
+      </div>
     </div>
 
     <footer class="im__bar im__bar--foot">
@@ -333,6 +355,50 @@ const emailsEnc = emails.map((e) => Buffer.from(e, 'utf8').toString('base64'));
   }
   .im__field ::placeholder { color: rgba(217, 225, 234, 0.28); }
 
+  /* ── #113: name/email pair, honeypot, turnstile, status, fallback ──────── */
+  .im__names {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .im__names .im__field input { font-size: 17px; }
+  .im__hp {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+  .im__ts:empty { display: none; }
+  .im__post {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    min-height: 14px;
+  }
+  .im__status {
+    margin: 0;
+    font-family: var(--font-mono, 'SN Ja Mono'), monospace;
+    font-weight: 300;
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    color: rgba(217, 225, 234, 0.45);
+    text-transform: uppercase;
+  }
+  .im__status[data-kind='err'] { color: rgba(217, 225, 234, 0.85); }
+  .im__status[data-kind='ok'] { color: var(--aoin-cool-white, rgb(217, 225, 234)); }
+  .im__fallback {
+    font-family: var(--font-mono, 'SN Ja Mono'), monospace;
+    font-weight: 300;
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    color: rgba(217, 225, 234, 0.7);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .im__send[data-sending] { pointer-events: none; opacity: 0.55; }
+
   /* ── SEND INQUIRY — the primary, in three states ───────────────────────── */
   .im__send {
     display: inline-flex;
@@ -445,6 +511,7 @@ const emailsEnc = emails.map((e) => Buffer.from(e, 'utf8').toString('base64'));
     .im__row { flex-direction: column; align-items: flex-start; gap: 12px; }
     .im__tab { font-size: 12px; padding: 0 12px; }
     .im__to { font-size: 10px; letter-spacing: 0.16em; }
+    .im__names { grid-template-columns: 1fr; gap: 20px; }
     .im__field input,
     .im__field textarea { font-size: 17px; padding-bottom: 10px; }
     .im__field textarea { min-height: 140px; }
@@ -485,6 +552,9 @@ const emailsEnc = emails.map((e) => Buffer.from(e, 'utf8').toString('base64'));
     const to = dlg.querySelector<HTMLElement>('[data-im-to]')!;
     const subject = dlg.querySelector<HTMLInputElement>('[data-im-subject]')!;
     const message = dlg.querySelector<HTMLTextAreaElement>('[data-im-message]')!;
+    const nameIn = dlg.querySelector<HTMLInputElement>('[data-im-name]')!;
+    const emailIn = dlg.querySelector<HTMLInputElement>('[data-im-email]')!;
+    const hp = dlg.querySelector<HTMLInputElement>('[data-im-company]')!;
     const send = dlg.querySelector<HTMLButtonElement>('[data-im-send]')!;
     let active = 0;
 
@@ -514,22 +584,147 @@ const emailsEnc = emails.map((e) => Buffer.from(e, 'utf8').toString('base64'));
 
     tabs.forEach((t, i) => t.addEventListener('click', () => pick(i)));
 
-    // The primary lights up only when there is something to send.
-    message.addEventListener('input', () => {
-      if (message.value.trim()) send.setAttribute('data-live', '');
+    // The primary lights up only when the required fields have content.
+    function refreshLive() {
+      const ok = nameIn.value.trim() && emailIn.value.trim() && message.value.trim();
+      if (ok) send.setAttribute('data-live', '');
       else send.removeAttribute('data-live');
-    });
+    }
+    [nameIn, emailIn, message].forEach((el) => el.addEventListener('input', refreshLive));
 
-    send.addEventListener('click', () => {
-      const body = message.value;
-      if (!body.trim()) return;
+    /* ── #113: send via POST /api/contact (worker vets L1-L4 + SES) ────── */
+    const statusEl = dlg.querySelector<HTMLElement>('[data-im-status]')!;
+    const fallback = dlg.querySelector<HTMLAnchorElement>('[data-im-fallback]')!;
+    const tsHost = dlg.querySelector<HTMLElement>('[data-im-ts]')!;
+    const sitekey = (dlg.dataset.sitekey || '').trim();
+    const TOPICS = ['general', 'rentals', 'careers'];
+    let tsReady = false;
+    let tsWidgetId: string | undefined;
+    const t0map = new WeakMap<HTMLInputElement | HTMLTextAreaElement, number>();
+
+    function setStatus(text: string, kind?: 'ok' | 'err') {
+      statusEl.textContent = text;
+      if (kind) statusEl.setAttribute('data-kind', kind);
+      else statusEl.removeAttribute('data-kind');
+    }
+
+    function showFallback() {
       const typed = subject.value.trim();
       const label = tabs[active]?.textContent?.trim() || 'GENERAL';
       const subj = (prefix ? prefix + ' — ' : '') + (typed || label + ' INQUIRY');
-      window.location.href =
+      const body = message.value;
+      fallback.href =
         'mailto:' + emails[active] +
         '?subject=' + encodeURIComponent(subj) +
         '&body=' + encodeURIComponent(body);
+      fallback.hidden = false;
+    }
+
+    // Lazy Turnstile: load the api.js + render on first open only.
+    function ensureTurnstile() {
+      if (tsReady || !sitekey) return;
+      tsReady = true;
+      const w = window as any;
+      if (!w.turnstile) {
+        const sc = document.createElement('script');
+        sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        sc.async = true;
+        sc.defer = true;
+        document.head.appendChild(sc);
+      }
+      (function poll() {
+        const w2 = window as any;
+        if (w2.turnstile && w2.turnstile.render) {
+          tsWidgetId = w2.turnstile.render(tsHost, { sitekey });
+        } else {
+          setTimeout(poll, 120);
+        }
+      })();
+    }
+
+    // D2 time-trap: earliest field interaction starts the clock.
+    [nameIn, emailIn, subject, message].forEach((el) => {
+      el.addEventListener('focus', () => {
+        if (!t0map.has(el as any)) t0map.set(el as any, Date.now());
+      });
+    });
+    function elapsedMs(): number {
+      let t0 = Infinity;
+      t0map.forEach((v) => (t0 = Math.min(t0, v)));
+      return t0 === Infinity ? 0 : Date.now() - t0;
+    }
+
+    function gaev(name: string, params?: Record<string, unknown>) {
+      try {
+        const w = window as any;
+        if (w.gtag) w.gtag('event', name, params);
+      } catch (_) { /* never block UX */ }
+    }
+
+    send.addEventListener('click', async () => {
+      if (send.hasAttribute('data-sending')) return;
+      const nameV = nameIn.value.trim();
+      const emailV = emailIn.value.trim();
+      const bodyV = message.value.trim();
+      if (!nameV || !emailV || !bodyV) {
+        setStatus('PLEASE FILL NAME, EMAIL AND BODY', 'err');
+        return;
+      }
+      if (sitekey) {
+        const w = window as any;
+        const token =
+          (tsWidgetId && w.turnstile && w.turnstile.getResponse && w.turnstile.getResponse(tsWidgetId)) || '';
+        if (!token) {
+          setStatus('PLEASE FINISH THE VERIFICATION STEP', 'err');
+          ensureTurnstile();
+          return;
+        }
+        send.setAttribute('data-sending', '');
+        setStatus('SENDING…');
+        gaev('contact_submit', { topic: TOPICS[active] });
+        try {
+          const res = await fetch('/api/contact', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              name: nameV,
+              email: emailV,
+              message: (subject.value.trim() ? '[' + subject.value.trim() + '] ' : '') + bodyV,
+              topic: TOPICS[active],
+              company: hp.value,
+              elapsed: elapsedMs(),
+              cf_turnstile: token,
+            }),
+          });
+          if (res.status === 202) {
+            setStatus('SENT — WE WILL BE IN TOUCH', 'ok');
+            gaev('contact_success', { topic: TOPICS[active] });
+            [nameIn, emailIn, subject, message, hp].forEach((el) => ((el as HTMLInputElement).value = ''));
+            refreshLive();
+            if (tsWidgetId && w.turnstile && w.turnstile.reset) w.turnstile.reset(tsWidgetId);
+            return;
+          }
+          if (res.status === 429) {
+            const ra = parseInt(res.headers.get('retry-after') || '0', 10);
+            setStatus('TOO MANY SENDS — TRY AGAIN IN ' + (ra > 0 ? Math.ceil(ra / 60) + ' MIN' : 'A BIT'), 'err');
+            gaev('contact_error', { code: 'rate_limited' });
+            if (tsWidgetId && w.turnstile && w.turnstile.reset) w.turnstile.reset(tsWidgetId);
+            return;
+          }
+          throw new Error('status ' + res.status);
+        } catch (_) {
+          setStatus('SEND FAILED — USE THE EMAIL LINK BELOW', 'err');
+          gaev('contact_error', { code: 'network' });
+          showFallback();
+          if (tsWidgetId && w.turnstile && w.turnstile.reset) w.turnstile.reset(tsWidgetId);
+        } finally {
+          send.removeAttribute('data-sending');
+        }
+        return;
+      }
+      // No sitekey shipped (unexpected build state): fall back to mailto.
+      showFallback();
+      setStatus('OPENING YOUR EMAIL CLIENT…', 'err');
     });
 
     // Open from anything carrying [data-inquiry-open] — delegated at the document
@@ -541,6 +736,7 @@ const emailsEnc = emails.map((e) => Buffer.from(e, 'utf8').toString('base64'));
       e.preventDefault();
       dlg.showModal();
       place();
+      ensureTurnstile();
     });
     dlg.querySelectorAll('[data-inquiry-close]').forEach((el) =>
       el.addEventListener('click', () => dlg.close())
