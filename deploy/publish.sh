@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 cd /root/projects/aoin-deploy
-git pull --ff-only origin integration
+git pull --ff-only origin staging
 # #101: generate missing video rungs + register in payload BEFORE the build so
 # HTML bakes data-rungs in the same pass. Additive: failure warns, never aborts.
 bash deploy/hooks/ladder-rungs.sh || echo "WARN: ladder rung generation failed; publish continues without new rungs" >&2
