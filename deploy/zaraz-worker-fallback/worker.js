@@ -283,7 +283,7 @@ export default {
     const headers = new Headers();
     headers.set("etag", hit.obj.httpEtag);
     headers.set("content-type", MIME[ext] || "application/octet-stream");
-    headers.set("x-46009-worker", "v3r");
+    headers.set("x-46009-worker", "v3s");
     if (soft) headers.set("x-46009-soft", hit.softHit ? "hit" : "fallback");
     if (ext === "html") {
       headers.set("cache-control", "no-cache");
