@@ -611,7 +611,7 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
     const TOPICS = ['general', 'rentals', 'careers'];
     let tsReady = false;
     let tsWidgetId: string | undefined;
-    const t0map = new WeakMap<HTMLInputElement | HTMLTextAreaElement, number>();
+    const t0map = new Map<HTMLInputElement | HTMLTextAreaElement, number>();
 
     function setStatus(text: string, kind?: 'ok' | 'err') {
       statusEl.textContent = text;
@@ -711,6 +711,7 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
             setStatus('SENT — WE WILL BE IN TOUCH', 'ok');
             gaev('contact_success', { topic: TOPICS[active] });
             [nameIn, emailIn, subject, message, hp].forEach((el) => ((el as HTMLInputElement).value = ''));
+            t0map.clear();
             refreshLive();
             // Teardown is best-effort and ISOLATED: a widget hiccup must never
             // flip an already-delivered SENT into an error state (#114 live report).
