@@ -113,11 +113,31 @@ function redirect301(location) {
 
 export default {
   async fetch(request, env) {
+    const url = new URL(request.url);
+    const host = (request.headers.get("host") || url.hostname).toLowerCase();
+
+    // v3m (#112): contact API — sole POST surface, must sit ABOVE the generic
+    // GET/HEAD method gate. Host-pinned like every other path; robots.txt
+    // disallows /api/ for all agents.
+    if (url.pathname === "/api/contact") {
+      if (request.method !== "POST") {
+        return new Response("method not allowed", {
+          status: 405,
+          headers: { "x-46009-worker": "v3m" },
+        });
+      }
+      if (!SERVING_HOSTS.has(host)) {
+        return new Response("host not served", {
+          status: 403,
+          headers: { "x-46009-worker": "v3m" },
+        });
+      }
+      return handleContact(request, env);
+    }
+
     if (request.method !== "GET" && request.method !== "HEAD") {
       return new Response("method not allowed", { status: 405 });
     }
-    const url = new URL(request.url);
-    const host = (request.headers.get("host") || url.hostname).toLowerCase();
 
     // 1. www -> apex 301 (#71 task 2c): before cache, path+query preserved.
     if (host === "www.allofitnow.com") {
@@ -132,12 +152,6 @@ export default {
         status: 403,
         headers: { "x-46009-worker": "v3m" },
       });
-    }
-
-    // v3m (#112): POST /api/contact on the existing zone worker. Robots.txt
-    // disallows /api/ for all agents; this is the sole API surface.
-    if (url.pathname === "/api/contact" && request.method === "POST") {
-      return handleContact(request, env);
     }
 
     // 2. legacy redirects (#73): after www-301, before R2 fetch.
