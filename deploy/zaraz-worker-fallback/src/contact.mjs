@@ -358,18 +358,12 @@ export async function handleContact(request, env, fetchers) {
   const domain = v.email.split("@")[1];
   if (kv && !(await domainHasMx(domain, kv, fx.doh))) return badRequest();
 
-  // L4: Turnstile. E2E validates against the public always-pass test secret
-  // (code path exercised); prod uses TURNSTILE_SECRET. Fail-closed.
-  const secret = e2e
-    ? ((env && env.TURNSTILE_E2E_SECRET) || TS_TEST_SECRET)
-    : ((env && env.TURNSTILE_SECRET) || TS_TEST_SECRET);
-  if (!(await turnstileOk(secret, v.token, ip, fx.turnstile))) return badRequest();
-
   // #130 v4b: attachments were uploaded browser→Drive before submit (step A
   // minted sessions; step B PUT chunks straight to Google). This request
   // carries form fields + {uploadId, files:[{id}]} only — NO file bytes.
-  // Turnstile was spent at A (ruling 8); possession of the staged uploadId
-  // bound to this aoin_cs cookie is the gate.
+  // Turnstile was spent at A (single-use, ruling 8); on the staged path the
+  // gate is possession of the uploadId bound to this aoin_cs cookie. Files-
+  // less submissions still verify Turnstile here.
   let payload;
   let attMeta = [];
   const uploadId = parsed.uploadId;
@@ -451,6 +445,12 @@ export async function handleContact(request, env, fetchers) {
       return json(502, { ok: false, error: "upstream" });
     }
   } else {
+    // L4: Turnstile. E2E validates against the public always-pass test secret
+    // (code path exercised); prod uses TURNSTILE_SECRET. Fail-closed.
+    const secret = e2e
+      ? ((env && env.TURNSTILE_E2E_SECRET) || TS_TEST_SECRET)
+      : ((env && env.TURNSTILE_SECRET) || TS_TEST_SECRET);
+    if (!(await turnstileOk(secret, v.token, ip, fx.turnstile))) return badRequest();
     payload = sesPayload(v);
   }
   if (e2e) return json(202, { ok: true, e2e: { payload, attachments: attMeta } });
