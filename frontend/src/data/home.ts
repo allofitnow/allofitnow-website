@@ -150,7 +150,7 @@ export const footer = {
   info: [
     'AOIN IS A CREATIVE TECHNOLOGY STUDIO, PARTNERING WITH AGENCIES AND ARTISTS TO PUSH THE BOUNDARIES OF REAL-TIME DESIGN ACROSS TV, FILM, CORPORATE EVENTS, AND LIVE MUSIC.',
   ],
-  legal: ['ALL OF IT NOW. ESTD. 2014.', '2026 ALL RIGHTS RESERVED.'],
+  legal: ['ALL OF IT NOW. EST. 2014.', '2026 ALL RIGHTS RESERVED.'],
   navPrimary: [
     { label: 'WORK', href: '/work' },
     { label: 'SERVICES', href: '/services' },
@@ -163,5 +163,5 @@ export const footer = {
     ...social,
     { label: 'INFO@ALLOFITNOW.COM', href: 'mailto:info@allofitnow.com' },
   ] as SocialLink[],
-  address: ['1651 S CENTRAL AVE', 'GLENDALE, CA 91204', 'UNITED STATES'],
+  address: ['1651 S CENTRAL AVE, SUITE F', 'GLENDALE, CA 91204', '(415) 525-4215'],
 };

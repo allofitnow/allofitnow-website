@@ -26,12 +26,11 @@ export function initProjectPage(root: HTMLElement) {
   const toggleLabel = q('[data-pp-toggle-label]');
   const titleRow = q('[data-pp-title-row]')!;
   const titleSpan = q('[data-pp-title]')!;
-  const tour = q('[data-pp-tour]');
-  const TOUR_GAP = 48; // .pp__titleRow's gap — the breathing room the name keeps from the tour
   const h1 = titleSpan.parentElement as HTMLElement; // .pp__title
   const hero = q('[data-pp-hero]')!;
   const aside = q('[data-pp-aside]')!;
   const notes = q('[data-pp-notes]')!;
+  const tour = q('[data-pp-tour]');
 
   if (!frame || !toggle || !titleRow || !hero || !aside) return;
 
@@ -99,15 +98,22 @@ export function initProjectPage(root: HTMLElement) {
     // floor so the fitted name never overshoots its column.
     // On mobile the write-up is a screen-slide, not a compress, so the title
     // never narrows — always fit to the row (no scaling as screens slide).
+    // Closed, the tour line sits at the RIGHT END of this same row -- and it is
+    // position:absolute, so the flex box reserves nothing for it and the name was
+    // being fitted to the full row width and set straight underneath it. At wide
+    // viewports the name is short enough that the two never meet; at smaller ones
+    // they collide (MORGAN WALLEN over STILL THE PROBLEM TOUR). Take the tour's
+    // measured width and the row's own gap off the budget, and the existing FLOOR
+    // rule below does the rest: once one line no longer fits, it breaks to two.
     //
-    // Closed, on desktop, the tour line sits on the SAME row, hard against the
-    // right edge (.pp__tour, absolute), so the room the name actually has is
-    // the row minus the tour and the row's gap — fitting to the whole row is
-    // what let "MORGAN WALLEN" run straight through "STILL THE PROBLEM TOUR".
-    // Expanded, the tour has slid to the far side of the name's column, and
-    // on a phone it sits on its own line under the name: nothing to subtract.
-    const tourW = !mobile && !expanded && tour ? tour.offsetWidth + TOUR_GAP : 0;
-    const avail = !mobile && expanded ? 0.49 * frameW - 24 : titleRow.clientWidth - tourW;
+    // Expanded is already handled -- the tour slides left and the name is capped
+    // to the compressed column. Mobile is too: there the tour is position:static,
+    // centred on its own line under the name, so it costs no width.
+    let avail = !mobile && expanded ? 0.49 * frameW - 24 : titleRow.clientWidth;
+    if (!mobile && !expanded && tour) {
+      const gap = parseFloat(getComputedStyle(titleRow).columnGap) || 48;
+      avail -= tour.getBoundingClientRect().width + gap;
+    }
 
     // One line is the preference, not the rule. Shrinking had no floor, so a
     // long name on a narrow column kept getting smaller until it was set at

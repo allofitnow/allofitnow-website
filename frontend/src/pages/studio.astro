@@ -47,7 +47,6 @@ const rows = Math.ceil(members.length / columns);
       <div class="label-row" data-reveal>
         <span class="label">{labels.team}</span>
         <span class="rule"></span>
-        <span class="label">({members.length})</span>
       </div>
       <div class="roster" style={`--rows: ${rows}; --cols: ${columns};`}>
         {members.map((member) => {
