@@ -172,7 +172,7 @@ test("E2E header -> 202 {ok:true,e2e:{payload}} and no SES send", async () => {
   assert.equal(r.status, 202);
   const body = JSON.parse(await r.text());
   assert.equal(body.ok, true);
-  assert.ok(body.e2e.payload.FromEmailAddress === "support@allofitnow.com");
+  assert.ok(body.e2e.payload.FromEmailAddress === '"AOIN Website" <support@allofitnow.com>');
   assert.ok(body.e2e.payload.Destination.ToAddresses[0] === "info@allofitnow.com");
   assert.equal(sesCalled, 0);
 });
@@ -196,7 +196,7 @@ test("content-length over cap -> 413 before parse", async () => {
 
 // ---- SES payload + signatures -------------------------------------------
 
-test("sesPayload: From support@, ReplyTo submitter, To routes per topic (v3n)", () => {
+test("sesPayload: display-name From, formatted ReplyTo, template body (v3p)", () => {
   const mk = (topic) =>
     sesPayload(validateFields({ ...JSON.parse(JSON.stringify(GOOD)), topic }));
   const cases = {
@@ -206,11 +206,22 @@ test("sesPayload: From support@, ReplyTo submitter, To routes per topic (v3n)", 
   };
   for (const [topic, to] of Object.entries(cases)) {
     const p = mk(topic);
-    assert.equal(p.FromEmailAddress, "support@allofitnow.com");
-    assert.deepEqual(p.ReplyToAddresses, ["howard@example.com"]);
+    assert.equal(p.FromEmailAddress, '"AOIN Website" <support@allofitnow.com>');
+    assert.deepEqual(p.ReplyToAddresses, ['"Howard Wong" <howard@example.com>']);
     assert.deepEqual(p.Destination.ToAddresses, [to]);
     assert.ok(p.Content.Simple.Subject.Data.startsWith(`[AOIN/${topic}]`));
+    const body = p.Content.Simple.Body.Text.Data;
+    assert.ok(body.includes(`[AOIN/${topic.toUpperCase()}] WEBSITE INQUIRY`));
+    assert.ok(body.includes("Name:    Howard Wong"));
+    assert.ok(body.includes("Email:   howard@example.com"));
+    assert.ok(body.includes(GOOD.message));
+    assert.ok(body.endsWith("Sent via the allofitnow.com contact form. Reply directly to respond."));
   }
+  // Header-injection attempt: quotes/CR/LN stripped from the display name.
+  const evil = validateFields({ ...JSON.parse(JSON.stringify(GOOD)), name: 'Bad" <x@y>, \r\nBcc: evil@z' });
+  const rt = sesPayload(evil).ReplyToAddresses[0];
+  assert.ok(!/[\r\n]/.test(rt));
+  assert.ok(rt.startsWith('"Bad'));
   // Unknown topic is 400'd by validateFields (returns null), so it can't reach
   // sesPayload in prod — but the builder still fails safe to the general inbox.
   const safe = validateFields(JSON.parse(JSON.stringify(GOOD)));

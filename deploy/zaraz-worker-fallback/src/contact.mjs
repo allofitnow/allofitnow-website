@@ -1,9 +1,34 @@
 // src/contact.mjs — POST /api/contact (#112) — vet L1-L4 + SES SendEmail + E2E mode.
 // SSOT: wiki "contact-form". Vet order pinned: shape/size -> L1 -> L3 -> L2 -> L4 -> send.
+// v3p (#124): display-name From, sanitized ReplyTo display name, structured body.
 // Zero npm deps: SigV4 via WebCrypto, DoH/Turnstile/SES via plain fetch.
 
-const STAMP = "v3n";
-const FROM = "support@allofitnow.com";
+const STAMP = "v3p";
+// #124: display-name From (static, no injection surface) + sanitized ReplyTo.
+const FROM = '"AOIN Website" <support@allofitnow.com>';
+export function replyToAddr(v) {
+  const n = String(v.name || "")
+    .replace(/["\\\r\n\u0000-\u001f]/g, " ")   // header-safe: no quotes/ctl
+    .replace(/\s+/g, " ").trim().slice(0, 60);
+  const email = String(v.email || "").replace(/[\r\n<>"\s]/g, ""); // defense-in-depth
+  return n ? `"${n}" <${email}>` : email;
+}
+export function bodyText(v) {
+  const line = "-".repeat(46);
+  return [
+    `[AOIN/${String(v.topic).toUpperCase()}] WEBSITE INQUIRY`,
+    line,
+    `Name:    ${v.name}`,
+    `Email:   ${v.email}`,
+    `Topic:   ${v.topic}`,
+    line,
+    "",
+    v.message,
+    "",
+    line,
+    "Sent via the allofitnow.com contact form. Reply directly to respond.",
+  ].join("\n");
+}
 // 2026-09-03 user decision: per-topic routing (all three mailboxes exist in
 // Google Workspace). Supersedes D3 single-funnel. SSOT: wiki "contact-form".
 const TO_BY_TOPIC = {
@@ -167,12 +192,12 @@ async function sha256HexRaw(bytes) {
 export function sesPayload(v) {
   return {
     FromEmailAddress: FROM,
-    ReplyToAddresses: [v.email],
+    ReplyToAddresses: [replyToAddr(v)],
     Destination: { ToAddresses: [TO_BY_TOPIC[v.topic] || TO_BY_TOPIC.general] },
     Content: {
       Simple: {
         Subject: { Data: `[AOIN/${v.topic}] ${v.name} - website inquiry` },
-        Body: { Text: { Data: v.message, Charset: "UTF-8" } },
+        Body: { Text: { Data: bodyText(v), Charset: "UTF-8" } },
       },
     },
   };
