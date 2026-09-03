@@ -42,9 +42,30 @@ def calibrate(key, b, r):
     if not n or len(n["imgs"]) != len(b["imgs"]):
         return 0, True  # no comparable replay: stay strict
     tols = []
-    for ob, onb in zip(b["imgs"], n["imgs"]):
-        tols.append(max(abs(x - y) for x, y in zip(ob["box"], onb["box"])))
+    nbm = {im["src"]: im for im in n["imgs"] if visible(im, n["docW"])}
+    for ob in (i for i in b["imgs"] if visible(i, b["docW"])):
+        onb = nbm.get(ob["src"])
+        if onb is not None:
+            tols.append(max(abs(x - y) for x, y in zip(ob["box"], onb["box"])))
     return (max(tols) if tols else 0) + 2, True
+def visible(im, docW):
+    """Fully on-canvas test: the JS marquee is a translating window whose
+    phase differs per load -- edge items sit at negative x or straddle the
+    right edge, and WHICH items are inside differs per load. Such items are
+    layout-noise, not lane drift."""
+    return 0 <= im["box"][0] and im["box"][0] + im["box"][2] <= docW
+
+
+def marquee_rows(imgs):
+    """y-bands holding >=4 equal-size imgs = horizontally-translating
+    marquee tracks. Membership-in-window and x-offset are per-load random;
+    these rows are excluded from box compare (covered by byte parity of the
+    HTML, asset invariants, and the noise-calibrated pixel axes)."""
+    from collections import Counter
+    groups = Counter((im["box"][1], im["box"][2], im["box"][3]) for im in imgs)
+    return {g for g, n in groups.items() if n >= 4}
+
+
 for r in boxes:
     key = f'{r["viewport"]}|{r["page"]}'
     b = bi.get(key)
@@ -53,11 +74,23 @@ for r in boxes:
     tol, _ = calibrate(key, b, r)
     if (b["docW"], b["docH"]) != (r["docW"], r["docH"]):
         fails.append(f"{key}: doc dims {b['docW']}x{b['docH']} -> {r['docW']}x{r['docH']}")
-    if len(b["imgs"]) != len(r["imgs"]):
-        fails.append(f"{key}: img count {len(b['imgs'])} -> {len(r['imgs'])}")
-    for i, (ob, nb) in enumerate(zip(b["imgs"], r["imgs"])):
+    mq_b = marquee_rows(b["imgs"])
+    mq_r = marquee_rows(r["imgs"])
+    vb = [im for im in b["imgs"] if visible(im, b["docW"])
+          and (im["box"][1], im["box"][2], im["box"][3]) not in mq_b]
+    vr = [im for im in r["imgs"] if visible(im, r["docW"])
+          and (im["box"][1], im["box"][2], im["box"][3]) not in mq_r]
+    if len(vb) != len(vr):
+        fails.append(f"{key}: visible img count {len(vb)} -> {len(vr)}")
+    # gallery order shuffles per load: compare src-keyed, not index-keyed
+    rd = {im["src"]: im for im in vr}
+    for i, ob in enumerate(vb):
+        nb = rd.get(ob["src"])
+        if nb is None:
+            fails.append(f"{key} img#{i} {ob['src']}: missing in post capture")
+            continue
         if not box_close(ob["box"], nb["box"], tol):
-            fails.append(f"{key} img#{i} {ob['src']}: box {ob['box']} -> {nb['box']} ({nb['src']})")
+            fails.append(f"{key} img#{i} {ob['src']}: box {ob['box']} -> {nb['box']}")
     vp = r["viewport"]
     name = f"{r['page'].strip('/').replace('/', '_') or 'home'}.png"
     cands = [os.path.join(post_dir, f"{vp}-dpr1_{name}"), os.path.join(post_dir, f"{vp}_{name}"),

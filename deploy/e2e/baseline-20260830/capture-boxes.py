@@ -18,6 +18,32 @@ VIEWPORTS = {"mobile390": {"width": 390, "height": 844, "deviceScaleFactor": 1},
 OUT = sys.argv[1] if len(sys.argv) > 1 else "/tmp/p61-boxes"
 os.makedirs(OUT, exist_ok=True)
 
+def settle(page):
+    """Bounded image/font settle (see capture.py)."""
+    try:
+        page.evaluate("""async () => {
+          const t = (p, ms) => Promise.race([p, new Promise(r => setTimeout(r, ms))]);
+          const imgs = [...document.images];
+          await t(Promise.all(imgs.map(i => i.complete ? Promise.resolve()
+              : new Promise(r => { i.onload = i.onerror = r; }))), 8000);
+          if (document.fonts && document.fonts.ready) await t(document.fonts.ready, 3000);
+        }""")
+    except Exception:
+        pass
+
+def freeze_runtime(page):
+    """Deterministic phase for JS (rAF-driven) motion (see capture.py)."""
+    try:
+        page.evaluate("""() => {
+          window.requestAnimationFrame = () => 0;
+          for (const el of document.querySelectorAll('*')) {
+            const t = el.style.transform;
+            if (t && /translate|matrix|perspective|scale|rotate/i.test(t)) el.style.transform = 'none';
+          }
+        }""")
+    except Exception:
+        pass
+
 def scroll_full(page):
     page.evaluate("document.body.style.scrollBehavior='auto'")
     h = page.evaluate("document.body.scrollHeight")
@@ -29,6 +55,9 @@ def scroll_full(page):
         h = page.evaluate("document.body.scrollHeight")
     page.mouse.wheel(0, -600)
     page.wait_for_timeout(1200)
+    settle(page)
+    freeze_runtime(page)
+    page.wait_for_timeout(150)
 
 BOX_JS = """() => {
   const imgs = [...document.querySelectorAll('img')].map(i => {

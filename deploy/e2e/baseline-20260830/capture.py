@@ -38,12 +38,34 @@ BOX_JS = """() => {
 }"""
 
 def settle(page):
-    """Block on every img decode + font load so layout is final before measuring."""
+    """Block on every img decode + font load so layout is final before
+    measuring. Hard-bounded (JS race): off-canvas lazy marquee clones are
+    never fetched, so onload never fires and an unbounded await would hang
+    the whole stage (run-6 post-bytes 900s TIMEOUT)."""
     try:
         page.evaluate("""async () => {
+          const t = (p, ms) => Promise.race([p, new Promise(r => setTimeout(r, ms))]);
           const imgs = [...document.images];
-          await Promise.all(imgs.map(i => i.complete ? (i.decode && i.decode().catch(() => {})) : new Promise(r => { i.onload = i.onerror = r; })));
-          if (document.fonts && document.fonts.ready) await document.fonts.ready;
+          await t(Promise.all(imgs.map(i => i.complete ? Promise.resolve()
+              : new Promise(r => { i.onload = i.onerror = r; }))), 8000);
+          if (document.fonts && document.fonts.ready) await t(document.fonts.ready, 3000);
+        }""")
+    except Exception:
+        pass
+
+def freeze_runtime(page):
+    """Deterministic phase for JS (rAF-driven) motion: CSS animation-play-state
+    cannot pause a requestAnimationFrame marquee -- each capture would freeze
+    at a random translate phase (run-6: same img row at x=8k..13k / negative x
+    across loads). Stop new frames and reset inline transforms -> phase 0 in
+    every lane."""
+    try:
+        page.evaluate("""() => {
+          window.requestAnimationFrame = () => 0;
+          for (const el of document.querySelectorAll('*')) {
+            const t = el.style.transform;
+            if (t && /translate|matrix|perspective|scale|rotate/i.test(t)) el.style.transform = 'none';
+          }
         }""")
     except Exception:
         pass
@@ -60,6 +82,8 @@ def scroll_full(page):
     page.mouse.wheel(0, -600)  # settle trigger for late listeners
     page.wait_for_timeout(1200)
     settle(page)
+    freeze_runtime(page)
+    page.wait_for_timeout(150)  # one frame for layout to reflect the reset
 
 results = {"capturedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
            "pages": PAGES, "host": HOST, "ua": REAL_UA, "viewports": VIEWPORTS,
