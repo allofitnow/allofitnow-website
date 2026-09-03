@@ -3,8 +3,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
-  getDriveToken, ensureSessionFolder, uploadVaultFile, folderUrl,
-  quotaCheck, b64ToBytes, b64urlFromString, VAULT_INBOX_FOLDER,
+  getDriveToken, ensureSessionFolder, folderUrl,
+  quotaCheck, b64ToBytes, b64urlFromString, stampFileName, VAULT_INBOX_FOLDER,
 } from "../src/vault.mjs";
 
 const enc = new TextEncoder();
@@ -125,26 +125,13 @@ test("ensureSessionFolder: non-404 error propagates (Strict-Drive)", async () =>
   await assert.rejects(() => ensureSessionFolder("T", "SESS4", kv, f));
 });
 
-// ---- uploadVaultFile ------------------------------------------------------
+// ---- uploadVaultFile: REMOVED in v4 (one transport; browser PUTs direct) --
 
-test("uploadVaultFile: multipart body, parents set, timestamped name", async () => {
-  let seen = null;
-  const f = async (url, init) => {
-    assert.ok(url.includes("uploadType=multipart"));
-    assert.ok(url.includes("supportsAllDrives=true"));
-    const ctype = init.headers["content-type"];
-    const bnd = ctype.match(/boundary=(.+)$/)[1];
-    const text = new TextDecoder().decode(init.body);
-    assert.ok(text.includes("--" + bnd));
-    const meta = JSON.parse(text.match(/\{[^}]*parents[^}]*\}/)[0]);
-    assert.equal(meta.parents[0], "FIDX");
-    assert.match(meta.name, /^\d{8}-?\d{6}_report\.pdf$/);
-    seen = meta;
-    return resJson({ id: "UP1", name: meta.name, size: "9" });
-  };
-  const out = await uploadVaultFile("T", "FIDX", { name: "report.pdf", type: "application/pdf", bytes: enc.encode("123456789") }, f);
-  assert.equal(out.id, "UP1");
-  assert.match(out.name, /_report\.pdf$/);
+// ---- stampFileName ---------------------------------------------------------
+
+test("stampFileName: <YYYYMMDD-HHmmss>_ prefix", () => {
+  const n = stampFileName("report.pdf");
+  assert.match(n, /^\d{8}-\d{6}_report\.pdf$/);
 });
 
 // ---- folderUrl ------------------------------------------------------------
@@ -162,8 +149,8 @@ test("quotaCheck: under limit ok, over limit 429-class refusal, no KV -> ok", as
   const now = 1760000000000;
   const a = await quotaCheck(kv, salt, "1.2.3.4", 1000, now);
   assert.equal(a.ok, true);
-  const b = await quotaCheck(kv, salt, "1.2.3.4", 200 * 1024 * 1024, now);
-  assert.equal(b.ok, false, "day total exceeds 200MB cap");
+  const b = await quotaCheck(kv, salt, "1.2.3.4", 100 * 1024 * 1024 * 1024 + 1, now);
+  assert.equal(b.ok, false, "day total exceeds 100GB cap");
   const c = await quotaCheck(kv, salt, "5.6.7.8", 1000, now);
   assert.equal(c.ok, true, "different IP unaffected");
   const d = await quotaCheck(null, salt, "1.2.3.4", 999 * 1024 * 1024, now);

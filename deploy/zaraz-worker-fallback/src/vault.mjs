@@ -27,7 +27,7 @@ const SCOPE = "https://www.googleapis.com/auth/drive";
 export const VAULT_INBOX_FOLDER = "13hKEAWhajPwywuc1m8CPPU9WqiV1AiA3"; // 46017_inbox
 
 // L5: per-IP daily byte quota (storage-abuse guard). Spec §Security.
-export const QUOTA_BYTES_PER_DAY = 200 * 1024 * 1024; // 200 MB/day/IP
+export const QUOTA_BYTES_PER_DAY = 100 * 1024 * 1024 * 1024; // 100 GB/day/IP (ruling ⑥/⑨)
 
 const enc = new TextEncoder();
 
@@ -148,32 +148,120 @@ export async function ensureSessionFolder(token, sessionId, kv, fetcher) {
   return created.id;
 }
 
-// uploadVaultFile: multipart upload into the session folder, timestamped
-// name so repeat submissions never overwrite (spec §Folder layout).
-export async function uploadVaultFile(token, folderId, file, fetcher) {
-  // spec §folder layout: <YYYYMMDD-HHmmss>_<sanitizedFilename>
-  const iso = new Date().toISOString().replace(/[-:]/g, ""); // 20260903T225903.123Z
-  const ts = iso.slice(0, 8) + "-" + iso.slice(9, 15);
-  const name = ts + "_" + file.name;
-  const meta = JSON.stringify({ name, parents: [folderId] });
-  const bnd = "aoinv" + crypto.randomUUID().replace(/-/g, "");
-  const parts = [];
-  parts.push("--" + bnd + "\r\ncontent-type: application/json; charset=UTF-8\r\n\r\n" + meta + "\r\n");
-  parts.push("--" + bnd + "\r\ncontent-type: " + (file.type || "application/octet-stream") + "\r\n\r\n");
-  const head = enc.encode(parts.join(""));
-  const tail = enc.encode("\r\n--" + bnd + "--");
-  const body = new Uint8Array(head.length + file.bytes.length + tail.length);
-  body.set(head, 0);
-  body.set(file.bytes, head.length);
-  body.set(tail, head.length + file.bytes.length);
-  const d = await driveCall(token, "POST",
-    DRIVE_UPLOAD + "/files?uploadType=multipart&fields=id,name,size&supportsAllDrives=true",
-    undefined, fetcher, body, "multipart/related; boundary=" + bnd);
-  return { id: d.id, name: d.name || name, size: d.size || String(file.bytes.length) };
-}
+// uploadVaultFile (v3 worker-side multipart upload) REMOVED in v4 — file
+// bytes never pass through the worker; the browser PUTs chunks straight to
+// Google on the minted session URL (ruling 7: one transport).
 
 export function folderUrl(folderId) {
   return "https://drive.google.com/drive/folders/" + folderId;
+}
+
+// v4: pre-stamped upload name (<YYYYMMDD-HHmmss>_<name>) — the worker mints
+// sessions with this exact name; step C pins file identity by (folderId,
+// stampedName, declaredSize), so a client-supplied foreign Drive file id
+// can never ride a submission.
+export function stampFileName(rawName) {
+  const iso = new Date().toISOString().replace(/[-:]/g, "");
+  const ts = iso.slice(0, 8) + "-" + iso.slice(9, 15);
+  return ts + "_" + rawName;
+}
+
+// ---- v4 chunked transport (#130 ruling ⑥/⑦) ------------------------------
+// Browser PUTs bytes straight to Google via resumable session URLs; the
+// worker only mints (A) and verifies (C). Probe-proven 2026-09-03:
+//   mint: POST /upload/drive/v3/files?uploadType=resumable, SA auth,
+//         metadata-only {name, parents} + Origin header -> 200 + Location.
+//   chunks: PUT session URL, Content-Range bytes a-b/total, NO auth
+//         (capability URL); non-final chunks MUST be 256 KB multiples.
+//         CORS-readable (ACAO + Range exposed) iff mint carried Origin.
+//   status: PUT session URL, Content-Range "bytes */total", no body -> 308+Range.
+//   abort: DELETE session URL -> session dies, nothing created.
+
+export const V4_TOTAL_MAX = 100 * 1024 * 1024 * 1024; // 100 GB per submission
+export const V4_STAGE_TTL = 24 * 3600;                // KV staged-upload TTL
+
+// mintUploadSession: one resumable session per file, name pre-stamped.
+export async function mintUploadSession(token, folderId, fileName, origin, fetcher) {
+  const r = await (fetcher || fetch)(
+    "https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable&supportsAllDrives=true&fields=id,name,size",
+    {
+      method: "POST",
+      headers: {
+        authorization: "Bearer " + token,
+        "content-type": "application/json; charset=UTF-8",
+        // Probe 2a: Origin MUST ride the mint or chunk PUTs lose CORS
+        // readability in the browser. Google echoes the declared origin.
+        origin,
+      },
+      body: JSON.stringify({ name: fileName, parents: [folderId] }),
+    },
+  );
+  if (!r.ok) throw new Error("mint " + r.status);
+  return r.headers.get("location"); // session URL = bearer capability, never log
+}
+
+// verifyFileMeta: C-step check — Google-reported size must equal declared.
+export async function verifyFileMeta(token, fileId, declaredBytes, fetcher) {
+  const r = await (fetcher || fetch)(
+    "https://www.googleapis.com/drive/v3/files/" + fileId +
+      "?fields=size,name&supportsAllDrives=true",
+    { headers: { authorization: "Bearer " + token } },
+  );
+  if (!r.ok) return { ok: false, why: r.status };
+  const d = await r.json();
+  if (Number(d.size) !== Number(declaredBytes)) return { ok: false, why: "size", size: d.size };
+  return { ok: true, name: d.name, size: d.size };
+}
+
+// ---- staged uploads (KV): single-use A→C binding ---------------------------
+// key vault:<uploadId> -> {cs, folderId, files:[{id,name,size,url}], consumed}
+// consumed flips at C; TTL bounds abandoned sessions (ruling 10).
+
+export function stageKey(uploadId) { return "vault:" + uploadId; }
+
+export async function stageUpload(kv, uploadId, rec) {
+  await kv.put(stageKey(uploadId), JSON.stringify({ ...rec, consumed: false }),
+    { expirationTtl: V4_STAGE_TTL });
+}
+
+export async function loadStaged(kv, uploadId) {
+  const raw = await kv.get(stageKey(uploadId));
+  if (!raw) return null;
+  try { return JSON.parse(raw); } catch { return null; }
+}
+
+export async function consumeStaged(kv, uploadId) {
+  const rec = await loadStaged(kv, uploadId);
+  if (!rec || rec.consumed) return null; // single use
+  await kv.put(stageKey(uploadId), JSON.stringify({ ...rec, consumed: true }),
+    { expirationTtl: 3600 }); // short tail for replay forensics, then gone
+  return rec;
+}
+
+export async function purgeStaged(kv, uploadId) {
+  await kv.delete(stageKey(uploadId));
+}
+
+// ---- quota: v4 uses reserve/release around the staged window ---------------
+// (quotaCheck above still gates; releaseStaged refunds if C never comes
+// manually — TTL handles the abandoned case.)
+
+export async function quotaRelease(kv, salt, ip, releaseBytes, nowMs) {
+  if (!kv) return;
+  const day = Math.floor(nowMs / 86400000);
+  const ipH = await sha256HexV("ip:" + ip, salt);
+  const key = "quota:d" + day + ":" + ipH;
+  const cur = parseInt((await kv.get(key)) || "0", 10);
+  const next = Math.max(0, cur - releaseBytes);
+  await kv.put(key, String(next), { expirationTtl: 25 * 3600 });
+}
+
+// humanSize for the email manifest (B/KB/MB/GB).
+export function humanSize(n) {
+  const u = ["B", "KB", "MB", "GB"];
+  let i = 0, v = Number(n);
+  while (v >= 1024 && i < u.length - 1) { v /= 1024; i++; }
+  return (i === 0 ? v : v.toFixed(1)) + " " + u[i];
 }
 
 // L5 quota: per-IP daily byte quota, KV counter, fixed UTC day bucket.

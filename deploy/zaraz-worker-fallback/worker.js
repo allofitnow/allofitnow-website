@@ -8,6 +8,7 @@ import { gateOpen } from "./src/gate.mjs";
 import { bannerFor } from "./src/banner.mjs";
 import { loaderScriptTag, gtagInitJs } from "./src/inject-snippet.mjs";
 import { handleContact } from "./src/contact.mjs";
+import { handleVaultSession, handleVaultAbort } from "./src/vault-api.mjs";
 
 // v3d -> v3f (#71 CUT-2 + #73 CUT-5), 2026-08-31:
 //   1. Per-host GA4: Host header -> measurement id map. 46009 keeps
@@ -159,6 +160,7 @@ export default {
     // v3m (#112): contact API — sole POST surface, must sit ABOVE the generic
     // GET/HEAD method gate. Host-pinned like every other path; robots.txt
     // disallows /api/ for all agents.
+    // v4 (#130): + /api/vault/session (A) and /api/vault/abort — POST-only.
     if (url.pathname === "/api/contact") {
       if (request.method !== "POST") {
         return new Response("method not allowed", {
@@ -173,6 +175,24 @@ export default {
         });
       }
       return handleContact(request, env);
+    }
+
+    if (url.pathname === "/api/vault/session" || url.pathname === "/api/vault/abort") {
+      if (request.method !== "POST") {
+        return new Response("method not allowed", {
+          status: 405,
+          headers: { "allow": "POST", "x-46009-worker": "v3s" },
+        });
+      }
+      if (!SERVING_HOSTS.has(host)) {
+        return new Response("host not served", {
+          status: 403,
+          headers: { "x-46009-worker": "v3s" },
+        });
+      }
+      return url.pathname === "/api/vault/session"
+        ? handleVaultSession(request, env)
+        : handleVaultAbort(request, env);
     }
 
     if (request.method !== "GET" && request.method !== "HEAD") {

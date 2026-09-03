@@ -1,30 +1,24 @@
 // src/contact.mjs — POST /api/contact (#112) — vet L1-L4 + SES + Vault (#130).
 // SSOT: wiki "contact-form". Vet order pinned: shape/size -> L1 -> L3 -> L2 -> L4 -> send.
 // v3p (#124): display-name From, sanitized ReplyTo display name, structured body.
-// v4a (#130): attachments -> Google Drive session folder + link in email body
-//             (supersedes v3q Raw MIME transport; spec wiki Contact-Attachments-Vault FINAL v3).
+// v4b (#130): attachments arrive browser->Drive (chunked, step A/B in
+//             vault-api.mjs); this handler verifies staged uploads by pinned
+//             identity (folder+stamp+size), consumes single-use, then sends
+//             the manifest + Attachment Folder link. Spec wiki v4.
 
 import {
-  getDriveToken, ensureSessionFolder, uploadVaultFile, folderUrl, quotaCheck,
+  getDriveToken, folderUrl, loadStaged, consumeStaged, V4_TOTAL_MAX,
 } from "./vault.mjs";
 
 // ---- #125/#130: attachments ----------------------------------------------
+// v4b: byte transports are GONE (ruling 7 — one transport). The worker vets
+// declarations {name,size} at step A (vault-api.mjs) and verifies staged
+// uploads at step C. Nothing here ever touches file bytes.
 const FILE_MAX = 3;
-const FILES_TOTAL_MAX = 25 * 1024 * 1024;   // per submission (spec ruled cap)
-const MULTIPART_CAP = 26 * 1024 * 1024;     // upload gate incl. multipart overhead
 const FILE_EXTS = new Set([
   "pdf", "doc", "docx", "ppt", "pptx", "key", "jpg", "jpeg", "png", "gif",
   "webp", "mp4", "mov", "webm", "zip",
 ]);
-const MIME_BY_EXT = {
-  pdf: "application/pdf", doc: "application/msword",
-  docx: "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-  ppt: "application/vnd.ms-powerpoint",
-  pptx: "application/vnd.openxmlformats-officedocument.presentationml.presentation",
-  key: "application/vnd.apple.keynote", jpg: "image/jpeg", jpeg: "image/jpeg",
-  png: "image/png", gif: "image/gif", webp: "image/webp", mp4: "video/mp4",
-  mov: "video/quicktime", webm: "video/webm", zip: "application/zip",
-};
 
 export function sanitizeFilename(raw) {
   let n = String(raw || "")
@@ -38,82 +32,26 @@ const extOf = (name) => {
   const i = String(name).lastIndexOf(".");
   return i === -1 ? "" : String(name).slice(i + 1).toLowerCase();
 };
-export function vetFiles(files) {
-  if (!files || files.length === 0) return [];
-  if (files.length > FILE_MAX) return null;
+// v4 (#130): declaration vet at step A — {name,size} pairs only
+// (no bytes through the worker; chunks go browser→Drive).
+export function vetFileDeclarations(files) {
+  if (!Array.isArray(files) || files.length === 0 || files.length > FILE_MAX) return null;
   let total = 0;
+  const out = [];
   for (const f of files) {
+    if (!f || typeof f.name !== "string" || typeof f.size !== "number"
+      || !Number.isSafeInteger(f.size) || f.size <= 0) return null;
     if (!FILE_EXTS.has(extOf(f.name))) return null;
-    if (f.size <= 0 || f.size > FILES_TOTAL_MAX) return null;
+    const name = sanitizeFilename(f.name);
+    if (total + f.size > V4_TOTAL_MAX) return null;
     total += f.size;
-    if (total > FILES_TOTAL_MAX) return null;
-  }
-  return files.map((f) => ({ name: sanitizeFilename(f.name), bytes: new Uint8Array(), raw: f }));
-}
-export async function fileBytes(file) {
-  return new Uint8Array(await file.arrayBuffer());
-}
-function b64Chunks(bytes) {
-  // 32766 = 3 x 10922: multiple of 3 so only the LAST chunk base64-pads.
-  let out = "";
-  const CHUNK = 32766;
-  for (let i = 0; i < bytes.length; i += CHUNK) {
-    out += btoa(String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK)));
+    out.push({ name, size: f.size });
   }
   return out;
 }
-function wrap76(s) {
-  const lines = [];
-  for (let i = 0; i < s.length; i += 76) lines.push(s.slice(i, i + 76));
-  return lines.join("\r\n");
-}
-const rfc2047 = (s) =>
-  /^[\x20-\x7e]*$/.test(s) ? s : "=?UTF-8?B?" + btoa(unescape(encodeURIComponent(s))) + "?=";
-
-export async function buildRawMime(v, atts) {
-  // LEGACY v3q transport — retained for reference until #130 ships to prod,
-  // then removed (spec rollout step 9). Not called by the v4a handler.
-  const bound = "aoin-" + crypto.randomUUID().replace(/-/g, "");
-  const H = [];
-  H.push('From: "AOIN Website" <support@allofitnow.com>');
-  H.push(`Reply-To: ${replyToAddr(v)}`);
-  H.push(`To: ${TO_BY_TOPIC[v.topic] || TO_BY_TOPIC.general}`);
-  H.push(`Subject: ${rfc2047(`[AOIN/${v.topic}] ${v.name} - website inquiry`)}`);
-  H.push("MIME-Version: 1.0");
-  H.push(`Content-Type: multipart/mixed; boundary="${bound}"`);
-  const parts = [];
-  parts.push([
-    "--" + bound,
-    'Content-Type: text/plain; charset="UTF-8"',
-    "Content-Transfer-Encoding: 8bit",
-    "",
-    bodyText(v),
-  ].join("\r\n"));
-  for (const a of atts) {
-    parts.push([
-      "--" + bound,
-      `Content-Type: ${MIME_BY_EXT[extOf(a.name)] || "application/octet-stream"}; name="${a.name}"`,
-      `Content-Disposition: attachment; filename="${a.name}"`,
-      "Content-Transfer-Encoding: base64",
-      "",
-      wrap76(b64Chunks(a.bytes)),
-    ].join("\r\n"));
-  }
-  parts.push("--" + bound + "--");
-  const raw = H.join("\r\n") + "\r\n\r\n" + parts.join("\r\n") + "\r\n";
-  // SES v2 Raw.Data = base64 of the full MIME message
-  return b64Chunks(new TextEncoder().encode(raw));
-}
-export function attachmentSummary(files) {
-  return (files || []).map((f) => ({
-    name: sanitizeFilename(f.name),
-    size: f.size,
-    type: MIME_BY_EXT[extOf(f.name)] || "application/octet-stream",
-  }));
-}
 // Zero npm deps: SigV4 via WebCrypto, DoH/Turnstile/SES via plain fetch.
 
-const STAMP = "v4a";
+const STAMP = "v4b";
 // #124: display-name From (static, no injection surface) + sanitized ReplyTo.
 const FROM = '"AOIN Website" <support@allofitnow.com>';
 export function replyToAddr(v) {
@@ -161,7 +99,7 @@ const TOPICS = new Set(["general", "rentals", "careers"]);
 const LIMITS = { hourIp: 5, hourEmail: 3, dayIp: 20 };
 
 // CF public test keys (documented): always-pass pair for E2E/automation.
-const TS_TEST_SECRET = "1x0000000000000000000000000000000AA";
+export const TS_TEST_SECRET = "1x0000000000000000000000000000000AA";
 
 const enc = new TextEncoder();
 
@@ -200,6 +138,16 @@ export function validateFields(p) {
   if (typeof p.elapsed !== "number" || !Number.isFinite(p.elapsed)) return null;
   if (p.elapsed < ELAPSED_MIN_MS || p.elapsed > ELAPSED_MAX_MS) return null;
   if (typeof p.cf_turnstile !== "string" || p.cf_turnstile.length < 1 || p.cf_turnstile.length > 2048) return null;
+  // v4b (#130): staged-upload reference (optional — present iff files ride along)
+  if (p.uploadId !== undefined && (typeof p.uploadId !== "string" || !/^[0-9a-f-]{36}$/.test(p.uploadId))) return null;
+  if (p.vault_files !== undefined) {
+    if (!Array.isArray(p.vault_files)) return null;
+    for (const vf of p.vault_files) {
+      if (!vf || typeof vf !== "object") return null;
+      if (typeof vf.id !== "string" || vf.id.length < 8 || vf.id.length > 128) return null;
+      if (typeof vf.name !== "string" || vf.name.length > 120) return null;
+    }
+  }
   return { name, email, message, topic: p.topic, token: p.cf_turnstile };
 }
 
@@ -217,7 +165,7 @@ export function bucketKeys(nowMs) {
   return { hour, day };
 }
 
-async function rateLimited(kv, salt, ip, email, nowMs) {
+export async function rateLimited(kv, salt, ip, email, nowMs) {
   const { hour, day } = bucketKeys(nowMs);
   const ipH = await sha256Hex("ip:" + ip, salt);
   const emH = await sha256Hex("em:" + email, salt);
@@ -278,7 +226,7 @@ async function domainHasMx(domain, kv, fetcher) {
 
 // ---- L4: Turnstile siteverify (fail-CLOSED: same-vendor core) -----------
 
-async function turnstileOk(secret, token, ip, fetcher) {
+export async function turnstileOk(secret, token, ip, fetcher) {
   const f = fetcher || fetch;
   const body = new URLSearchParams({ secret, response: token });
   if (ip) body.set("remoteip", ip);
@@ -371,35 +319,13 @@ export async function handleContact(request, env, fetchers) {
   const fx = fetchers || {};
   const e2e = request.headers.get("x-aoin-e2e") === "1";
   const declared = parseInt(request.headers.get("content-length") || "0", 10);
-  const isMultipart = (request.headers.get("content-type") || "").startsWith("multipart/form-data");
-  if (declared > (isMultipart ? MULTIPART_CAP : BODY_CAP)) {
+  // v4b (#130): JSON fields only — file bytes never pass through the worker
+  // (ruling 7: one transport; the old multipart intake is gone).
+  if (declared > BODY_CAP) {
     return json(413, { ok: false, error: "validation" });
   }
-
   let parsed;
-  let files = [];
-  if (isMultipart) {
-    let fd;
-    try {
-      fd = await request.formData();
-    } catch (_) {
-      return badRequest();
-    }
-    const obj = {};
-    for (const [k, val] of fd.entries()) {
-      if (typeof val === "string") obj[k] = val;
-      else if (val && typeof val === "object" && typeof (val).arrayBuffer === "function") {
-        if (k === "files") files.push(val);
-        else return badRequest(); // unexpected binary part
-      }
-    }
-    // numeric + boolean fields arrive as strings from formData
-    if (obj.elapsed !== undefined) obj.elapsed = Number(obj.elapsed);
-    if (obj.company !== undefined && obj.company === "") delete obj.company;
-    parsed = obj;
-    const vetted = vetFiles(files);
-    if (vetted === null) return badRequest();
-  } else {
+  {
     let raw;
     try {
       raw = await request.text();
@@ -439,27 +365,37 @@ export async function handleContact(request, env, fetchers) {
     : ((env && env.TURNSTILE_SECRET) || TS_TEST_SECRET);
   if (!(await turnstileOk(secret, v.token, ip, fx.turnstile))) return badRequest();
 
-  // #130 Vault: attachments -> Drive session folder (Strict-Drive).
-  // Drive failure fails the submission: no email without files, no files
-  // without email. aoin_cs cookie identifies the session folder.
+  // #130 v4b: attachments were uploaded browser→Drive before submit (step A
+  // minted sessions; step B PUT chunks straight to Google). This request
+  // carries form fields + {uploadId, files:[{id}]} only — NO file bytes.
+  // Turnstile was spent at A (ruling 8); possession of the staged uploadId
+  // bound to this aoin_cs cookie is the gate.
   let payload;
   let attMeta = [];
-  if (isMultipart && files.length > 0) {
-    if (!kv) return json(503, { ok: false, error: "vault_unavailable" });
-    // L5 first: daily byte quota BEFORE any Drive write
-    const totalBytes = files.reduce((n, f) => n + f.size, 0);
-    const q = await quotaCheck(kv, salt, ip, totalBytes, Date.now());
-    if (!q.ok) return json(429, { ok: false, error: "quota" });
-    const sessionId = parseSessionCookie(request.headers.get("cookie"));
-    if (!sessionId) return json(400, { ok: false, error: "session" });
+  const uploadId = parsed.uploadId;
+  const staged = uploadId ? await loadStaged(kv, uploadId) : null;
+  const wantsFiles = Array.isArray(parsed.vault_files) && parsed.vault_files.length > 0;
+
+  if (wantsFiles) {
+    if (!kv || !staged || staged.consumed) return json(400, { ok: false, error: "session" });
+    if (parseSessionCookie(request.headers.get("cookie")) !== staged.cs) {
+      return json(403, { ok: false, error: "session" });
+    }
+    // exactly the staged files, nothing more
+    if (parsed.vault_files.length !== staged.files.length) return badRequest();
+    const idByStamp = new Map();
+    for (const vf of parsed.vault_files) {
+      if (!vf || typeof vf.id !== "string" || vf.id.length > 128) return badRequest();
+      if (idByStamp.has(vf.name)) return badRequest(); // duplicate stamp
+      idByStamp.set(vf.name, vf.id);
+    }
     if (e2e) {
-      // e2e mode: NO Drive write, NO send — would-be folder + manifest
-      attMeta = attachmentSummary(files);
+      attMeta = staged.files.map((f) => ({ name: f.name, size: f.size, type: "drive" }));
       const e2ePayload = sesPayload(v);
       e2ePayload.Content.Simple.Body.Text.Data = bodyText({
         ...v,
-        attachmentCount: files.length,
-        attachmentFolderUrl: "https://drive.google.com/drive/folders/<e2e-would-create>",
+        attachmentCount: staged.files.length,
+        attachmentFolderUrl: folderUrl(staged.folderId),
         files: attMeta,
       });
       return json(202, {
@@ -468,34 +404,49 @@ export async function handleContact(request, env, fetchers) {
           payload: e2ePayload,
           attachments: attMeta,
           vault: {
-            sessionId,
-            folderUrl: "(would ensure 46017_inbox/" + sessionId + ")",
-            uploaded: [],
+            uploadId,
+            sessionId: staged.cs,
+            folderUrl: folderUrl(staged.folderId),
+            wouldVerify: staged.files.map((f) => ({ name: f.name, size: f.size })),
           },
         },
       });
     }
     try {
       const token = await getDriveToken(env, fx.drive);
-      const folderId = await ensureSessionFolder(token, sessionId, kv, fx.drive);
-      const uploaded = [];
-      for (const f of files) {
-        const bytes = await fileBytes(f);
-        uploaded.push(await uploadVaultFile(token, folderId,
-          { name: sanitizeFilename(f.name), type: f.type, bytes }, fx.drive));
+      const verified = [];
+      for (const f of staged.files) {
+        const id = idByStamp.get(f.name);
+        if (!id) return badRequest(); // staged file not matched by client
+        // Identity pin: verify the id resolves to THIS folder + THIS stamped
+        // name + declared size. Foreign ids can't satisfy all three.
+        const r = await fetch(
+          "https://www.googleapis.com/drive/v3/files/" + encodeURIComponent(id) +
+            "?fields=id,name,size,parents&supportsAllDrives=true",
+          { headers: { authorization: "Bearer " + token } },
+        );
+        if (!r.ok) return json(400, { ok: false, error: "upload_stale" });
+        const d = await r.json();
+        if (d.name !== f.name || Number(d.size) !== f.size
+          || !Array.isArray(d.parents) || !d.parents.includes(staged.folderId)) {
+          return json(400, { ok: false, error: "upload_stale" });
+        }
+        verified.push({ name: d.name, size: d.size });
       }
+      // consume single-use AFTER verification, BEFORE send (no replay).
+      if (!(await consumeStaged(kv, uploadId))) return json(400, { ok: false, error: "session" });
       const enriched = {
         ...v,
-        attachmentCount: uploaded.length,
-        attachmentFolderUrl: folderUrl(folderId),
-        files: uploaded.map((u) => ({ name: u.name, size: u.size, type: "drive" })),
+        attachmentCount: verified.length,
+        attachmentFolderUrl: folderUrl(staged.folderId),
+        files: verified.map((u) => ({ name: u.name, size: u.size, type: "drive" })),
       };
       payload = sesPayload(enriched);
       payload.FromEmailAddress = FROM;
       payload.ReplyToAddresses = [replyToAddr(v)];
       payload.Destination = { ToAddresses: [TO_BY_TOPIC[v.topic] || TO_BY_TOPIC.general] };
       payload.Content.Simple.Body.Text.Data = bodyText(enriched);
-      attMeta = uploaded.map((u) => ({ name: u.name, size: Number(u.size), type: "drive" }));
+      attMeta = verified.map((u) => ({ name: u.name, size: Number(u.size), type: "drive" }));
     } catch (_) {
       return json(502, { ok: false, error: "upstream" });
     }

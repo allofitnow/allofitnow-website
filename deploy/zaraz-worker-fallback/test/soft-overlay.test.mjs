@@ -50,7 +50,7 @@ describe("v3r soft overlay (#128)", () => {
     const r = await worker.fetch(req("/", SOFT_HOST), makeEnv(MAP));
     assert.equal(r.status, 200);
     assert.equal(r.headers.get("x-46009-soft"), "hit");
-    assert.equal(r.headers.get("x-46009-worker"), "v3r");
+    assert.equal(r.headers.get("x-46009-worker"), "v3s");
     assert.match(await r.text(), /SOFT_HOME/);
   });
 

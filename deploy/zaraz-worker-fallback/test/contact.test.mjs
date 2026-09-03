@@ -9,12 +9,12 @@ import {
   sesSend,
   handleContact,
   sanitizeFilename,
-  vetFiles,
-  buildRawMime,
+  vetFileDeclarations,
 } from "../src/contact.mjs";
 
 // ---- fixtures ------------------------------------------------------------
 
+const UPID = "11111111-2222-4333-8444-555555555555"; // staged-upload fixture id
 const GOOD = {
   name: "Howard Wong",
   email: "howard@example.com",
@@ -260,26 +260,16 @@ test("sanitizeFilename: basename, control chars, empties", () => {
   assert.equal(sanitizeFilename("résumé.pdf"), "résumé.pdf");
 });
 
-test("vetFiles: count/ext/size gates", () => {
+test("vetFileDeclarations (v4 A-step): count/ext/size gates on {name,size}", () => {
   const f = (name, size) => ({ name, size });
-  assert.equal(vetFiles([]).length, 0);
-  assert.equal(vetFiles(null).length, 0);
-  assert.ok(vetFiles([f("a.pdf", 100)]));
-  assert.equal(vetFiles([f("a.pdf", 100), f("b.png", 100), f("c.mov", 100), f("d.jpg", 100)]), null); // >3
-  assert.equal(vetFiles([f("a.exe", 100)]), null);      // bad ext
-  assert.equal(vetFiles([f("a.pdf", 0)]), null);        // empty file
-  assert.equal(vetFiles([f("a.pdf", 26 * 1024 * 1024)]), null); // per/total cap
-});
-
-test("buildRawMime: multipart/mixed structure + base64 attachment", async () => {
-  const v = validateFields(JSON.parse(JSON.stringify(GOOD)));
-  const raw = atob(await buildRawMime(v, [{ name: "spec.pdf", bytes: new TextEncoder().encode("%PDF-1.4 test") }]));
-  assert.ok(raw.includes("Content-Type: multipart/mixed;"));
-  assert.ok(raw.includes('From: "AOIN Knowledge" <support@allofitnow.com>') || raw.includes('From: "AOIN Website" <support@allofitnow.com>'));
-  assert.ok(raw.includes('filename="spec.pdf"'));
-  assert.ok(raw.includes("JVBERi0")); // %PDF base64 prefix
-  assert.ok(raw.includes("Content-Type: text/plain;"));
-  assert.ok(raw.endsWith("--" + raw.match(/boundary="([^"]+)"/)[1] + "--\r\n"));
+  assert.equal(vetFileDeclarations([]), null);            // empty now rejected at A
+  assert.equal(vetFileDeclarations(null), null);
+  assert.ok(vetFileDeclarations([f("a.pdf", 100)]));
+  assert.equal(vetFileDeclarations([f("a.pdf", 100), f("b.png", 100), f("c.mov", 100), f("d.jpg", 100)]), null); // >3
+  assert.equal(vetFileDeclarations([f("a.exe", 100)]), null);      // bad ext
+  assert.equal(vetFileDeclarations([f("a.pdf", 0)]), null);        // empty file
+  assert.equal(vetFileDeclarations([f("a.pdf", 26 * 1024 * 1024)]).length, 1); // 26MB fine now (100GB cap)
+  assert.equal(vetFileDeclarations([f("a.pdf", 100 * 1024 * 1024 * 1024 + 1)]), null); // >100GB total
 });
 
 function multipartReq(fd, ip) {
@@ -295,62 +285,70 @@ function multipartReq(fd, ip) {
     },
   });
 }
-test("multipart intake: valid files accepted, e2e returns vault shape + metadata", async () => {
-  const fd = new FormData();
-  for (const [k, val] of Object.entries(GOOD)) fd.append(k, String(val));
-  fd.append("files", new File(["%PDF-1.4 attachment test"], "pitch.pdf", { type: "application/pdf" }));
-  const req = multipartReq(fd, "10.4.0.1");
-  req.headers.set("cookie", "aoin_cs=11111111-2222-3333-4444-555555555555");
-  const r = await handleContact(req, mkEnv(new FakeKV()), okFetchers);
+test("v4b staged upload: fields+vault_files accepted, e2e returns vault shape", async () => {
+  // stage an upload as step A would
+  const kv = new FakeKV();
+  await kv.put("vault:" + UPID, JSON.stringify({
+    cs: "11111111-2222-3333-4444-555555555555",
+    folderId: "FID1",
+    ip: "10.4.0.1",
+    totalBytes: 24,
+    consumed: false,
+    files: [{ name: "20260903-230326_pitch.pdf", size: 24, url: "https://sess/x" }],
+  }));
+  const body = JSON.stringify({
+    ...GOOD,
+    uploadId: UPID,
+    vault_files: [{ id: "DRIVEID1", name: "20260903-230326_pitch.pdf" }],
+  });
+  const req = new Request("https://allofitnow.com/api/contact", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-aoin-e2e": "1",
+      "cf-connecting-ip": "10.4.0.1",
+      "cookie": "aoin_cs=11111111-2222-3333-4444-555555555555",
+    },
+    body,
+  });
+  const r = await handleContact(req, mkEnv(kv), okFetchers);
   assert.equal(r.status, 202);
   const j = JSON.parse(await r.text());
-  // v4a (#130): Simple SES payload with Attachment Folder line — no Raw MIME
-  assert.ok(!j.e2e.payload.Content.Raw, "Raw MIME must be gone in v4a");
-  const bodyText = j.e2e.payload.Content.Simple.Body.Text.Data;
-  assert.ok(bodyText.includes("Attachment Folder:"), "folder link line present");
-  assert.ok(bodyText.includes("pitch.pdf"), "manifest lists file");
-  assert.deepEqual(j.e2e.attachments, [{ name: "pitch.pdf", size: 24, type: "application/pdf" }]);
-  assert.ok(j.e2e.vault.sessionId === "11111111-2222-3333-4444-555555555555");
+  const text = j.e2e.payload.Content.Simple.Body.Text.Data;
+  assert.ok(text.includes("Attachment Folder:"), "folder link line present");
+  assert.ok(text.includes("20260903-230326_pitch.pdf"), "manifest lists stamped file");
+  assert.equal(j.e2e.vault.uploadId, UPID);
+  assert.ok(j.e2e.vault.folderUrl.includes("FID1"));
 });
 
-test("multipart intake: no session cookie -> 400 session error (#130)", async () => {
-  const fd = new FormData();
-  for (const [k, val] of Object.entries(GOOD)) fd.append(k, String(val));
-  fd.append("files", new File(["x"], "a.pdf", { type: "application/pdf" }));
-  const r = await handleContact(multipartReq(fd, "10.4.0.9"), mkEnv(new FakeKV()), okFetchers);
+test("v4b: no matching staged upload -> 400 session error", async () => {
+  const body = JSON.stringify({
+    ...GOOD,
+    uploadId: "00000000-0000-4000-8000-000000000000",
+    vault_files: [{ id: "DRIVEID1", name: "x.pdf" }],
+  });
+  const req = new Request("https://allofitnow.com/api/contact", {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      "x-aoin-e2e": "1",
+      "cf-connecting-ip": "10.4.0.9",
+      "cookie": "aoin_cs=11111111-2222-3333-4444-555555555555",
+    },
+    body,
+  });
+  const r = await handleContact(req, mkEnv(new FakeKV()), okFetchers);
   assert.equal(r.status, 400);
   const j = JSON.parse(await r.text());
   assert.equal(j.error, "session");
 });
 
-test("multipart intake: exe + oversize rejected with 400", async () => {
-  const mk = async (fname, content) => {
-    const fd = new FormData();
-    for (const [k, val] of Object.entries(GOOD)) fd.append(k, String(val));
-    fd.append("files", new File([content], fname, { type: "application/x-msdownload" }));
-    return handleContact(multipartReq(fd, "10.4.0.2"), mkEnv(new FakeKV()), okFetchers);
-  };
-  assert.equal((await mk("evil.exe", "MZ")).status, 400);
-  // 25.5MB passes the (absent-in-node) upload gate but fails the 25MB total vet -> 400
-  const fat = new Uint8Array(25 * 1024 * 1024 + 512 * 1024);
-  assert.equal((await mk("fat.pdf", fat)).status, 400);
-  // 26MB upload with content-length declared -> 413 upload gate (browser path)
-  {
-    const fd = new FormData();
-    for (const [k, val] of Object.entries(GOOD)) fd.append(k, String(val));
-    fd.append("files", new File([new Uint8Array(26 * 1024 * 1024)], "big.pdf"));
-    const enc2 = new Response(fd);
-    const text = await enc2.text();
-    const r = await handleContact(new Request("https://allofitnow.com/api/contact", {
-      method: "POST",
-      body: text,
-      headers: {
-        "content-type": enc2.headers.get("content-type"),
-        "x-aoin-e2e": "1",
-        "cf-connecting-ip": "10.4.0.3",
-        "content-length": String(text.length),
-      },
-    }), mkEnv(new FakeKV()), okFetchers);
-    assert.equal(r.status, 413);
-  }
+test("v4b: multipart body rejected outright (one transport — JSON only)", async () => {
+  const fd = new FormData();
+  for (const [k, val] of Object.entries(GOOD)) fd.append(k, String(val));
+  fd.append("files", new File(["MZ"], "evil.exe", { type: "application/x-msdownload" }));
+  const r = await handleContact(multipartReq(fd, "10.4.0.2"), mkEnv(new FakeKV()), okFetchers);
+  // multipart now parses as garbage JSON -> 400 (or 413 if huge); never 202
+  assert.ok(r.status === 400 || r.status === 413);
+  assert.notEqual(r.status, 202);
 });
