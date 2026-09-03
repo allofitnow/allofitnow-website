@@ -1,7 +1,8 @@
-// 46009 routing worker v3m - deploy/zaraz-worker-fallback/worker.js
-// v3m -> v3m (#109 banner v3: EU-only appearance, non-EU silent plane):
+// 46009 routing worker v3o - deploy/zaraz-worker-fallback/worker.js
+// v3m -> v3o (#123): Zaraz tag stripped (404 sitewide, superseded by GA4);
+// GA4 loader + SHIM + consent banner injection remain.
 // geo-aware consent gate in
-// injectZaraz() + worker-injected geo-split consent banner. Gate = single
+// injectAnalytics() + worker-injected geo-split consent banner. Gate = single
 // choke point for all tracking vectors (wiki cookie-compliance section 6).
 import { gateOpen } from "./src/gate.mjs";
 import { bannerFor } from "./src/banner.mjs";
@@ -82,7 +83,7 @@ const LEGACY_MAP = {
 };
 
 
-const ZARAZ_TAG = '<script src="/cdn-cgi/zaraz/i.js"></script>';
+// v3o (#123): Zaraz stripped - GA4 loader + SHIM + consent banner remain.
 
 // v3b shim (#63 AC2) + v3d manual page_view (#66); host-agnostic.
 const SHIM = [
@@ -90,7 +91,6 @@ const SHIM = [
   'var n=document.querySelector(\'.aoin-nav__menu-btn\');',
   'var s=document.querySelector(\'input[data-im-subject]\');',
   'if(b&&!b.__aoinBound){b.__aoinBound=1;b.addEventListener(\'click\',function(){',
-  'try{zaraz.track(\'inquiry_send\',{subject:(s&&s.value)||\'\'});}catch(e){}',
   'try{gtag(\'event\',\'inquiry_send\',{subject:(s&&s.value)||\'\'});}catch(e){}});}',
   'if(n&&!n.__aoinBound){n.__aoinBound=1;n.addEventListener(\'click\',function(){',
   'try{gtag(\'event\',\'nav_menu_open\');}catch(e){}});}}',
@@ -106,7 +106,7 @@ function redirect301(location) {
     headers: {
       "location": location,
       "cache-control": "public, max-age=86400",
-      "x-46009-worker": "v3m",
+      "x-46009-worker": "v3o",
     },
   });
 }
@@ -123,13 +123,13 @@ export default {
       if (request.method !== "POST") {
         return new Response("method not allowed", {
           status: 405,
-          headers: { "allow": "POST", "x-46009-worker": "v3m" },
+          headers: { "allow": "POST", "x-46009-worker": "v3o" },
         });
       }
       if (!SERVING_HOSTS.has(host)) {
         return new Response("host not served", {
           status: 403,
-          headers: { "x-46009-worker": "v3m" },
+          headers: { "x-46009-worker": "v3o" },
         });
       }
       return handleContact(request, env);
@@ -150,7 +150,7 @@ export default {
     if (!SERVING_HOSTS.has(host)) {
       return new Response("host not served", {
         status: 403,
-        headers: { "x-46009-worker": "v3m" },
+        headers: { "x-46009-worker": "v3o" },
       });
     }
 
@@ -180,7 +180,7 @@ export default {
     if (url.pathname.startsWith("/archive/")) {
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3m" },
+        headers: { "x-46009-worker": "v3o" },
       });
     }
 
@@ -215,18 +215,18 @@ export default {
       const notFound = await env.ASSETS.get("404.html");
       if (notFound !== null) {
         const buf = await notFound.arrayBuffer();
-        return new Response(injectZaraz(buf, host, request.headers.get("cf-ipcountry"), request.headers.get("cookie")), {
+        return new Response(injectAnalytics(buf, host, request.headers.get("cf-ipcountry"), request.headers.get("cookie")), {
           status: 404,
           headers: {
             "content-type": MIME.html,
             "cache-control": "no-cache",
-            "x-46009-worker": "v3m",
+            "x-46009-worker": "v3o",
           },
         });
       }
       return new Response("not found", {
         status: 404,
-        headers: { "x-46009-worker": "v3m" },
+        headers: { "x-46009-worker": "v3o" },
       });
     }
 
@@ -234,7 +234,7 @@ export default {
     const headers = new Headers();
     headers.set("etag", obj.httpEtag);
     headers.set("content-type", MIME[ext] || "application/octet-stream");
-    headers.set("x-46009-worker", "v3m");
+    headers.set("x-46009-worker", "v3o");
     if (ext === "html") {
       headers.set("cache-control", "no-cache");
     } else {
@@ -245,13 +245,13 @@ export default {
     }
     if (ext === "html") {
       const buf = await obj.arrayBuffer();
-      return new Response(injectZaraz(buf, host, request.headers.get("cf-ipcountry"), request.headers.get("cookie")), { status: 200, headers });
+      return new Response(injectAnalytics(buf, host, request.headers.get("cf-ipcountry"), request.headers.get("cookie")), { status: 200, headers });
     }
     return new Response(obj.body, { status: 200, headers });
   },
 };
 
-function injectZaraz(buf, host, country, cookieHeader) {
+function injectAnalytics(buf, host, country, cookieHeader) {
   const html = new TextDecoder().decode(buf);
   const ga4id = GA4_BY_HOST[host] || GA4_BY_HOST["46009.someofitlater.com"];
   // design-preview fab: any host except production (owner ruling 2026-09-01)
@@ -263,8 +263,10 @@ function injectZaraz(buf, host, country, cookieHeader) {
     const b = bannerFor(country, ga4id, cookieHeader, preview);
     return appendBeforeBodyEnd(html, b.html);
   }
-  if (html.includes("/cdn-cgi/zaraz/i.js")) return html; // idempotent
-  const tags = ZARAZ_TAG + loaderScriptTag(ga4id) + "<script>" + gtagInitJs(ga4id, country) + "</script>" + SHIM;
+  // v3o (#123): guard on the GA4 loader (Zaraz stripped; old guard keyed on
+  // the zaraz tag string and would wrongly skip injection everywhere post-strip)
+  if (html.includes("googletagmanager")) return html; // idempotent
+  const tags = loaderScriptTag(ga4id) + "<script>" + gtagInitJs(ga4id, country) + "</script>" + SHIM;
   let out = html;
   if (out.includes("</head>")) {
     out = out.replace("</head>", tags + "</head>");
