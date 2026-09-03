@@ -29,6 +29,14 @@ import { getEquipment } from '../data/equipment';
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
+// #118: crawler-meta parity with Base.astro (#67). This page is a full HTML
+// document outside the Base layout, so the head block (and its SITE_URL origin
+// from astro.config `site` / SITE_URL env at build time) is repeated here.
+// Keep in step with Base.astro.
+const SITE_URL = Astro.site?.toString().replace(/\/$/, '') ?? 'https://46009.someofitlater.com';
+const title = 'Services — All Of It Now';
+const description = 'All Of It Now — a real-time content and show production studio in Los Angeles.';
+
 // Section copy + gallery images — Payload-ready via a typed async accessor (local seed today,
 // a Payload collection later). The galleries feed the ported Codrops "mwg" components.
 const services = await getServiceSections();
@@ -188,7 +196,23 @@ const mrVidAttrs = (g: (typeof MR)[number]) => {
   })();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Services — All Of It Now</title>
+<title>{title}</title>
+<meta name="description" content={description} />
+{/* #118: same #67 crawler meta as Base.astro — crawlers don't run JS, so this
+    lives in the served HTML. og:image is the pinned raster card from Base. */}
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
+<meta property="og:type" content="website" />
+<meta property="og:site_name" content="All Of It Now" />
+<meta property="og:image" content={`${SITE_URL}/assets/og-image.png`} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:url" content={`${SITE_URL}${Astro.url.pathname}`} />
+<link rel="canonical" href={`${SITE_URL}${Astro.url.pathname}`} />
+<meta name="twitter:card" content="summary_large_image" />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
+<meta name="twitter:image" content={`${SITE_URL}/assets/og-image.png`} />
 {/* This page is a full HTML document outside Base.astro, so every <head> tag
     Base provides has to be repeated here. Keep these two in step with Base. */}
 <link rel="icon" href="/favicon.ico" sizes="32x32" />
