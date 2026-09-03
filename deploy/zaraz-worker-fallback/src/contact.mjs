@@ -2,9 +2,15 @@
 // SSOT: wiki "contact-form". Vet order pinned: shape/size -> L1 -> L3 -> L2 -> L4 -> send.
 // Zero npm deps: SigV4 via WebCrypto, DoH/Turnstile/SES via plain fetch.
 
-const STAMP = "v3m";
+const STAMP = "v3n";
 const FROM = "support@allofitnow.com";
-const TO = "info@allofitnow.com";
+// 2026-09-03 user decision: per-topic routing (all three mailboxes exist in
+// Google Workspace). Supersedes D3 single-funnel. SSOT: wiki "contact-form".
+const TO_BY_TOPIC = {
+  general: "info@allofitnow.com",
+  rentals: "rentals@allofitnow.com",
+  careers: "careers@allofitnow.com",
+};
 const SES_REGION = "us-east-1";
 const SES_HOST = "email.us-east-1.amazonaws.com";
 const SES_PATH = "/v2/email/outbound-emails";
@@ -162,7 +168,7 @@ export function sesPayload(v) {
   return {
     FromEmailAddress: FROM,
     ReplyToAddresses: [v.email],
-    Destination: { ToAddresses: [TO] },
+    Destination: { ToAddresses: [TO_BY_TOPIC[v.topic] || TO_BY_TOPIC.general] },
     Content: {
       Simple: {
         Subject: { Data: `[AOIN/${v.topic}] ${v.name} - website inquiry` },

@@ -196,12 +196,27 @@ test("content-length over cap -> 413 before parse", async () => {
 
 // ---- SES payload + signatures -------------------------------------------
 
-test("sesPayload: From support@, ReplyTo submitter, To info@", () => {
-  const p = sesPayload(validateFields(JSON.parse(JSON.stringify(GOOD))));
-  assert.equal(p.FromEmailAddress, "support@allofitnow.com");
-  assert.deepEqual(p.ReplyToAddresses, ["howard@example.com"]);
-  assert.deepEqual(p.Destination.ToAddresses, ["info@allofitnow.com"]);
-  assert.ok(p.Content.Simple.Subject.Data.startsWith("[AOIN/general]"));
+test("sesPayload: From support@, ReplyTo submitter, To routes per topic (v3n)", () => {
+  const mk = (topic) =>
+    sesPayload(validateFields({ ...JSON.parse(JSON.stringify(GOOD)), topic }));
+  const cases = {
+    general: "info@allofitnow.com",
+    rentals: "rentals@allofitnow.com",
+    careers: "careers@allofitnow.com",
+  };
+  for (const [topic, to] of Object.entries(cases)) {
+    const p = mk(topic);
+    assert.equal(p.FromEmailAddress, "support@allofitnow.com");
+    assert.deepEqual(p.ReplyToAddresses, ["howard@example.com"]);
+    assert.deepEqual(p.Destination.ToAddresses, [to]);
+    assert.ok(p.Content.Simple.Subject.Data.startsWith(`[AOIN/${topic}]`));
+  }
+  // Unknown topic is 400'd by validateFields (returns null), so it can't reach
+  // sesPayload in prod — but the builder still fails safe to the general inbox.
+  const safe = validateFields(JSON.parse(JSON.stringify(GOOD)));
+  assert.deepEqual(
+    sesPayload({ ...safe, topic: "nope" }).Destination.ToAddresses,
+    ["info@allofitnow.com"]);
 });
 
 test("bucketKeys: fixed UTC hour/day buckets", () => {
