@@ -373,10 +373,95 @@ SWEEP_RATIO="${AOIN_SWEEP_MAX_RATIO:-0.25}"
 SWEEP_KEYS_LOG="$LOGDIR/sweep-$PUBLISH_ID.txt"
 : >"$SWEEP_KEYS_LOG"
 if [ "$SOFT" -eq 1 ]; then
-  # soft (#128): the sweep is a ROOT-space operation (root-manifest keys
-  # absent from the soft manifest are NOT orphans — deleting them would
-  # break live). Soft-namespace hygiene = promote-time (promote.sh).
-  echo "phase: sweep skipped (soft mode; root orphans are root-publish-only)"
+  # soft (#129): root sweep is skipped (root-manifest keys absent from the
+  # soft manifest are NOT orphans), but the SOFT NAMESPACE gets its own
+  # prune: retention = 1 generation. Everything under soft/ was self-archived
+  # at write time (phase-2/3 archive loops land under soft/archive/<pid>/),
+  # so deletes are plain (2026-08-31 ruling). soft/manifests/ never swept.
+  # Expected set = current tree keys UNION this-gen overlay media keys.
+  SOFT_SWEEP_LIST="/tmp/prod-softsweep-$PUBLISH_ID.txt"
+  : >"$SOFT_SWEEP_LIST"
+  aws_retry softsweep-ls s3 ls "s3://$BUCKET/soft/" --recursive >>"$SOFT_SWEEP_LIST" || SWEEP_RC=1
+  if [ "$SWEEP_RC" -eq 0 ]; then
+    SOFT_ORPHANS=$("$PY" - "$LOCAL_MAN" "$OVERLAY_MAN" "$SOFT_SWEEP_LIST" "$SWEEP_RATIO" <<'PYK3'
+import json, sys
+man = json.load(open(sys.argv[1]))
+expected = {k["key"] for k in man["keys"]}
+total = len(man["keys"])
+# this-gen overlay media (media/<k> keys soft actually holds)
+try:
+    expected |= {"media/" + l.strip() for l in open(sys.argv[2]) if l.strip()}
+except FileNotFoundError:
+    pass
+live = set()
+for line in open(sys.argv[3]):
+    parts = line.split()
+    if len(parts) >= 4:
+        key = parts[3]
+        if key.startswith("soft/"):
+            key = key[len("soft/"):]
+        if key.startswith(("archive/", "manifests/")):
+            continue  # never swept (retention handled separately below)
+        live.add(key)
+orphans = sorted(live - expected)
+try:
+    ratio = float(sys.argv[4])
+except ValueError:
+    ratio = 0.25
+if total == 0 or len(orphans) > ratio * total:
+    print("ABORT:%d" % len(orphans))
+else:
+    for k in orphans:
+        print(k)
+PYK3
+)
+    case "$SOFT_ORPHANS" in
+      ABORT:*)
+        echo "prod: soft sweep guard RED: ${SOFT_ORPHANS#ABORT:} orphans > ratio $SWEEP_RATIO of manifest - refusing; inspect $SOFT_SWEEP_LIST" >&2
+        SWEEP_RC=1 ;;
+      *)
+        while IFS= read -r k; do
+          [ -n "$k" ] || continue
+          if [ "$DRY_RUN" -eq 1 ]; then
+            echo "prod: [dryrun] soft prune soft/$k"
+          elif aws_retry softsweep-rm s3api delete-object --bucket "$BUCKET" --key "soft/$k"; then
+            SWEEP_N=$((SWEEP_N + 1))
+            printf '%s\n' "$k" >>"$SWEEP_KEYS_LOG"
+          else
+            SWEEP_RC=1
+          fi
+        done <<<"$SOFT_ORPHANS"
+        ;;
+    esac
+    # archive retention (#129): keep ONLY this generation's soft/archive/
+    # <pid>/; older pids are superseded (root copies exist at promote time).
+    if [ "$DRY_RUN" -ne 1 ] && [ "$SWEEP_RC" -eq 0 ]; then
+      SOFT_ARCH_GUARD="$(mktemp)"
+      if aws_retry softarch-ls s3api list-objects-v2 --bucket "$BUCKET" --prefix "soft/archive/" --delimiter "/" \
+          --query "CommonPrefixes[].Prefix" --output text >"$SOFT_ARCH_GUARD"; then
+        for p in $(cat "$SOFT_ARCH_GUARD"); do
+          case "$p" in
+            soft/archive/"$PUBLISH_ID"/) continue ;;
+            soft/archive/*/)
+              aws_retry softarch-ls2 s3 ls "s3://$BUCKET/$p" --recursive \
+                | awk -v pre="soft/archive" '{print $4}' >"/tmp/prod-softarch-rm-$PUBLISH_ID.txt"
+              while IFS= read -r k; do
+                [ -n "$k" ] || continue
+                if aws_retry softarch-rm s3api delete-object --bucket "$BUCKET" --key "$k"; then
+                  SWEEP_N=$((SWEEP_N + 1))
+                  printf '%s\n' "$k" >>"$SWEEP_KEYS_LOG"
+                else
+                  SWEEP_RC=1
+                fi
+              done </tmp/prod-softarch-rm-$PUBLISH_ID.txt
+              ;;
+          esac
+        done
+      fi
+      rm -f "$SOFT_ARCH_GUARD"
+    fi
+    [ "$SWEEP_N" -gt 0 ] && echo "phase: sweep (soft) pruned $SWEEP_N keys (retention=1 gen; log $SWEEP_KEYS_LOG)"
+  fi
 elif [ "$DRY_RUN" -eq 1 ]; then
   echo "prod: [dryrun] sweep skipped (would diff live _astro/+html vs manifest)"
 else
