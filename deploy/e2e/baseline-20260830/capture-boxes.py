@@ -7,7 +7,7 @@ Output: boxes.json committed beside the baseline manifest."""
 import json, os, sys, time
 from playwright.sync_api import sync_playwright
 
-HOST = "46009.someofitlater.com"
+HOST = os.environ.get("AOIN_E2E_TARGET", "46009.someofitlater.com")
 BASE = f"https://{HOST}"
 REAL_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 PAGES = ["/", "/services", "/work", "/work/martin-garrix"]
@@ -49,6 +49,15 @@ with sync_playwright() as p:
                                   device_scale_factor=vp["deviceScaleFactor"])
         for path in PAGES:
             page = ctx.new_page()
+            # freeze animations from phase 0 (marquee/carousel/rungs): inject BEFORE page
+            # scripts so CSS animations never advance past their first keyframe
+            page.add_init_script("""
+(() => {
+  const s = document.createElement('style');
+  s.textContent = '* { animation-play-state: paused !important; transition: none !important; }';
+  document.addEventListener('DOMContentLoaded', () => document.head && document.head.append(s));
+})();
+""")
             page.goto(BASE + path, wait_until="domcontentloaded", timeout=45000)
             page.wait_for_timeout(1500)
             scroll_full(page)

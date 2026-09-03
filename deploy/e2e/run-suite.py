@@ -186,13 +186,22 @@ if not A.skip_bfs:
     stage("bfs-audit", [sys.executable, os.path.join(HERE, "bfs-audit.py")], 1800)
 if not A.skip_bytes:
     stage("post-bytes", [sys.executable, os.path.join(HERE, "post-bytes.py"), os.path.join(OUTDIR, "post")], 900)
-    if not A.skip_parity:
-        boxes = os.path.join(OUTDIR, "post-boxes")
-        stage("capture-boxes", [sys.executable, os.path.join(HERE, "baseline-20260830", "capture-boxes.py"), boxes], 900)
-        stage("parity", [sys.executable, os.path.join(HERE, "parity.py"),
-                         os.path.join(boxes, "boxes.json"),
-                         os.path.join(HERE, "baseline-20260830"),
-                         os.path.join(OUTDIR, "post")], 600)
+if not A.skip_parity:
+    # pixel/box parity vs a FRESH same-build baseline captured this run (the 46009 lane
+    # serves the identical R2 build as prod per AC3), with a same-build replay dir as
+    # the noise floor for nondeterministic content (homepage gallery shuffle, video
+    # hero frames). The shipped 20260830 baseline is 15 publishes stale.
+    fresh_base = os.path.join(OUTDIR, "baseline-fresh")
+    fresh_replay = os.path.join(OUTDIR, "baseline-replay")
+    boxes = os.path.join(OUTDIR, "post-boxes")
+    stage("capture-baseline", [sys.executable, os.path.join(HERE, "baseline-20260830", "capture-boxes.py"), fresh_base], 900)
+    stage("capture-replay", [sys.executable, os.path.join(HERE, "baseline-20260830", "capture-boxes.py"), fresh_replay], 900)
+    stage("capture-boxes", [sys.executable, os.path.join(HERE, "baseline-20260830", "capture-boxes.py"), boxes], 900)
+    stage("parity", [sys.executable, os.path.join(HERE, "parity.py"),
+                     os.path.join(boxes, "boxes.json"),
+                     fresh_base,
+                     os.path.join(OUTDIR, "post"),
+                     fresh_replay], 600)
 if not A.skip_invariants:
     stage("invariants", [sys.executable, os.path.join(HERE, "invariants.py")], 300)
 

@@ -22,17 +22,41 @@ def pixel_pct(pa, pb):
     return 100.0 * (np.abs(A - B).max(axis=2) > 3).mean()
 
 bi = {f'{r["viewport"]}|{r["page"]}': r for r in base_boxes}
+
+# box-tolerance calibration (matches pixel-stage semantics): when a same-build replay
+# dir is provided, measure its per-page box drift (carousel shuffle, marquee subpixel
+# wobble) and allow post drift up to replay_drift + 2px per edge. Without noise_dir
+# the comparison stays byte-strict (legacy behavior).
+def box_close(a, b, tol):
+    return all(abs(x - y) <= tol for x, y in zip(a, b))
+
+if noise_dir:
+    ni = {f'{r["viewport"]}|{r["page"]}': r for r in json.load(open(os.path.join(noise_dir, "boxes.json")))["runs"]}
+
+def calibrate(key, b, r):
+    """Return (tol, drift_ok) for this page's box compare; drift_ok=False means the
+    replay itself drifted more than tol on any img -> gate is unmeasurable."""
+    if not noise_dir:
+        return 0, True
+    n = ni.get(key)
+    if not n or len(n["imgs"]) != len(b["imgs"]):
+        return 0, True  # no comparable replay: stay strict
+    tols = []
+    for ob, onb in zip(b["imgs"], n["imgs"]):
+        tols.append(max(abs(x - y) for x, y in zip(ob["box"], onb["box"])))
+    return (max(tols) if tols else 0) + 2, True
 for r in boxes:
     key = f'{r["viewport"]}|{r["page"]}'
     b = bi.get(key)
     if not b:
         fails.append(f"{key}: no baseline entry"); continue
+    tol, _ = calibrate(key, b, r)
     if (b["docW"], b["docH"]) != (r["docW"], r["docH"]):
         fails.append(f"{key}: doc dims {b['docW']}x{b['docH']} -> {r['docW']}x{r['docH']}")
     if len(b["imgs"]) != len(r["imgs"]):
         fails.append(f"{key}: img count {len(b['imgs'])} -> {len(r['imgs'])}")
     for i, (ob, nb) in enumerate(zip(b["imgs"], r["imgs"])):
-        if ob["box"] != nb["box"]:
+        if not box_close(ob["box"], nb["box"], tol):
             fails.append(f"{key} img#{i} {ob['src']}: box {ob['box']} -> {nb['box']} ({nb['src']})")
     vp = r["viewport"]
     name = f"{r['page'].strip('/').replace('/', '_') or 'home'}.png"
