@@ -5,7 +5,7 @@ mobile DPR=3 leg (issue pass-8 pin). Prints totals vs baseline gate."""
 import json, os, sys, time
 from playwright.sync_api import sync_playwright
 
-HOST = "46009.someofitlater.com"
+HOST = os.environ.get("AOIN_E2E_TARGET", "46009.someofitlater.com")
 BASE = f"https://{HOST}"
 REAL_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 PAGES = ["/", "/services", "/work", "/work/martin-garrix"]
