@@ -638,21 +638,45 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
     }
 
     // Lazy Turnstile: load the api.js + render on first open only.
+    // #122: a widget that cannot load (visitor network blocks challenges.cloudflare.com,
+    // IPv6-only orchestration hosts, DNS filters) must surface the mailto fallback
+    // instead of dead-ending the visitor at "PLEASE FINISH THE VERIFICATION STEP".
+    let tsBroken = false;
+    function tsFail(why: string) {
+      if (tsBroken) return;
+      tsBroken = true;
+      gaev('contact_error', { code: 'turnstile_' + why });
+      setStatus('VERIFICATION UNAVAILABLE — USE THE EMAIL LINK BELOW', 'err');
+      showFallback();
+    }
     function ensureTurnstile() {
       if (tsReady || !sitekey) return;
       tsReady = true;
       const w = window as any;
+      const armed = Date.now();
       if (!w.turnstile) {
         const sc = document.createElement('script');
         sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
         sc.async = true;
         sc.defer = true;
+        sc.onerror = () => tsFail('api_load');
         document.head.appendChild(sc);
       }
       (function poll() {
         const w2 = window as any;
+        if (tsBroken) return; // failed already: fallback is showing
         if (w2.turnstile && w2.turnstile.render) {
-          tsWidgetId = w2.turnstile.render(tsHost, { sitekey });
+          try {
+            tsWidgetId = w2.turnstile.render(tsHost, {
+              sitekey,
+              // Turnstile's own error path (e.g. 200500 iframe-load): our status
+              // line + mailto fallback replace the opaque internal error UI.
+              'error-callback': (code: number | string) => { tsFail('err' + code); return true; },
+              'timeout-callback': () => { tsFail('timeout'); },
+            });
+          } catch (_) { tsFail('render'); }
+        } else if (Date.now() - armed > 12000) {
+          tsFail('api_poll'); // api.js never arrived (blocked at network level)
         } else {
           setTimeout(poll, 120);
         }
@@ -692,7 +716,14 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
         const token =
           (tsWidgetId && w.turnstile && w.turnstile.getResponse && w.turnstile.getResponse(tsWidgetId)) || '';
         if (!token) {
-          setStatus('PLEASE FINISH THE VERIFICATION STEP', 'err');
+          if (tsBroken) {
+            // #122: widget already failed (fallback visible) - never demand
+            // the impossible token again.
+            setStatus('VERIFICATION UNAVAILABLE — USE THE EMAIL LINK BELOW', 'err');
+            showFallback();
+          } else {
+            setStatus('PLEASE FINISH THE VERIFICATION STEP', 'err');
+          }
           ensureTurnstile();
           return;
         }
@@ -726,6 +757,7 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
             } catch (_) { /* sent already confirmed */ }
             tsHost.innerHTML = '';
             tsReady = false; // re-arms lazy render for a follow-up inquiry
+            tsBroken = false; // #122: a failed widget must not poison the next send
             return;
           }
           if (res.status === 429) {
