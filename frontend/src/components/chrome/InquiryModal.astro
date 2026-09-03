@@ -712,14 +712,22 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
             gaev('contact_success', { topic: TOPICS[active] });
             [nameIn, emailIn, subject, message, hp].forEach((el) => ((el as HTMLInputElement).value = ''));
             refreshLive();
-            if (tsWidgetId && w.turnstile && w.turnstile.reset) w.turnstile.reset(tsWidgetId);
+            // Teardown is best-effort and ISOLATED: a widget hiccup must never
+            // flip an already-delivered SENT into an error state (#114 live report).
+            try {
+              if (tsWidgetId && w.turnstile && w.turnstile.remove) w.turnstile.remove(tsWidgetId);
+            } catch (_) { /* sent already confirmed */ }
+            tsHost.innerHTML = '';
+            tsReady = false; // re-arms lazy render for a follow-up inquiry
             return;
           }
           if (res.status === 429) {
             const ra = parseInt(res.headers.get('retry-after') || '0', 10);
             setStatus('TOO MANY SENDS — TRY AGAIN IN ' + (ra > 0 ? Math.ceil(ra / 60) + ' MIN' : 'A BIT'), 'err');
             gaev('contact_error', { code: 'rate_limited' });
-            if (tsWidgetId && w.turnstile && w.turnstile.reset) w.turnstile.reset(tsWidgetId);
+            try {
+              if (tsWidgetId && w.turnstile && w.turnstile.reset) w.turnstile.reset(tsWidgetId);
+            } catch (_) { /* ignore */ }
             return;
           }
           throw new Error('status ' + res.status);
@@ -727,7 +735,9 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
           setStatus('SEND FAILED — USE THE EMAIL LINK BELOW', 'err');
           gaev('contact_error', { code: 'network' });
           showFallback();
-          if (tsWidgetId && w.turnstile && w.turnstile.reset) w.turnstile.reset(tsWidgetId);
+          try {
+            if (tsWidgetId && w.turnstile && w.turnstile.reset) w.turnstile.reset(tsWidgetId);
+          } catch (_) { /* ignore */ }
         } finally {
           send.removeAttribute('data-sending');
         }
