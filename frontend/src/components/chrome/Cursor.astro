@@ -18,13 +18,10 @@
       cursor: none !important;
     }
   }
-  /* Native dialogs render in the TOP LAYER, above the crosshair's z-index —
-     over an open dialog the crosshair is occluded while the native cursor is
-     still suppressed (= blank cursor, #120). Restore the native cursor there. */
-  dialog[open],
-  dialog[open] * {
-    cursor: auto !important;
-  }
+  /* #120 once restored the native cursor over open dialogs (top-layer
+     occluded the crosshair). Superseded by the designer's a9d889c fix:
+     the cursor is now RESEATED into the open dialog (a descendant paints
+     with it), so the crosshair shows and the native cursor stays hidden. */
 </style>
 
 <style>
