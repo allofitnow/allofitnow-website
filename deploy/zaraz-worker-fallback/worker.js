@@ -123,7 +123,7 @@ export default {
       if (request.method !== "POST") {
         return new Response("method not allowed", {
           status: 405,
-          headers: { "x-46009-worker": "v3m" },
+          headers: { "allow": "POST", "x-46009-worker": "v3m" },
         });
       }
       if (!SERVING_HOSTS.has(host)) {
