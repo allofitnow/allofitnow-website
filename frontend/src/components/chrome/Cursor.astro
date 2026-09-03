@@ -18,6 +18,13 @@
       cursor: none !important;
     }
   }
+  /* Native dialogs render in the TOP LAYER, above the crosshair's z-index —
+     over an open dialog the crosshair is occluded while the native cursor is
+     still suppressed (= blank cursor, #120). Restore the native cursor there. */
+  dialog[open],
+  dialog[open] * {
+    cursor: auto !important;
+  }
 </style>
 
 <style>
