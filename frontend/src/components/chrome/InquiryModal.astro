@@ -842,6 +842,13 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
       fileIn.value = '';
     });
 
+    // #126: origins that carry the Cloudflare worker (and thus /api/contact
+    // + a Turnstile-eligible hostname). Everything else — astro preview,
+    // merge previews, localhost — takes the debug submit path instead of
+    // erroring against an endpoint that isn't there.
+    const LIVE_HOSTS = ['allofitnow.com', 'www.allofitnow.com', '46009.someofitlater.com'];
+    const isLiveHost = () => LIVE_HOSTS.includes(location.hostname);
+
     send.addEventListener('click', async () => {
       if (send.hasAttribute('data-sending')) return;
       const nameV = nameIn.value.trim();
@@ -849,6 +856,30 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
       const bodyV = message.value.trim();
       if (!nameV || !emailV || !bodyV) {
         setStatus('PLEASE FILL NAME, EMAIL AND BODY', 'err');
+        return;
+      }
+      // #126: host without the worker (astro preview / merge previews / any
+      // non-live origin). /api/contact only exists behind the Cloudflare edge
+      // and Turnstile is domain-bound, so a real submit can never succeed here
+      // — it would just error. Instead: an ordinary JS dialog confirming the
+      // fields WOULD have been submitted. Validation above still runs, so the
+      // debug path is only reachable with a well-formed inquiry.
+      if (!isLiveHost()) {
+        const attBytes = picked.reduce((s, f) => s + f.size, 0);
+        window.alert(
+          'DEBUG — PREVIEW HOST, NOTHING WAS SENT\n\n' +
+            'This inquiry would have been submitted:\n' +
+            'TOPIC: ' + TOPICS[active] + '\n' +
+            'NAME: ' + nameV + '\n' +
+            'EMAIL: ' + emailV + '\n' +
+            (subject.value.trim() ? 'SUBJECT: ' + subject.value.trim() + '\n' : '') +
+            'MESSAGE: ' + bodyV.length + ' characters\n' +
+            'ATTACHMENTS: ' + picked.length + (picked.length ? ' (' + fmtMB(attBytes) + ' total)' : '')
+        );
+        setStatus('DEBUG PREVIEW — NOTHING WAS SENT', 'ok');
+        [nameIn, emailIn, subject, message, hp].forEach((el) => ((el as HTMLInputElement).value = ''));
+        picked = [];
+        renderChips();
         return;
       }
       if (sitekey) {
