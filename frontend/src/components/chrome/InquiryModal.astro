@@ -1141,8 +1141,37 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
       if (e.target === dlg) dlg.close(); // ::backdrop clicks land on the dialog
     });
 
+    // ── #131: hash deep links ────────────────────────────────────────────
+    // Fragments never reach the server, so the /careers 301 (CF dynamic
+    // redirect, #131) lands here: #contact opens the modal on the default
+    // tab; #contact-rentals / #contact-careers pre-pick that tab. Runs on
+    // load and on hashchange so pasted links work from any page; the
+    // nav/footer CONTACT click (href="#contact") flows through the same
+    // path without double-opening (the click opens first, hashchange sees
+    // dlg.open and returns).
+    function openFromHash() {
+      const m = location.hash.match(/^#contact(?:-(rentals|careers))?$/);
+      if (!m || dlg.open) return;
+      if (m[1]) {
+        const i = TOPICS.indexOf(m[1]);
+        if (i > 0) pick(i);
+      }
+      dlg.showModal();
+      place();
+      ensureTurnstile();
+    }
+    // A cleared hash keeps a plain reload from surprise-reopening the modal
+    // (replaceState: no history entry, no scroll jump). Deep links stay
+    // bookmarkable by re-pasting, which is the shared-URL use case.
+    dlg.addEventListener('close', () => {
+      if (/^#contact(-rentals|-careers)?$/.test(location.hash))
+        history.replaceState(null, '', location.pathname + location.search);
+    });
+    window.addEventListener('hashchange', openFromHash);
+
     window.addEventListener('resize', place);
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(place);
     place();
+    openFromHash();
   }
 </script>
