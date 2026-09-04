@@ -65,12 +65,18 @@ const {
 // the addresses are public, we just decline to publish them pre-chewed.
 const emails = tabs.map((t) => t.email);
 const emailsEnc = emails.map((e) => Buffer.from(e, 'utf8').toString('base64'));
+// #113: send path is POST /api/contact on the zone worker (L1-L4 vet + SES).
+// The encoded per-tab addresses survive as the FALLBACK link shown when the
+// API path fails -- never a dead end.
+// Public Turnstile sitekey (the secret lives on the worker only).
+const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
 ---
 
 <dialog
   class="im"
   data-inquiry
   data-emails={JSON.stringify(emailsEnc)}
+  data-sitekey={SITEKEY}
   data-subject-prefix={subjectPrefix}
   aria-label="Contact"
 >
@@ -109,6 +115,17 @@ const emailsEnc = emails.map((e) => Buffer.from(e, 'utf8').toString('base64'));
         </p>
       </div>
 
+      <div class="im__names">
+        <label class="im__field">
+          <span class="im__label">NAME</span>
+          <input type="text" data-im-name autocomplete="name" maxlength="80" spellcheck="false" placeholder="YOUR NAME" />
+        </label>
+        <label class="im__field">
+          <span class="im__label">EMAIL</span>
+          <input type="email" data-im-email autocomplete="email" maxlength="254" spellcheck="false" placeholder="YOU@STUDIO.COM" />
+        </label>
+      </div>
+
       <label class="im__field">
         <span class="im__label">SUBJECT</span>
         <input type="text" data-im-subject spellcheck="false" placeholder={subjectPlaceholder} />
@@ -116,8 +133,40 @@ const emailsEnc = emails.map((e) => Buffer.from(e, 'utf8').toString('base64'));
 
       <label class="im__field">
         <span class="im__label">BODY</span>
-        <textarea data-im-message spellcheck="false" rows="5"></textarea>
+        <textarea data-im-message spellcheck="false" rows="5" maxlength="5000"></textarea>
       </label>
+
+      {/* #125: secure attachment upload — files go straight to the team inbox, nothing stored. */}
+      <div class="im__files" data-im-files>
+        <input
+          type="file"
+          data-im-file
+          multiple
+          hidden
+          accept=".pdf,.doc,.docx,.ppt,.pptx,.key,.jpg,.jpeg,.png,.gif,.webp,.mp4,.mov,.webm,.zip"
+        />
+        <div class="im__files-row">
+          <button type="button" class="im__attach" data-im-attach>+ ATTACH FILES</button>
+          <span class="im__secure">SECURE — FILES GO TO A PRIVATE FOLDER. WE EMAIL YOUR MESSAGE WITH A SECURE LINK.</span>
+        </div>
+        <div class="im__chips" data-im-chips></div>
+      </div>
+
+      {/* L1 honeypot -- humans never see it; the server rejects anything that fills it. */}
+      <div class="im__hp" aria-hidden="true">
+        <label>
+          COMPANY
+          <input type="text" data-im-company tabindex="-1" autocomplete="off" />
+        </label>
+      </div>
+
+      {/* Turnstile (Managed) -- lazy-rendered on first open; invisible for most visitors. */}
+      <div class="im__ts" data-im-ts></div>
+
+      <div class="im__post">
+        <p class="im__status" data-im-status role="status" aria-live="polite"></p>
+        <a class="im__fallback" data-im-fallback href="#" hidden>OR EMAIL US DIRECTLY</a>
+      </div>
     </div>
 
     <footer class="im__bar im__bar--foot">
@@ -333,6 +382,125 @@ const emailsEnc = emails.map((e) => Buffer.from(e, 'utf8').toString('base64'));
   }
   .im__field ::placeholder { color: rgba(217, 225, 234, 0.28); }
 
+  /* ── #113: name/email pair, honeypot, turnstile, status, fallback ──────── */
+  .im__names {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 24px;
+  }
+  .im__names .im__field input { font-size: 17px; }
+  .im__hp {
+    position: absolute;
+    left: -9999px;
+    top: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  /* ── #125: attachments — secure direct-to-inbox upload ─────────────────── */
+  .im__files {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .im__files-row {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    flex-wrap: wrap;
+  }
+  .im__attach {
+    background: none;
+    border: 0;
+    border-bottom: var(--bar-stroke-w, 1px) solid rgba(217, 225, 234, var(--bar-stroke-o, 0.16));
+    padding: 0 0 6px;
+    margin: 0;
+    color: rgba(217, 225, 234, 0.45);
+    font-family: var(--font-mono, 'SN Ja Mono'), monospace;
+    font-weight: 300;
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    text-transform: uppercase;
+    cursor: pointer;
+    transition: border-color var(--bar-fill-ms, 420ms) linear, color var(--bar-fill-ms, 420ms) linear;
+  }
+  .im__attach:hover,
+  .im__attach:focus-visible {
+    outline: none;
+    color: var(--aoin-cool-white, rgb(217, 225, 234));
+    border-bottom-color: var(--aoin-cool-white, rgb(217, 225, 234));
+  }
+  .im__secure {
+    font-family: var(--font-mono, 'SN Ja Mono'), monospace;
+    font-weight: 300;
+    font-size: 9px;
+    letter-spacing: 0.18em;
+    color: rgba(217, 225, 234, 0.3);
+    text-transform: uppercase;
+  }
+  .im__chips {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+  .im__chip {
+    display: flex;
+    align-items: baseline;
+    gap: 10px;
+    font-family: var(--font-mono, 'SN Ja Mono'), monospace;
+    font-weight: 300;
+    font-size: 10px;
+    letter-spacing: 0.12em;
+    color: rgba(217, 225, 234, 0.7);
+  }
+  .im__chip-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 60%;
+  }
+  .im__chip-size { color: rgba(217, 225, 234, 0.35); }
+  .im__chip-x {
+    background: none;
+    border: 0;
+    padding: 0 0 0 4px;
+    margin: 0;
+    color: rgba(217, 225, 234, 0.45);
+    font: inherit;
+    cursor: pointer;
+  }
+  .im__chip-x:hover { color: var(--aoin-cool-white, rgb(217, 225, 234)); }
+
+  .im__ts:empty { display: none; }
+  .im__post {
+    display: flex;
+    align-items: baseline;
+    gap: 18px;
+    min-height: 14px;
+  }
+  .im__status {
+    margin: 0;
+    font-family: var(--font-mono, 'SN Ja Mono'), monospace;
+    font-weight: 300;
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    color: rgba(217, 225, 234, 0.45);
+    text-transform: uppercase;
+  }
+  .im__status[data-kind='err'] { color: rgba(217, 225, 234, 0.85); }
+  .im__status[data-kind='ok'] { color: var(--aoin-cool-white, rgb(217, 225, 234)); }
+  .im__fallback {
+    font-family: var(--font-mono, 'SN Ja Mono'), monospace;
+    font-weight: 300;
+    font-size: 10px;
+    letter-spacing: 0.24em;
+    color: rgba(217, 225, 234, 0.7);
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+  .im__send[data-sending] { pointer-events: none; opacity: 0.55; }
+
   /* ── SEND INQUIRY — the primary, in three states ───────────────────────── */
   .im__send {
     display: inline-flex;
@@ -445,6 +613,7 @@ const emailsEnc = emails.map((e) => Buffer.from(e, 'utf8').toString('base64'));
     .im__row { flex-direction: column; align-items: flex-start; gap: 12px; }
     .im__tab { font-size: 12px; padding: 0 12px; }
     .im__to { font-size: 10px; letter-spacing: 0.16em; }
+    .im__names { grid-template-columns: 1fr; gap: 20px; }
     .im__field input,
     .im__field textarea { font-size: 17px; padding-bottom: 10px; }
     .im__field textarea { min-height: 140px; }
@@ -485,7 +654,13 @@ const emailsEnc = emails.map((e) => Buffer.from(e, 'utf8').toString('base64'));
     const to = dlg.querySelector<HTMLElement>('[data-im-to]')!;
     const subject = dlg.querySelector<HTMLInputElement>('[data-im-subject]')!;
     const message = dlg.querySelector<HTMLTextAreaElement>('[data-im-message]')!;
+    const nameIn = dlg.querySelector<HTMLInputElement>('[data-im-name]')!;
+    const emailIn = dlg.querySelector<HTMLInputElement>('[data-im-email]')!;
+    const hp = dlg.querySelector<HTMLInputElement>('[data-im-company]')!;
     const send = dlg.querySelector<HTMLButtonElement>('[data-im-send]')!;
+    const attachBtn = dlg.querySelector<HTMLButtonElement>('[data-im-attach]')!;
+    const fileIn = dlg.querySelector<HTMLInputElement>('[data-im-file]')!;
+    const chips = dlg.querySelector<HTMLElement>('[data-im-chips]')!;
     let active = 0;
 
     // The markup ships the TO line empty (the address is encoded — see the
@@ -510,26 +685,442 @@ const emailsEnc = emails.map((e) => Buffer.from(e, 'utf8').toString('base64'));
       tabs.forEach((t, n) => t.setAttribute('aria-selected', n === i ? 'true' : 'false'));
       place();
       scramble(to, (emails[i] || '').toUpperCase());
+      // Status/fallback from another tab is stale (old result, wrong inbox).
+      // Reset the plate unless that tab's send is still mid-flight.
+      if (!send.hasAttribute('data-sending')) {
+        setStatus('');
+        fallback.hidden = true;
+      }
     }
 
     tabs.forEach((t, i) => t.addEventListener('click', () => pick(i)));
 
-    // The primary lights up only when there is something to send.
-    message.addEventListener('input', () => {
-      if (message.value.trim()) send.setAttribute('data-live', '');
+    // The primary lights up only when the required fields have content.
+    function refreshLive() {
+      const ok = nameIn.value.trim() && emailIn.value.trim() && message.value.trim();
+      if (ok) send.setAttribute('data-live', '');
       else send.removeAttribute('data-live');
-    });
+    }
+    [nameIn, emailIn, message].forEach((el) => el.addEventListener('input', refreshLive));
 
-    send.addEventListener('click', () => {
-      const body = message.value;
-      if (!body.trim()) return;
+    /* ── #113: send via POST /api/contact (worker vets L1-L4 + SES) ────── */
+    const statusEl = dlg.querySelector<HTMLElement>('[data-im-status]')!;
+    const fallback = dlg.querySelector<HTMLAnchorElement>('[data-im-fallback]')!;
+    const tsHost = dlg.querySelector<HTMLElement>('[data-im-ts]')!;
+    const sitekey = (dlg.dataset.sitekey || '').trim();
+    const TOPICS = ['general', 'rentals', 'careers'];
+    let tsReady = false;
+    let tsWidgetId: string | undefined;
+    const t0map = new Map<HTMLInputElement | HTMLTextAreaElement, number>();
+
+    function setStatus(text: string, kind?: 'ok' | 'err') {
+      statusEl.textContent = text;
+      if (kind) statusEl.setAttribute('data-kind', kind);
+      else statusEl.removeAttribute('data-kind');
+    }
+
+    function showFallback() {
       const typed = subject.value.trim();
       const label = tabs[active]?.textContent?.trim() || 'GENERAL';
       const subj = (prefix ? prefix + ' — ' : '') + (typed || label + ' INQUIRY');
-      window.location.href =
+      const body = message.value;
+      fallback.href =
         'mailto:' + emails[active] +
         '?subject=' + encodeURIComponent(subj) +
         '&body=' + encodeURIComponent(body);
+      fallback.hidden = false;
+    }
+
+    // Lazy Turnstile: load the api.js + render on first open only.
+    // #122: a widget that cannot load (visitor network blocks challenges.cloudflare.com,
+    // IPv6-only orchestration hosts, DNS filters) must surface the mailto fallback
+    // instead of dead-ending the visitor at "PLEASE FINISH THE VERIFICATION STEP".
+    let tsBroken = false;
+    function tsFail(why: string) {
+      if (tsBroken) return;
+      tsBroken = true;
+      gaev('contact_error', { code: 'turnstile_' + why });
+      setStatus('VERIFICATION UNAVAILABLE — USE THE EMAIL LINK BELOW', 'err');
+      showFallback();
+    }
+    function ensureTurnstile() {
+      if (tsReady || !sitekey) return;
+      tsReady = true;
+      const w = window as any;
+      const armed = Date.now();
+      if (!w.turnstile) {
+        const sc = document.createElement('script');
+        sc.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+        sc.async = true;
+        sc.defer = true;
+        sc.onerror = () => tsFail('api_load');
+        document.head.appendChild(sc);
+      }
+      (function poll() {
+        const w2 = window as any;
+        if (tsBroken) return; // failed already: fallback is showing
+        if (w2.turnstile && w2.turnstile.render) {
+          try {
+            tsWidgetId = w2.turnstile.render(tsHost, {
+              sitekey,
+              // Turnstile's own error path (e.g. 200500 iframe-load): our status
+              // line + mailto fallback replace the opaque internal error UI.
+              'error-callback': (code: number | string) => { tsFail('err' + code); return true; },
+              'timeout-callback': () => { tsFail('timeout'); },
+            });
+          } catch (_) { tsFail('render'); }
+        } else if (Date.now() - armed > 12000) {
+          tsFail('api_poll'); // api.js never arrived (blocked at network level)
+        } else {
+          setTimeout(poll, 120);
+        }
+      })();
+    }
+
+    // D2 time-trap: earliest field interaction starts the clock.
+    [nameIn, emailIn, subject, message].forEach((el) => {
+      el.addEventListener('focus', () => {
+        if (!t0map.has(el as any)) t0map.set(el as any, Date.now());
+      });
+    });
+    function elapsedMs(): number {
+      let t0 = Infinity;
+      t0map.forEach((v) => (t0 = Math.min(t0, v)));
+      return t0 === Infinity ? 0 : Date.now() - t0;
+    }
+
+    function gaev(name: string, params?: Record<string, unknown>) {
+      try {
+        const w = window as any;
+        if (w.gtag) w.gtag('event', name, params);
+      } catch (_) { /* never block UX */ }
+    }
+
+    // ── #130 v4: attachments — chunked browser→Drive uploads (100 GB) ──────
+    // Client vet mirrors step A (max 3, ext allow-list, 100 GB total). Bytes
+    // never touch our worker: A mints resumable sessions, B PUTs chunks
+    // straight to Google, C submits fields + {uploadId, vault_files:[ids]}.
+    const FILE_MAX = 3;
+    const FILES_TOTAL_MAX = 100 * 1024 * 1024 * 1024; // 100 GB (#130 v4)
+    const FILE_EXTS = /\.(pdf|doc|docx|ppt|pptx|key|jpg|jpeg|png|gif|webp|mp4|mov|webm|zip)$/i;
+    const CHUNK = 64 * 1024 * 1024; // 64 MiB — a multiple of 256 KiB (probe rule)
+    const fmtMB = (b: number) => (b / (1024 * 1024)).toFixed(b < 10 * 1024 * 1024 ? 1 : 0) + ' MB';
+    const fmtSize = (b: number) =>
+      b >= 1024 * 1024 * 1024 ? (b / (1024 * 1024 * 1024)).toFixed(1) + ' GB' : fmtMB(b);
+    let picked: File[] = [];
+    let uploading = false;            // a send-with-files is in flight
+    let currentXhr: XMLHttpRequest | null = null;
+    let staged: { uploadId: string; files: { name: string; size: number; url: string }[] } | null = null;
+    const pct = new Map<string, number>(); // stamped name -> 0..1
+    const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+    function renderChips() {
+      chips.textContent = '';
+      picked.forEach((f, i) => {
+        const row = document.createElement('div');
+        row.className = 'im__chip';
+        const nm = document.createElement('span');
+        nm.className = 'im__chip-name';
+        nm.textContent = f.name;
+        const sz = document.createElement('span');
+        sz.className = 'im__chip-size';
+        const stamped = staged?.files[i]?.name;
+        if (uploading && stamped) {
+          const p = pct.get(stamped);
+          sz.textContent = p === undefined ? 'WAIT' : p >= 1 ? 'DONE' : 'UPLOADING ' + Math.floor(p * 100) + '%';
+        } else {
+          sz.textContent = fmtSize(f.size);
+        }
+        const x = document.createElement('button');
+        x.type = 'button';
+        x.className = 'im__chip-x';
+        x.setAttribute('aria-label', 'Remove ' + f.name);
+        x.textContent = '×';
+        if (uploading) x.disabled = true;
+        x.addEventListener('click', () => {
+          picked.splice(i, 1);
+          renderChips();
+        });
+        row.append(nm, sz, x);
+        chips.append(row);
+      });
+    }
+    attachBtn.addEventListener('click', () => fileIn.click());
+    fileIn.addEventListener('change', () => {
+      if (uploading) return; // no mid-upload mutations
+      const inFiles = Array.from(fileIn.files || []);
+      const next = [...picked];
+      for (const f of inFiles) {
+        if (!FILE_EXTS.test(f.name)) { setStatus('UNSUPPORTED FILE TYPE — ' + f.name.toUpperCase(), 'err'); continue; }
+        if (next.length >= FILE_MAX) { setStatus('MAX ' + FILE_MAX + ' FILES', 'err'); break; }
+        next.push(f);
+      }
+      const total = next.reduce((s, f) => s + f.size, 0);
+      if (total > FILES_TOTAL_MAX) { setStatus('FILES EXCEED 100 GB TOTAL', 'err'); return; }
+      picked = next;
+      renderChips();
+      fileIn.value = '';
+    });
+
+    /* ── B: PUT chunks straight to Google on the minted session URL ─────── */
+    interface PutResult { status: number; getHeader: (h: string) => string | null; body: string }
+    function putChunk(url: string, blob: Blob, range: string, onProg?: (loaded: number) => void): Promise<PutResult> {
+      return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        currentXhr = xhr;
+        xhr.open('PUT', url);
+        xhr.setRequestHeader('Content-Range', range);
+        xhr.setRequestHeader('Content-Type', 'application/octet-stream');
+        if (onProg) xhr.upload.onprogress = (e) => { if (e.loaded) onProg(e.loaded); };
+        xhr.onload = () =>
+          resolve({ status: xhr.status, getHeader: (h) => xhr.getResponseHeader(h), body: xhr.responseText || '' });
+        xhr.onerror = () => reject(new Error('network'));
+        xhr.ontimeout = () => reject(new Error('timeout'));
+        xhr.onabort = () => reject(new Error('aborted'));
+        xhr.send(blob);
+      });
+    }
+    // Resume probe: PUT 'bytes */total' -> 308 + readable Range (probe-proven),
+    // or 200/201 when the file had already completed.
+    async function sessionOffset(url: string, total: number): Promise<{ done: boolean; id?: string; offset: number }> {
+      const r = await putChunk(url, new Blob([]), 'bytes */' + total);
+      if (r.status === 200 || r.status === 201) {
+        let id: string | undefined;
+        try { id = JSON.parse(r.body).id; } catch (_) { /* fields=id asked at mint */ }
+        return { done: true, id, offset: total };
+      }
+      if (r.status === 308) {
+        const rng = r.getHeader('range'); // "bytes=0-N"
+        const m = rng && rng.match(/bytes=0-(\d+)/);
+        return { done: false, offset: m ? Number(m[1]) + 1 : 0 };
+      }
+      throw new Error('drive ' + r.status);
+    }
+    async function uploadOne(file: File, meta: { name: string; size: number; url: string }): Promise<string> {
+      let offset = 0;
+      let attempt = 0;
+      for (;;) {
+        if (offset >= file.size) {
+          // every byte landed but no 200 seen (can happen on resume) — query
+          const st = await sessionOffset(meta.url, file.size);
+          if (st.done && st.id) return st.id;
+          offset = st.offset;
+          continue;
+        }
+        const end = Math.min(offset + CHUNK, file.size);
+        try {
+          const r = await putChunk(
+            meta.url, file.slice(offset, end),
+            'bytes ' + offset + '-' + (end - 1) + '/' + file.size,
+            (loaded) => { pct.set(meta.name, Math.min(1, (offset + loaded) / file.size)); renderChips(); },
+          );
+          if (r.status === 200 || r.status === 201) {
+            pct.set(meta.name, 1);
+            renderChips();
+            const j = JSON.parse(r.body || '{}');
+            if (!j.id) throw new Error('no id on final chunk');
+            return j.id;
+          }
+          if (r.status === 308) { offset = end; attempt = 0; continue; }
+          throw new Error('drive ' + r.status);
+        } catch (e) {
+          attempt++;
+          if (attempt > 4) throw e;
+          await sleep(attempt * 1500);
+          const st = await sessionOffset(meta.url, file.size); // resume from what landed
+          if (st.done && st.id) return st.id;
+          offset = st.offset;
+        }
+      }
+    }
+    async function abortUpload() {
+      try { currentXhr?.abort(); } catch (_) { /* ignore */ }
+      currentXhr = null;
+      if (staged) {
+        try {
+          await fetch('/api/vault/abort', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({ uploadId: staged.uploadId }),
+          });
+        } catch (_) { /* best-effort; KV entry expires on its own */ }
+      }
+      staged = null;
+      uploading = false;
+      pct.clear();
+      renderChips();
+    }
+
+    // #126: origins that carry the Cloudflare worker (and thus /api/contact
+    // + a Turnstile-eligible hostname). Everything else — astro preview,
+    // merge previews, localhost — takes the debug submit path instead of
+    // erroring against an endpoint that isn't there.
+    const LIVE_HOSTS = ['allofitnow.com', 'www.allofitnow.com', '46009.someofitlater.com'];
+    const isLiveHost = () => LIVE_HOSTS.includes(location.hostname);
+
+    send.addEventListener('click', async () => {
+      if (send.hasAttribute('data-sending')) return;
+      const nameV = nameIn.value.trim();
+      const emailV = emailIn.value.trim();
+      const bodyV = message.value.trim();
+      if (!nameV || !emailV || !bodyV) {
+        setStatus('PLEASE FILL NAME, EMAIL AND BODY', 'err');
+        return;
+      }
+      // #126: host without the worker (astro preview / merge previews / any
+      // non-live origin). /api/contact only exists behind the Cloudflare edge
+      // and Turnstile is domain-bound, so a real submit can never succeed here
+      // — it would just error. Instead: an ordinary JS dialog confirming the
+      // fields WOULD have been submitted. Validation above still runs, so the
+      // debug path is only reachable with a well-formed inquiry.
+      if (!isLiveHost()) {
+        const attBytes = picked.reduce((s, f) => s + f.size, 0);
+        window.alert(
+          'DEBUG — PREVIEW HOST, NOTHING WAS SENT\n\n' +
+            'This inquiry would have been submitted:\n' +
+            'TOPIC: ' + TOPICS[active] + '\n' +
+            'NAME: ' + nameV + '\n' +
+            'EMAIL: ' + emailV + '\n' +
+            (subject.value.trim() ? 'SUBJECT: ' + subject.value.trim() + '\n' : '') +
+            'MESSAGE: ' + bodyV.length + ' characters\n' +
+            'ATTACHMENTS: ' + picked.length + (picked.length ? ' (' + fmtMB(attBytes) + ' total)' : '')
+        );
+        setStatus('DEBUG PREVIEW — NOTHING WAS SENT', 'ok');
+        [nameIn, emailIn, subject, message, hp].forEach((el) => ((el as HTMLInputElement).value = ''));
+        picked = [];
+        renderChips();
+        return;
+      }
+      if (sitekey) {
+        const w = window as any;
+        const token =
+          (tsWidgetId && w.turnstile && w.turnstile.getResponse && w.turnstile.getResponse(tsWidgetId)) || '';
+        if (!token) {
+          if (tsBroken) {
+            // #122: widget already failed (fallback visible) - never demand
+            // the impossible token again.
+            setStatus('VERIFICATION UNAVAILABLE — USE THE EMAIL LINK BELOW', 'err');
+            showFallback();
+          } else {
+            setStatus('PLEASE FINISH THE VERIFICATION STEP', 'err');
+          }
+          ensureTurnstile();
+          return;
+        }
+        send.setAttribute('data-sending', '');
+        gaev('contact_submit', { topic: TOPICS[active] });
+        try {
+          // ── #130 v4: attachments ride the A→B→C chain ─────────────────
+          let uploadId: string | undefined;
+          let vaultFiles: { id: string; name: string }[] | undefined;
+          if (picked.length > 0) {
+            uploading = true;
+            try {
+              // A: mint sessions (Turnstile spent here — single use)
+              setStatus('PREPARING UPLOAD…');
+              const aRes = await fetch('/api/vault/session', {
+                method: 'POST',
+                headers: { 'content-type': 'application/json' },
+                body: JSON.stringify({
+                  files: picked.map((f) => ({ name: f.name, size: f.size })),
+                  turnstile: token,
+                }),
+              });
+              if (aRes.status === 429) {
+                const ra = parseInt(aRes.headers.get('retry-after') || '0', 10);
+                setStatus('TOO MANY SENDS — TRY AGAIN IN ' + (ra > 0 ? Math.ceil(ra / 60) + ' MIN' : 'A BIT'), 'err');
+                try {
+                  if (tsWidgetId && w.turnstile && w.turnstile.reset) w.turnstile.reset(tsWidgetId);
+                } catch (_) { /* ignore */ }
+                return;
+              }
+              if (aRes.status !== 200) throw new Error('session ' + aRes.status);
+              const stagedNow = await aRes.json();
+              staged = stagedNow;
+              // B: PUT chunks straight to Google, resume on failure
+              const ids: string[] = [];
+              for (let i = 0; i < picked.length; i++) {
+                setStatus('UPLOADING ' + (i + 1) + '/' + picked.length + '…');
+                ids.push(await uploadOne(picked[i], stagedNow.files[i]));
+              }
+              uploadId = stagedNow.uploadId;
+              vaultFiles = stagedNow.files.map((f: { name: string }, i: number) => ({ id: ids[i], name: f.name }));
+            } finally {
+              uploading = false;
+            }
+          }
+          // C: fields + {uploadId, vault_files} — worker verifies each file
+          // id against the staged folder/name/size before sending email.
+          setStatus(picked.length > 0 ? 'SENDING…' : 'SENDING…');
+          const res = await fetch('/api/contact', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify({
+              name: nameV,
+              email: emailV,
+              message: (subject.value.trim() ? '[' + subject.value.trim() + '] ' : '') + bodyV,
+              topic: TOPICS[active],
+              company: hp.value,
+              elapsed: elapsedMs(),
+              cf_turnstile: token,
+              ...(uploadId && vaultFiles ? { uploadId, vault_files: vaultFiles } : {}),
+            }),
+          });
+          if (res.status === 202) {
+            setStatus('SENT — WE WILL BE IN TOUCH', 'ok');
+            gaev('contact_success', { topic: TOPICS[active] });
+            [nameIn, emailIn, subject, message, hp].forEach((el) => ((el as HTMLInputElement).value = ''));
+            picked = []; // #130
+            staged = null;
+            pct.clear();
+            renderChips();
+            t0map.clear();
+            refreshLive();
+            // Teardown is best-effort and ISOLATED: a widget hiccup must never
+            // flip an already-delivered SENT into an error state (#114 live report).
+            try {
+              if (tsWidgetId && w.turnstile && w.turnstile.remove) w.turnstile.remove(tsWidgetId);
+            } catch (_) { /* sent already confirmed */ }
+            tsHost.innerHTML = '';
+            tsReady = false; // re-arms lazy render for a follow-up inquiry
+            tsBroken = false; // #122: a failed widget must not poison the next send
+            return;
+          }
+          if (res.status === 429) {
+            const ra = parseInt(res.headers.get('retry-after') || '0', 10);
+            setStatus('TOO MANY SENDS — TRY AGAIN IN ' + (ra > 0 ? Math.ceil(ra / 60) + ' MIN' : 'A BIT'), 'err');
+            gaev('contact_error', { code: 'rate_limited' });
+            try {
+              if (tsWidgetId && w.turnstile && w.turnstile.reset) w.turnstile.reset(tsWidgetId);
+            } catch (_) { /* ignore */ }
+            return;
+          }
+          // Non-202 from C: the staged record may or may not be consumed
+          // (session errors = not consumed; upstream = consumed-or-ambiguous).
+          // The email fallback guarantees no dead end either way.
+          setStatus('SEND FAILED — USE THE EMAIL LINK BELOW', 'err');
+          gaev('contact_error', { code: 'status_' + res.status });
+          showFallback();
+          try {
+            if (tsWidgetId && w.turnstile && w.turnstile.reset) w.turnstile.reset(tsWidgetId);
+          } catch (_) { /* ignore */ }
+        } catch (_) {
+          // A/B failure (upload chain threw): staged cleanup + fallback.
+          if (uploading || staged) await abortUpload();
+          setStatus('UPLOAD FAILED — USE THE EMAIL LINK BELOW', 'err');
+          gaev('contact_error', { code: 'network' });
+          showFallback();
+          try {
+            if (tsWidgetId && w.turnstile && w.turnstile.reset) w.turnstile.reset(tsWidgetId);
+          } catch (_) { /* ignore */ }
+        } finally {
+          send.removeAttribute('data-sending');
+        }
+        return;
+      }
+      // No sitekey shipped (unexpected build state): fall back to mailto.
+      showFallback();
+      setStatus('OPENING YOUR EMAIL CLIENT…', 'err');
     });
 
     // Open from anything carrying [data-inquiry-open] — delegated at the document
@@ -541,6 +1132,7 @@ const emailsEnc = emails.map((e) => Buffer.from(e, 'utf8').toString('base64'));
       e.preventDefault();
       dlg.showModal();
       place();
+      ensureTurnstile();
     });
     dlg.querySelectorAll('[data-inquiry-close]').forEach((el) =>
       el.addEventListener('click', () => dlg.close())

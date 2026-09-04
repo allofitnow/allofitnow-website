@@ -18,6 +18,10 @@
       cursor: none !important;
     }
   }
+  /* #120 once restored the native cursor over open dialogs (top-layer
+     occluded the crosshair). Superseded by the designer's a9d889c fix:
+     the cursor is now RESEATED into the open dialog (a descendant paints
+     with it), so the crosshair shows and the native cursor stays hidden. */
 </style>
 
 <style>
@@ -115,5 +119,40 @@
         split(on ? SPLIT : 0);
       },
     };
+
+    // The contact modal is a native <dialog> opened with showModal(), which puts it
+    // in the TOP LAYER -- painted above every normal element whatever its z-index. So
+    // the crosshair (z-index 90) disappeared behind it, on the one screen the site
+    // actually asks you to type into.
+    //
+    // Nothing outside a modal dialog can stack above it. Promoting the cursor into
+    // the top layer as a popover does not do it either: tested here, a popover shown
+    // AFTER the dialog opened still painted underneath. The way up is to BE inside
+    // it, because a descendant is painted with the dialog.
+    //
+    // That is only safe because .im is a bare box: the blur sits on .im__panel and
+    // .im::backdrop, and .im carries no transform, filter or overflow of its own. So
+    // position:fixed still resolves against the viewport -- the existing
+    // translate3d(clientX, clientY) maths is untouched -- and nothing clips it.
+    const reseat = (): void => {
+      const dlg = document.querySelector('dialog[open]') as HTMLElement | null;
+      const host: HTMLElement = dlg || document.body;
+      if (cur.parentElement !== host) host.appendChild(cur);
+    };
+    reseat();
+
+    // Watch `open` toggles rather than the DOM at large, so this costs nothing until
+    // a dialog actually opens or closes. Closing returns the cursor to <body>.
+    new MutationObserver((records) => {
+      for (const r of records) {
+        if ((r.target as HTMLElement).tagName === 'DIALOG') {
+          reseat();
+          return;
+        }
+      }
+    }).observe(document.documentElement, { attributes: true, attributeFilter: ['open'], subtree: true });
+
+    // A soft-nav swaps the document body; make sure the cursor is seated in the new one.
+    document.addEventListener('astro:page-load', reseat);
   })();
 </script>

@@ -21,7 +21,8 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(os.path.dirname(HERE))
 EDGE_IP = "104.21.90.237"          # CF anycast edge serving the worker (46009 lane)
 EDGE_SNI = "46009.someofitlater.com"  # valid edge cert + worker route; Host header carries the target zone
-GA4_ID = "G-1TVWRSCCLN"            # prod measurement id (property 552018344)
+GA4_ID = "G-1TVWRSCCLN"            # staging lane id (property 552018344; --target 46009.someofitlater.com)
+GA4_ID_PROD = "G-NDWE8QHK9W"      # prod id (property 552145556; --target allofitnow.com)
 PAGES = ["/", "/services", "/work", "/work/martin-garrix"]
 REAL_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 # CUT-5 explicit MATCH 301 map (source: wiki Legacy-URL-correlation-map, DECIDED 2026-08-30)
@@ -44,6 +45,9 @@ for s in ("bfs", "bytes", "parity", "invariants"):
     ap.add_argument(f"--skip-{s}", action="store_true")
 A = ap.parse_args()
 TARGET, PINNED = A.target, A.pinned
+# per-host GA4 id (worker v3e+ maps Host -> Measurement ID; #71 AC3): staging lane keeps
+# the 46009 id, allofitnow.com asserts the prod id. Falls back to staging id (legacy behavior).
+GA4_ID = GA4_ID_PROD if TARGET == "allofitnow.com" else GA4_ID
 BASE = f"https://{TARGET}"
 MODE = "pinned" if PINNED else "live"
 STAMP = datetime.datetime.utcnow().strftime("%Y%m%d")
@@ -182,13 +186,22 @@ if not A.skip_bfs:
     stage("bfs-audit", [sys.executable, os.path.join(HERE, "bfs-audit.py")], 1800)
 if not A.skip_bytes:
     stage("post-bytes", [sys.executable, os.path.join(HERE, "post-bytes.py"), os.path.join(OUTDIR, "post")], 900)
-    if not A.skip_parity:
-        boxes = os.path.join(OUTDIR, "post-boxes")
-        stage("capture-boxes", [sys.executable, os.path.join(HERE, "baseline-20260830", "capture-boxes.py"), boxes], 900)
-        stage("parity", [sys.executable, os.path.join(HERE, "parity.py"),
-                         os.path.join(boxes, "boxes.json"),
-                         os.path.join(HERE, "baseline-20260830"),
-                         os.path.join(OUTDIR, "post")], 600)
+if not A.skip_parity:
+    # pixel/box parity vs a FRESH same-build baseline captured this run (the 46009 lane
+    # serves the identical R2 build as prod per AC3), with a same-build replay dir as
+    # the noise floor for nondeterministic content (homepage gallery shuffle, video
+    # hero frames). The shipped 20260830 baseline is 15 publishes stale.
+    fresh_base = os.path.join(OUTDIR, "baseline-fresh")
+    fresh_replay = os.path.join(OUTDIR, "baseline-replay")
+    boxes = os.path.join(OUTDIR, "post-boxes")
+    stage("capture-baseline", [sys.executable, os.path.join(HERE, "baseline-20260830", "capture.py"), fresh_base], 1200)
+    stage("capture-replay", [sys.executable, os.path.join(HERE, "baseline-20260830", "capture.py"), fresh_replay], 1200)
+    stage("capture-boxes", [sys.executable, os.path.join(HERE, "baseline-20260830", "capture-boxes.py"), boxes], 1200)
+    stage("parity", [sys.executable, os.path.join(HERE, "parity.py"),
+                     os.path.join(boxes, "boxes.json"),
+                     fresh_base,
+                     os.path.join(OUTDIR, "post"),
+                     fresh_replay], 600)
 if not A.skip_invariants:
     stage("invariants", [sys.executable, os.path.join(HERE, "invariants.py")], 300)
 

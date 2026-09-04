@@ -33,6 +33,10 @@ export interface Reel {
   vimeoId: string;
   /** Privacy hash for an unlisted Vimeo video; '' when the video is public. */
   hash: string;
+  /** #99 rendition ladder, ascending by width. NEVER empty for an upload: the
+   *  master is always pushed as the top rung, so a ladder-less upload degrades
+   *  to today's single-source behaviour through the same picker. */
+  rungs: { w: number; url: string }[];
 }
 
 // The stand-in from the prototype. Unlike the rest of this file it is a FALLBACK rather
@@ -44,6 +48,7 @@ const REEL_SEED: Reel = {
   poster: '',
   vimeoId: '1153696598',
   hash: '028fbff75b',
+  rungs: [],
 };
 
 /** The hero reel: the `homepage` global's, falling back to the seed above. */
@@ -145,7 +150,7 @@ export const footer = {
   info: [
     'AOIN IS A CREATIVE TECHNOLOGY STUDIO, PARTNERING WITH AGENCIES AND ARTISTS TO PUSH THE BOUNDARIES OF REAL-TIME DESIGN ACROSS TV, FILM, CORPORATE EVENTS, AND LIVE MUSIC.',
   ],
-  legal: ['ALL OF IT NOW. ESTD. 2014.', '2026 ALL RIGHTS RESERVED.'],
+  legal: ['ALL OF IT NOW. EST. 2014.', '2026 ALL RIGHTS RESERVED.'],
   navPrimary: [
     { label: 'WORK', href: '/work' },
     { label: 'SERVICES', href: '/services' },
@@ -158,5 +163,5 @@ export const footer = {
     ...social,
     { label: 'INFO@ALLOFITNOW.COM', href: 'mailto:info@allofitnow.com' },
   ] as SocialLink[],
-  address: ['1651 S CENTRAL AVE', 'GLENDALE, CA 91204', 'UNITED STATES'],
+  address: ['1651 S CENTRAL AVE, SUITE F', 'GLENDALE, CA 91204', '(415) 525-4215'],
 };

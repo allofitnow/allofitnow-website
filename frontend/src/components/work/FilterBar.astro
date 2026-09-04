@@ -120,7 +120,9 @@ import { CAPABILITIES } from '@/data/projects';
 
   /* Mobile: single view only (drop the view toggles), and let the five long
      capability names WRAP onto as many lines as they need — compact 11px, no
-     horizontal scroll. */
+     horizontal scroll. Centred rather than flush left: the names are uneven
+     enough that a ragged left-aligned block reads as a mistake, and each wrapped
+     line centres on its own, so the group sits under the heading as a unit. */
   @media (max-width: 720px) {
     .filterbar {
       gap: 0;
@@ -130,7 +132,7 @@ import { CAPABILITIES } from '@/data/projects';
     }
     .filters {
       flex-wrap: wrap;
-      justify-content: flex-start;
+      justify-content: center;
       gap: 6px 4px;
     }
     .filt {

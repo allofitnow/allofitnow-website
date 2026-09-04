@@ -1,0 +1,307 @@
+{
+ "target": "allofitnow.com",
+ "mode": "live",
+ "startedAt": "2026-09-03T15:08:37Z",
+ "gates": [
+  {
+   "name": "page /",
+   "ok": true,
+   "detail": "200"
+  },
+  {
+   "name": "ga4 /",
+   "ok": true,
+   "detail": "G-NDWE8QHK9W in HTML"
+  },
+  {
+   "name": "title /",
+   "ok": true,
+   "detail": "non-empty <title>"
+  },
+  {
+   "name": "description /",
+   "ok": true,
+   "detail": "meta name=\"description\""
+  },
+  {
+   "name": "og /",
+   "ok": true,
+   "detail": "og:* tags"
+  },
+  {
+   "name": "twitter /",
+   "ok": true,
+   "detail": "twitter:* tags"
+  },
+  {
+   "name": "canonical /",
+   "ok": true,
+   "detail": "canonical -> https://allofitnow.com"
+  },
+  {
+   "name": "page /services",
+   "ok": true,
+   "detail": "200"
+  },
+  {
+   "name": "ga4 /services",
+   "ok": true,
+   "detail": "G-NDWE8QHK9W in HTML"
+  },
+  {
+   "name": "title /services",
+   "ok": true,
+   "detail": "non-empty <title>"
+  },
+  {
+   "name": "description /services",
+   "ok": true,
+   "detail": "meta name=\"description\""
+  },
+  {
+   "name": "og /services",
+   "ok": true,
+   "detail": "og:* tags"
+  },
+  {
+   "name": "twitter /services",
+   "ok": true,
+   "detail": "twitter:* tags"
+  },
+  {
+   "name": "canonical /services",
+   "ok": true,
+   "detail": "canonical -> https://allofitnow.com"
+  },
+  {
+   "name": "page /work",
+   "ok": true,
+   "detail": "200"
+  },
+  {
+   "name": "ga4 /work",
+   "ok": true,
+   "detail": "G-NDWE8QHK9W in HTML"
+  },
+  {
+   "name": "title /work",
+   "ok": true,
+   "detail": "non-empty <title>"
+  },
+  {
+   "name": "description /work",
+   "ok": true,
+   "detail": "meta name=\"description\""
+  },
+  {
+   "name": "og /work",
+   "ok": true,
+   "detail": "og:* tags"
+  },
+  {
+   "name": "twitter /work",
+   "ok": true,
+   "detail": "twitter:* tags"
+  },
+  {
+   "name": "canonical /work",
+   "ok": true,
+   "detail": "canonical -> https://allofitnow.com"
+  },
+  {
+   "name": "page /work/martin-garrix",
+   "ok": true,
+   "detail": "200"
+  },
+  {
+   "name": "ga4 /work/martin-garrix",
+   "ok": true,
+   "detail": "G-NDWE8QHK9W in HTML"
+  },
+  {
+   "name": "title /work/martin-garrix",
+   "ok": true,
+   "detail": "non-empty <title>"
+  },
+  {
+   "name": "description /work/martin-garrix",
+   "ok": true,
+   "detail": "meta name=\"description\""
+  },
+  {
+   "name": "og /work/martin-garrix",
+   "ok": true,
+   "detail": "og:* tags"
+  },
+  {
+   "name": "twitter /work/martin-garrix",
+   "ok": true,
+   "detail": "twitter:* tags"
+  },
+  {
+   "name": "canonical /work/martin-garrix",
+   "ok": true,
+   "detail": "canonical -> https://allofitnow.com"
+  },
+  {
+   "name": "sitemap",
+   "ok": true,
+   "detail": "HTTP 200, urlset=True"
+  },
+  {
+   "name": "robots",
+   "ok": true,
+   "detail": "HTTP 200, 552B, placeholder=False"
+  },
+  {
+   "name": "www-301",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/"
+  },
+  {
+   "name": "cut5 /project/melanie-martinez",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/trilogy"
+  },
+  {
+   "name": "cut5 /project/arcane-riot-undercity-nights",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/riot-x-arcane"
+  },
+  {
+   "name": "cut5 /project/linkin-park-from-zero",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/linkin-park"
+  },
+  {
+   "name": "cut5 /project/encanto-ar",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/encanto-at-the-hollywood-bowl"
+  },
+  {
+   "name": "cut5 /project/coldplay-bts-thevoice",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/coldplay-bts-ar"
+  },
+  {
+   "name": "cut5 /project/peso-pluma-exodo-tour",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/PESO-PLUMA-EXODO"
+  },
+  {
+   "name": "cut5-direct /project/martin-garrix",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/martin-garrix (want https://allofitnow.com/work/martin-garrix)"
+  },
+  {
+   "name": "cut5-direct /project/trilogy",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/trilogy (want https://allofitnow.com/work/trilogy)"
+  },
+  {
+   "name": "cut5-direct /project/riot-x-arcane",
+   "ok": true,
+   "detail": "HTTP 301 -> https://allofitnow.com/work/riot-x-arcane (want https://allofitnow.com/work/riot-x-arcane)"
+  },
+  {
+   "name": "hostname-pin deny",
+   "ok": true,
+   "detail": "Host: evil.example -> HTTP 403"
+  }
+ ],
+ "stages": [
+  {
+   "name": "post-bytes",
+   "ok": true,
+   "seconds": 154.9,
+   "tail": [
+    "desktop1448-dpr1   /work                    imgs= 29 totalImageBytes= 1,203,171",
+    "desktop1448-dpr1   /work/martin-garrix      imgs= 35 totalImageBytes= 2,413,124",
+    "mobile390-dpr3     /                        imgs= 35 totalImageBytes=   804,234",
+    "mobile390-dpr3     /services                imgs= 28 totalImageBytes=17,065,218",
+    "mobile390-dpr3     /work                    imgs= 29 totalImageBytes= 2,039,548",
+    "mobile390-dpr3     /work/martin-garrix      imgs= 32 totalImageBytes= 2,381,650",
+    "AC1 mobile390-dpr1: 22,240,015 vs baseline 106,805,981 -> reduction 79.2% PASS (gate >=70%)",
+    "non-200 images: none"
+   ]
+  },
+  {
+   "name": "capture-baseline",
+   "ok": true,
+   "seconds": 83.4,
+   "tail": [
+    "mobile390     /work/martin-garrix      imgs= 35 totalImageBytes= 1,877,246",
+    "desktop1448   /                        imgs= 37 totalImageBytes=   412,091",
+    "desktop1448   /services                imgs= 30 totalImageBytes=23,753,669",
+    "desktop1448   /work                    imgs= 29 totalImageBytes= 1,203,141",
+    "desktop1448   /work/martin-garrix      imgs= 35 totalImageBytes= 2,413,163",
+    "MOBILE 4-PAGE TOTAL IMAGE BYTES: 22,240,085",
+    "manifest: /root/projects/aoin-deploy/deploy/e2e/results/20260903-allofitnow_com-live/baseline-fresh/manifest.json",
+    "boxes: /root/projects/aoin-deploy/deploy/e2e/results/20260903-allofitnow_com-live/baseline-fresh/boxes.json"
+   ]
+  },
+  {
+   "name": "capture-replay",
+   "ok": true,
+   "seconds": 83.4,
+   "tail": [
+    "mobile390     /work/martin-garrix      imgs= 35 totalImageBytes= 1,877,307",
+    "desktop1448   /                        imgs= 38 totalImageBytes=   414,023",
+    "desktop1448   /services                imgs= 30 totalImageBytes=23,754,224",
+    "desktop1448   /work                    imgs= 29 totalImageBytes= 1,203,189",
+    "desktop1448   /work/martin-garrix      imgs= 35 totalImageBytes= 2,413,188",
+    "MOBILE 4-PAGE TOTAL IMAGE BYTES: 22,240,502",
+    "manifest: /root/projects/aoin-deploy/deploy/e2e/results/20260903-allofitnow_com-live/baseline-replay/manifest.json",
+    "boxes: /root/projects/aoin-deploy/deploy/e2e/results/20260903-allofitnow_com-live/baseline-replay/boxes.json"
+   ]
+  },
+  {
+   "name": "capture-boxes",
+   "ok": true,
+   "seconds": 68.3,
+   "tail": [
+    "mobile390     /services                doc=390x7620 imgs=20",
+    "mobile390     /work                    doc=390x6254 imgs=29",
+    "mobile390     /work/martin-garrix      doc=390x9816 imgs=17",
+    "desktop1448   /                        doc=1448x5445 imgs=27",
+    "desktop1448   /services                doc=1448x8124 imgs=20",
+    "desktop1448   /work                    doc=1448x6146 imgs=29",
+    "desktop1448   /work/martin-garrix      doc=1448x11536 imgs=17",
+    "wrote /root/projects/aoin-deploy/deploy/e2e/results/20260903-allofitnow_com-live/post-boxes/boxes.json"
+   ]
+  },
+  {
+   "name": "parity",
+   "ok": true,
+   "seconds": 9.9,
+   "tail": [
+    "noise floor services.png: 0.151% -> limit 1.000%",
+    "pixels services.png: 0.167% >3/255 PASS (limit 1.000%)",
+    "noise floor work.png: 0.147% -> limit 1.000%",
+    "pixels work.png: 0.002% >3/255 PASS (limit 1.000%)",
+    "noise floor work_martin-garrix.png: 15.430% -> limit 23.645%",
+    "pixels work_martin-garrix.png: 11.851% >3/255 PASS (limit 23.645%)",
+    "",
+    "PARITY: PASS"
+   ]
+  },
+  {
+   "name": "invariants",
+   "ok": true,
+   "seconds": 6.1,
+   "tail": [
+    "asset /fonts/DenimINKWD-Medium.woff2                   stamp=v3m",
+    "asset /fonts/DenimINKWD-Regular.woff2                  stamp=v3m",
+    "asset /fonts/SNJaMono-Light.woff2                      stamp=v3m",
+    "asset /fonts/OOTheran-Light.woff2                      stamp=v3m",
+    "asset astro_astro_type_script_index_0_lang.DEgGwrlq.js stamp=v3m",
+    "asset /_astro/Base.CbF_11p5.css                        stamp=v3m",
+    "",
+    "INVARIANTS: PASS"
+   ]
+  }
+ ],
+ "finishedAt": "2026-09-03T15:15:29Z",
+ "exit": "PASS",
+ "failed": []
+}

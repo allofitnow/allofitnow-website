@@ -7,14 +7,42 @@ Output: boxes.json committed beside the baseline manifest."""
 import json, os, sys, time
 from playwright.sync_api import sync_playwright
 
-HOST = "46009.someofitlater.com"
+HOST = os.environ.get("AOIN_E2E_TARGET", "46009.someofitlater.com")
 BASE = f"https://{HOST}"
+EDGE = {"46009.someofitlater.com": "104.21.90.237",
+        "allofitnow.com": "104.21.85.13"}[HOST]
 REAL_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 PAGES = ["/", "/services", "/work", "/work/martin-garrix"]
 VIEWPORTS = {"mobile390": {"width": 390, "height": 844, "deviceScaleFactor": 1},
              "desktop1448": {"width": 1448, "height": 900, "deviceScaleFactor": 1}}
 OUT = sys.argv[1] if len(sys.argv) > 1 else "/tmp/p61-boxes"
 os.makedirs(OUT, exist_ok=True)
+
+def settle(page):
+    """Bounded image/font settle (see capture.py)."""
+    try:
+        page.evaluate("""async () => {
+          const t = (p, ms) => Promise.race([p, new Promise(r => setTimeout(r, ms))]);
+          const imgs = [...document.images];
+          await t(Promise.all(imgs.map(i => i.complete ? Promise.resolve()
+              : new Promise(r => { i.onload = i.onerror = r; }))), 8000);
+          if (document.fonts && document.fonts.ready) await t(document.fonts.ready, 3000);
+        }""")
+    except Exception:
+        pass
+
+def freeze_runtime(page):
+    """Deterministic phase for JS (rAF-driven) motion (see capture.py)."""
+    try:
+        page.evaluate("""() => {
+          window.requestAnimationFrame = () => 0;
+          for (const el of document.querySelectorAll('*')) {
+            const t = el.style.transform;
+            if (t && /translate|matrix|perspective|scale|rotate/i.test(t)) el.style.transform = 'none';
+          }
+        }""")
+    except Exception:
+        pass
 
 def scroll_full(page):
     page.evaluate("document.body.style.scrollBehavior='auto'")
@@ -27,6 +55,9 @@ def scroll_full(page):
         h = page.evaluate("document.body.scrollHeight")
     page.mouse.wheel(0, -600)
     page.wait_for_timeout(1200)
+    settle(page)
+    freeze_runtime(page)
+    page.wait_for_timeout(150)
 
 BOX_JS = """() => {
   const imgs = [...document.querySelectorAll('img')].map(i => {
@@ -43,12 +74,21 @@ BOX_JS = """() => {
 results = {"capturedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
            "pages": PAGES, "host": HOST, "runs": []}
 with sync_playwright() as p:
-    browser = p.chromium.launch(args=[f"--host-resolver-rules=MAP {HOST} 104.21.90.237"])
+    browser = p.chromium.launch(args=[f"--host-resolver-rules=MAP {HOST} {EDGE}"])
     for vp_name, vp in VIEWPORTS.items():
         ctx = browser.new_context(user_agent=REAL_UA, viewport={"width": vp["width"], "height": vp["height"]},
                                   device_scale_factor=vp["deviceScaleFactor"])
         for path in PAGES:
             page = ctx.new_page()
+            # freeze animations from phase 0 (marquee/carousel/rungs): inject BEFORE page
+            # scripts so CSS animations never advance past their first keyframe
+            page.add_init_script("""
+(() => {
+  const s = document.createElement('style');
+  s.textContent = '* { animation-play-state: paused !important; transition: none !important; }';
+  document.addEventListener('DOMContentLoaded', () => document.head && document.head.append(s));
+})();
+""")
             page.goto(BASE + path, wait_until="domcontentloaded", timeout=45000)
             page.wait_for_timeout(1500)
             scroll_full(page)

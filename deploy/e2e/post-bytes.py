@@ -5,14 +5,51 @@ mobile DPR=3 leg (issue pass-8 pin). Prints totals vs baseline gate."""
 import json, os, sys, time
 from playwright.sync_api import sync_playwright
 
-HOST = "46009.someofitlater.com"
+HOST = os.environ.get("AOIN_E2E_TARGET", "46009.someofitlater.com")
 BASE = f"https://{HOST}"
+EDGE = {"46009.someofitlater.com": "104.21.90.237",
+        "allofitnow.com": "104.21.85.13"}[HOST]
 REAL_UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36"
 PAGES = ["/", "/services", "/work", "/work/martin-garrix"]
 LEGS = {"mobile390-dpr1": (390, 844, 1), "desktop1448-dpr1": (1448, 900, 1), "mobile390-dpr3": (390, 844, 3)}
 BASELINE_MOBILE_DPR1 = 106_805_981
 OUT = sys.argv[1] if len(sys.argv) > 1 else "/tmp/p61-post"
 os.makedirs(OUT, exist_ok=True)
+
+FREEZE_JS = """(() => {
+  const s = document.createElement('style');
+  s.textContent = '* { animation-play-state: paused !important; transition: none !important; }';
+  document.addEventListener('DOMContentLoaded', () => document.head && document.head.append(s));
+})();"""
+
+def settle(page):
+    """Block on every img decode + font load so layout is final before
+    measuring. Hard-bounded (JS race): off-canvas lazy marquee clones are
+    never fetched, so onload never fires and an unbounded await would hang
+    the whole stage (run-6 post-bytes 900s TIMEOUT)."""
+    try:
+        page.evaluate("""async () => {
+          const t = (p, ms) => Promise.race([p, new Promise(r => setTimeout(r, ms))]);
+          const imgs = [...document.images];
+          await t(Promise.all(imgs.map(i => i.complete ? Promise.resolve()
+              : new Promise(r => { i.onload = i.onerror = r; }))), 8000);
+          if (document.fonts && document.fonts.ready) await t(document.fonts.ready, 3000);
+        }""")
+    except Exception:
+        pass
+
+def freeze_runtime(page):
+    """Deterministic phase for JS (rAF-driven) motion (see capture.py)."""
+    try:
+        page.evaluate("""() => {
+          window.requestAnimationFrame = () => 0;
+          for (const el of document.querySelectorAll('*')) {
+            const t = el.style.transform;
+            if (t && /translate|matrix|perspective|scale|rotate/i.test(t)) el.style.transform = 'none';
+          }
+        }""")
+    except Exception:
+        pass
 
 def scroll_full(page):
     page.evaluate("document.body.style.scrollBehavior='auto'")
@@ -22,15 +59,20 @@ def scroll_full(page):
         page.mouse.wheel(0, 600); page.wait_for_timeout(220)
         h = page.evaluate("document.body.scrollHeight")
     page.mouse.wheel(0, -600); page.wait_for_timeout(1200)
+    settle(page)
+    freeze_runtime(page)
+    page.wait_for_timeout(150)
+    settle(page)
 
 results = {"capturedAt": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
            "pages": PAGES, "host": HOST, "runs": []}
 with sync_playwright() as p:
-    browser = p.chromium.launch(args=[f"--host-resolver-rules=MAP {HOST} 104.21.90.237"])
+    browser = p.chromium.launch(args=[f"--host-resolver-rules=MAP {HOST} {EDGE}"])
     for leg, (w, h_, dpr) in LEGS.items():
         ctx = browser.new_context(user_agent=REAL_UA, viewport={"width": w, "height": h_}, device_scale_factor=dpr)
         for path in PAGES:
             page = ctx.new_page(); images, reqs = [], {}
+            page.add_init_script(FREEZE_JS)
             cdp = ctx.new_cdp_session(page); cdp.send("Network.enable")
             cdp.on("Network.responseReceived", lambda ev, reqs=reqs: reqs.update({ev["requestId"]: {"url": ev["response"]["url"], "status": ev["response"]["status"]}}) if ev.get("type") == "Image" else None)
             cdp.on("Network.loadingFinished", lambda ev, images=images, reqs=reqs: images.append({**reqs.pop(ev["requestId"], {"url": "?", "status": 0}), "bytes": ev.get("encodedDataLength", 0)}) if ev["requestId"] in reqs else None)

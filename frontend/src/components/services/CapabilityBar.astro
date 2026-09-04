@@ -30,3 +30,45 @@
     controller (data-mq on [data-bar]); display:none everywhere by default. */}
 <div data-sub-marquee="" aria-hidden="true" style="display:none"><div data-sub-track=""></div></div>
 </div>
+
+<style>
+  /* Hover: the Work page's filter treatment -- an inverted highlight wiping up from
+     the bottom edge with the label flipping to black. Matched on purpose, so the
+     site's two capability lists behave the same way.
+
+     The bar is a pseudo element at z-index -1 inside the button's own stacking
+     context (isolation:isolate), so it sits behind the glyphs but still above the
+     ASCII field. Negative insets rather than padding: the four slots are
+     distributed with space-between and padding would move them.
+
+     Colour is deliberately NOT set here. On the hero these glyphs are painted by a
+     gradient clipped to the text with a transparent fill, so a plain `color` has
+     nothing to act on -- sweep() owns colour and handles the hover state itself. */
+  [data-slot] {
+    position: relative;
+    isolation: isolate;
+  }
+  [data-slot]::before {
+    content: '';
+    position: absolute;
+    inset: -0.22em -0.42em;
+    z-index: -1;
+    background: var(--aoin-cool-white);
+    transform: scaleY(0);
+    transform-origin: bottom;
+    /* --ease-brand is not defined on /services: this page is standalone and pulls
+       only services.css, not the full token sheet, so var(--ease-brand) resolved to
+       nothing and took the whole transition shorthand down with it -- the bar
+       snapped instead of wiping. --fly-ease is the same curve and IS present here;
+       the literal is the last resort so this cannot silently break again. */
+    transition: transform 0.35s var(--ease-brand, var(--fly-ease, cubic-bezier(0.05, 0.89, 0, 0.99)));
+    pointer-events: none;
+  }
+  /* Fine pointers only. On touch :hover latches after a tap, which would leave a
+     white bar stuck under a label the reader has already navigated away from. */
+  @media (hover: hover) and (pointer: fine) {
+    [data-slot]:hover::before {
+      transform: scaleY(1);
+    }
+  }
+</style>

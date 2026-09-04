@@ -13,8 +13,9 @@
    controller's layout() never touches it. The page is a full HTML doc outside Base.astro
    but uses the shared site nav. */
 import '../styles/services.css';
-import { buildSrcset } from '../lib/media';
+import { appendMasterRung, buildSrcset, videoPosterHref, videoRungs } from '../lib/media';
 import Nav from '../components/chrome/Nav.astro';
+import Cursor from '../components/chrome/Cursor.astro';
 import HoverCard from '../components/chrome/HoverCard.astro';
 import Preloader from '../components/home/Preloader.astro';
 import PageTitle from '../components/services/PageTitle.astro';
@@ -26,10 +27,15 @@ import InquiryModal from '../components/chrome/InquiryModal.astro';
 import { getServiceSections, getServiceGalleries, type GalleryItem } from '../data/services';
 import { getEquipment } from '../data/equipment';
 
-// #67: canonical origin, same source as Base.astro (astro.config site / SITE_URL env).
-const SITE_URL = Astro.site?.toString().replace(/\/$/, '') ?? 'https://46009.someofitlater.com';
-
 const pad = (n: number) => String(n).padStart(2, '0');
+
+// #118: crawler-meta parity with Base.astro (#67). This page is a full HTML
+// document outside the Base layout, so the head block (and its SITE_URL origin
+// from astro.config `site` / SITE_URL env at build time) is repeated here.
+// Keep in step with Base.astro.
+const SITE_URL = Astro.site?.toString().replace(/\/$/, '') ?? 'https://46009.someofitlater.com';
+const title = 'Services — All Of It Now';
+const description = 'All Of It Now — a real-time content and show production studio in Los Angeles.';
 
 // Section copy + gallery images — Payload-ready via a typed async accessor (local seed today,
 // a Payload collection later). The galleries feed the ported Codrops "mwg" components.
@@ -115,6 +121,28 @@ const equipCenter = equipment.find((e) => e.center) ?? equipment[0];
 // initial plate paints the <img> or the <video>; initEquipment swaps between them on selection.
 const isVideoSrc = (u: string) => /\.(webm|mp4|m4v|mov)(\?|$)/i.test(u || '');
 const equipCenterVid = isVideoSrc(equipCenter.image);
+
+// #103: rendition ladder for video plates — rungs from the item's media doc
+// (master topping the ladder), poster by filename convention. Empty array for
+// non-video / ladder-less items (WP-hosted seeds) → today's plain-src plate.
+const equipRungs = (e: (typeof equipment)[number]) => {
+  if (!isVideoSrc(e.image) || !e.imageDoc) return [];
+  const r = videoRungs(e.imageDoc);
+  if (r.length) appendMasterRung(r, e.image, e.imageDoc?.width);
+  return r;
+};
+const equipCenterRungs = equipRungs(equipCenter);
+const equipCenterPoster = equipCenterRungs.length ? videoPosterHref(equipCenter.imageDoc!) : null;
+
+// #103: MR-orbit video ladder — same contract as GalleryMedia (the orbit's
+// emitter is inline here rather than the component).
+const mrVidAttrs = (g: (typeof MR)[number]) => {
+  if (!g.video || !g.doc) return { rungs: undefined, poster: undefined };
+  const r = videoRungs(g.doc);
+  if (!r.length) return { rungs: undefined, poster: undefined };
+  appendMasterRung(r, g.src, g.doc?.width);
+  return { rungs: JSON.stringify(r), poster: videoPosterHref(g.doc) || undefined };
+};
 ---
 <!doctype html>
 <html lang="en">
@@ -122,7 +150,7 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
 <meta charset="utf-8" />
 <script is:inline>
   (function () {
-    var c = navigator.connection;
+    var c = navigator.connection || {};
     var light = c.saveData || /^(slow-)?2g$/.test(c.effectiveType || '');
         if (!light) return;
     if (c.saveData) document.documentElement.setAttribute('data-save-data', '1');
@@ -168,24 +196,25 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
   })();
 </script>
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-<title>Services — All Of It Now</title>
-{/* This page is a full HTML document outside Base.astro, so every <head> tag
-    Base provides has to be repeated here. Keep these two in step with Base. */}
-<meta name="description" content="Real-time content and show production services — real-time content, screens, LED, lighting, and stage design." />
-{/* #67 OG/Twitter meta — same set as Base.astro, kept in step. */}
-<meta property="og:title" content="Services — All Of It Now" />
-<meta property="og:description" content="Real-time content and show production services — real-time content, screens, LED, lighting, and stage design." />
+<title>{title}</title>
+<meta name="description" content={description} />
+{/* #118: same #67 crawler meta as Base.astro — crawlers don't run JS, so this
+    lives in the served HTML. og:image is the pinned raster card from Base. */}
+<meta property="og:title" content={title} />
+<meta property="og:description" content={description} />
 <meta property="og:type" content="website" />
 <meta property="og:site_name" content="All Of It Now" />
 <meta property="og:image" content={`${SITE_URL}/assets/og-image.png`} />
 <meta property="og:image:width" content="1200" />
 <meta property="og:image:height" content="630" />
-<meta property="og:url" content={`${SITE_URL}/services`} />
-<link rel="canonical" href={`${SITE_URL}/services`} />
+<meta property="og:url" content={`${SITE_URL}${Astro.url.pathname}`} />
+<link rel="canonical" href={`${SITE_URL}${Astro.url.pathname}`} />
 <meta name="twitter:card" content="summary_large_image" />
-<meta name="twitter:title" content="Services — All Of It Now" />
-<meta name="twitter:description" content="Real-time content and show production services — real-time content, screens, LED, lighting, and stage design." />
+<meta name="twitter:title" content={title} />
+<meta name="twitter:description" content={description} />
 <meta name="twitter:image" content={`${SITE_URL}/assets/og-image.png`} />
+{/* This page is a full HTML document outside Base.astro, so every <head> tag
+    Base provides has to be repeated here. Keep these two in step with Base. */}
 <link rel="icon" href="/favicon.ico" sizes="32x32" />
 <link rel="icon" href="/favicon.svg" type="image/svg+xml" />
 {/* Preloader count face — its @font-face is block, and the count animates from
@@ -210,6 +239,11 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
     so there's no flash; the bottom script lifts it once the stage is set. */}
 <Preloader />
 <Nav />
+{/* Site-wide crosshair cursor. Base.astro mounts this for every other page; this
+    one is a standalone document outside Base, so it has to mount it itself or the
+    page falls back to the OS arrow. It also carries the global `cursor: none` rule,
+    which is why its absence showed up as the native cursor rather than no cursor. */}
+<Cursor />
 {/* Cursor-following project card — shows over project-linked stills (same rich card as the home
     marquee: name / tour / capabilities). Populated by lib/hovercard.ts from each still's data-*. */}
 <HoverCard />
@@ -259,9 +293,12 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
         <div class="container">
           {/* Deferred like GalleryMedia — the orbit's 10 slots would otherwise autoplay
               10 large videos at load. The engine loads + plays them only when Mixed is active. */}
-          {MR.map((g) => g.video
-            ? <video data-lazymedia data-lazysrc={g.src} muted loop playsinline preload="none" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps}></video>
-            : <img data-lazymedia data-lazysrc={g.doc ? buildSrcset(g.doc).src : g.src} data-lazysrcset={g.doc ? buildSrcset(g.doc).srcset : undefined} loading="lazy" decoding="async" sizes="(max-width:480px) 65vw, 33vw" alt="" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />)}
+          {MR.map((g) => {
+            const l = mrVidAttrs(g);
+            return g.video
+              ? <video data-lazymedia data-lazysrc={g.src} data-master-src={l.rungs ? g.src : undefined} data-rungs={l.rungs} poster={l.poster} muted loop playsinline preload="none" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps}></video>
+              : <img data-lazymedia data-lazysrc={g.doc ? buildSrcset(g.doc).src : g.src} data-lazysrcset={g.doc ? buildSrcset(g.doc).srcset : undefined} loading="lazy" decoding="async" sizes="(max-width:480px) 65vw, 33vw" alt="" data-href={g.href} data-slug={g.slug} data-title={g.title} data-tour={g.tour} data-caps={g.caps} />;
+          })}
         </div>
       </div>
       <p class="svc-desc svc-desc--overlay" data-desc="">{services[2].desc}</p>
@@ -274,7 +311,11 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
       <div class="equip" data-fx="equip">
         <div class="equip-plate" data-equip-plate>
           <img data-equip-img loading="lazy" decoding="async" src={equipCenterVid ? undefined : (equipCenter.imageDoc ? buildSrcset(equipCenter.imageDoc).src : equipCenter.image)} srcset={equipCenterVid || !equipCenter.imageDoc ? undefined : (buildSrcset(equipCenter.imageDoc).srcset || undefined)} sizes="(max-width:480px) 100vw, (max-width:900px) 85vw, 37vw" alt="" style={equipCenterVid ? 'opacity:0' : undefined} />
-          <video data-equip-vid src={equipCenterVid ? equipCenter.image : undefined} muted loop playsinline preload="metadata" style={equipCenterVid ? undefined : 'opacity:0'}></video>
+          {/* #103: a wired plate video renders src-less with data-rungs +
+              poster — initEquipment's setPlate picks the rung at first paint
+              (and on every marquee selection), so the plate never fetches the
+              master on a ladder-bearing item. Ladder-less keeps plain src. */}
+          <video data-equip-vid data-rungs={equipCenterRungs.length ? JSON.stringify(equipCenterRungs) : undefined} data-master-src={equipCenterRungs.length ? equipCenter.image : undefined} poster={equipCenterPoster || undefined} src={equipCenterVid && !equipCenterRungs.length ? equipCenter.image : undefined} muted loop playsinline preload={equipCenterRungs.length ? 'none' : 'metadata'} style={equipCenterVid ? undefined : 'opacity:0'}></video>
           <div class="equip-plate-ph" data-equip-ph aria-hidden="true"></div>
         </div>
         <div class="equip-marquee" data-equip-marquee aria-label="Drag to browse equipment">
@@ -285,6 +326,8 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
                 class="equip-item"
                 data-equip-row
                 data-img={e.image}
+                data-rungs={(() => { const r = equipRungs(e); return r.length ? JSON.stringify(r) : undefined; })()}
+                data-poster={(() => { const r = equipRungs(e); return r.length ? videoPosterHref(e.imageDoc!) || undefined : undefined; })()}
                 data-tip={e.tip}
                 data-slug={e.slug}
                 data-placeholder={e.placeholder ? 'true' : undefined}
@@ -330,6 +373,12 @@ const equipCenterVid = isVideoSrc(equipCenter.image);
   import { mountServices } from '../scripts/services-controller.js';
   import { mountEffects } from '../scripts/services-effects.js';
   import '../lib/hovercard'; // cursor project card over project-linked stills (binds its own listeners)
+  import { initMuteMedia } from '../lib/mute-media';
+  import '@/lib/ladder-boot'; // #103: installs window.__aoinPickRung + wires non-lazymedia data-rungs videos
+
+  // Standalone document, outside Base.astro, so it mounts its own copy — the
+  // gallery and equipment plates are the densest video on the site.
+  initMuteMedia();
 
   const ctrl = mountServices({ introOnly: true });
   // mountEffects positions every gallery off-stage synchronously (master.progress(0)),

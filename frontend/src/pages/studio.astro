@@ -17,15 +17,7 @@ const rows = Math.ceil(members.length / columns);
 
 <Base title={meta.title} description={meta.description}>
   <main class="about" data-reveal-root>
-    <section id="about" class="statement">
-      <div class="label-row" data-reveal>
-        <span class="label">{labels.about}</span>
-        <span class="rule"></span>
-      </div>
-      {statement.map((line) => <div class="line" data-reveal>{line}</div>)}
-    </section>
-
-    <section class="band">
+    <section id="about" class="band">
       {band.map((image) => (
         <img
           data-reveal
@@ -33,10 +25,15 @@ const rows = Math.ceil(members.length / columns);
           alt={image.alt}
           width={image.width}
           height={image.height}
+          style={`--ar:${image.width / image.height}`}
           loading="lazy"
           decoding="async"
         />
       ))}
+    </section>
+
+    <section class="statement">
+      {statement.map((line) => <div class="line" data-reveal>{line}</div>)}
     </section>
 
     <section class="col">
@@ -50,7 +47,6 @@ const rows = Math.ceil(members.length / columns);
       <div class="label-row" data-reveal>
         <span class="label">{labels.team}</span>
         <span class="rule"></span>
-        <span class="label">({members.length})</span>
       </div>
       <div class="roster" style={`--rows: ${rows}; --cols: ${columns};`}>
         {members.map((member) => {
@@ -108,7 +104,8 @@ const rows = Math.ceil(members.length / columns);
   }
 
   .statement {
-    padding-top: clamp(120px, 16vh, 220px);
+    /* Sits under the band now, so it takes the smaller inter-section gap. */
+    padding-top: clamp(56px, 7vw, 104px);
     font-family: var(--font-headline);
     font-weight: var(--weight-headline);
     font-size: clamp(18px, 2.5vw, 46px);
@@ -121,19 +118,29 @@ const rows = Math.ceil(members.length / columns);
     white-space: nowrap;
   }
 
+  /* One row of stills, every one at the SAME height and its OWN width, so nothing
+     is cropped. flex-basis 0 with flex-grow set to each image aspect ratio (--ar,
+     written inline from the intrinsic pixels) makes each width proportional to its
+     aspect -- which is precisely the condition for the heights to come out equal,
+     at any container width and for any mix of aspects. The gap is taken off every
+     item equally so it does not skew that. justify-content centres the group.
+     No aspect-ratio and no object-fit here on purpose: `cover` is what crops. */
+  /* First section on the page, so it carries the drop from the nav. */
   .band {
-    display: grid;
-    grid-template-columns: repeat(2, minmax(0, 1fr));
+    display: flex;
+    justify-content: center;
+    align-items: flex-start;
     gap: clamp(12px, 1.4vw, 22px);
-    padding-top: clamp(56px, 7vw, 104px);
+    padding-top: clamp(120px, 16vh, 220px);
   }
   .band img {
-    width: 100%;
+    flex: var(--ar, 1) 1 0;
+    min-width: 0;
+    width: auto;
     height: auto;
-    aspect-ratio: 16 / 9;
-    object-fit: cover;
     display: block;
-    background: rgba(217, 225, 234, 0.06);
+    /* No background plate: two of the three carry alpha and are neon drawn
+       straight onto the page black; a tint would box them in grey rectangles. */
   }
 
   .col {
@@ -248,6 +255,17 @@ const rows = Math.ceil(members.length / columns);
       grid-template-columns: 1fr;
       grid-template-rows: none;
     }
+    /* Band: three side by side on a phone leaves each one tiny, so only the middle
+       still (the studio drawing) is kept, full width. */
+    .band {
+      display: block;
+    }
+    .band img:not(:nth-child(2)) {
+      display: none;
+    }
+    .band img {
+      width: 100%;
+    }
     /* No hover on touch — reveal the titles by default so they aren't stuck hidden below the mask. */
     .words > span {
       transform: none;
@@ -271,10 +289,14 @@ const rows = Math.ceil(members.length / columns);
      Motion is code, not content — tune it here. */
   const STAGGER = 0.022; // seconds between consecutive blocks
   const DURATION = 0.62; // per-block travel
+  // The band stills travel their own height behind the clip, and at ~360px tall
+  // that is roughly ten times the distance a line of copy covers. At DURATION the
+  // wipe crossed them too fast to read as a reveal at all, so they get their own.
+  const BAND_DURATION = 1.5;
   const EASE = 'expo.out'; // hard settle; --ease-brand is the softer alternative
   const RISE = 45; // percent of its own height a line starts below
 
-  type Target = { node: HTMLElement; plain: boolean; above?: boolean };
+  type Target = { node: HTMLElement; plain: boolean; slow?: boolean; above?: boolean };
 
   const root = document.querySelector<HTMLElement>('[data-reveal-root]');
   const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
@@ -299,10 +321,15 @@ const rows = Math.ceil(members.length / columns);
     root.style.visibility = 'hidden';
 
     /* Flex/grid blocks cascade child-by-child so a row's items land in
-       sequence; text blocks rise behind their clip; images animate whole. */
+       sequence; text blocks rise behind their clip; images animate whole. The band
+       is the exception: those three stills open the page as one block of content,
+       so they rise behind a clip like the statement under them rather than fading
+       in flat. Team portraits keep the plain fade -- they arrive one per roster row
+       on scroll, where a clip would read as a glitch rather than a reveal. */
     const collect = (el: HTMLElement, out: Target[]): void => {
       if (el.tagName === 'IMG') {
-        out.push({ node: el, plain: true });
+        const band = !!el.closest('.band');
+        out.push({ node: el, plain: !band, slow: band });
         return;
       }
       const display = getComputedStyle(el).display;
@@ -330,7 +357,7 @@ const rows = Math.ceil(members.length / columns);
         : {
             yPercent: 0,
             clipPath: 'inset(0% 0% -15% 0%)',
-            duration: DURATION,
+            duration: t.slow ? BAND_DURATION : DURATION,
             clearProps: 'clipPath',
           };
 

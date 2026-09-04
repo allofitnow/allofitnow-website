@@ -167,11 +167,31 @@ export function mountEffects(ctrl) {
   // clip is reused instead of re-downloaded.
   const sectionMedia = panels.map((pan) => [...pan.querySelectorAll('[data-lazymedia]')]);
   const loadMedia = (el) => {
-    if (el && !el.getAttribute('src') && el.dataset.lazysrc) {
-      el.setAttribute('src', el.dataset.lazysrc);
-      // #58: the responsive ladder rides the same swap — never before entry.
-      if (el.dataset.lazysrcset) el.setAttribute('srcset', el.dataset.lazysrcset);
-      if (el.tagName === 'VIDEO') { try { el.load(); } catch (_) {} }
+    if (el && !el.getAttribute('src')) {
+      // #103: a rung-bearing video picks its rendition HERE (section entry)
+      // instead of taking data-lazysrc's master — only the chosen rung hits
+      // the wire. window.__aoinPickRung is installed by lib/ladder-boot
+      // (guarded in case of script-order races; fallback = data-lazysrc).
+      const rungsRaw = el.dataset ? el.dataset.rungs : null;
+      if (el.tagName === 'VIDEO' && rungsRaw && typeof window.__aoinPickRung === 'function') {
+        let rungs = [];
+        try { rungs = JSON.parse(rungsRaw); } catch (_) { rungs = []; }
+        if (Array.isArray(rungs) && rungs.length) {
+          const chosen = window.__aoinPickRung(rungs, el.dataset.lazysrc || '');
+          if (chosen) {
+            el.setAttribute('src', chosen);
+            if (el.dataset.lazysrcset) el.setAttribute('srcset', el.dataset.lazysrcset);
+            try { el.load(); } catch (_) {}
+            return;
+          }
+        }
+      }
+      if (el.dataset.lazysrc) {
+        el.setAttribute('src', el.dataset.lazysrc);
+        // #58: the responsive ladder rides the same swap — never before entry.
+        if (el.dataset.lazysrcset) el.setAttribute('srcset', el.dataset.lazysrcset);
+        if (el.tagName === 'VIDEO') { try { el.load(); } catch (_) {} }
+      }
     }
   };
   const playMedia = (el) => { loadMedia(el); if (el.tagName === 'VIDEO') { try { const p = el.play(); if (p) p.catch(() => {}); } catch (_) {} } };
@@ -378,32 +398,33 @@ export function mountEffects(ctrl) {
 function buildRealtime(root, master, reparks) {
   const el = root.querySelector('.mwg_effect083');
   if (!el) return;
-  const mob = window.innerWidth < 768;
-  const all = [...el.querySelectorAll('.media')];
-  // Phones: a full-height slab is a far bigger object than the old 16:9 card, so all 16 in the
-  // stream read as clutter. Fly every other still and hide the rest. MOB_KEEP is the 1-in-N.
-  const MOB_KEEP = 2;
-  const medias = mob ? all.filter((_, i) => i % MOB_KEEP === 0) : all;
-  if (mob) all.forEach((m, i) => { if (i % MOB_KEEP) gsap.set(m, { display: 'none' }); });
+  const medias = [...el.querySelectorAll('.media')];
   const n = medias.length;
-  // Half the stills over the same scroll window would empty the section early, so widen the
-  // stagger by the same factor — the flight keeps its original pacing and duration.
-  const stag = mob ? RTC.stag * MOB_KEEP : RTC.stag;
+  const mob = window.innerWidth < 768;
   medias.forEach((m, i) => {
     const L = LAYERS[i % LAYERS.length];             // depth: reach (speed) + scale
     const lane = (i * 7) % n;                         // shuffle into evenly-spread vertical lanes
-    // Desktop: keep the stream in a centred band so large stills don't hang off the top/bottom
+    // Keep the stream in a centred band so large stills don't hang off the top/bottom
     // edges (the top lane used to sit at 5% and get cropped).
-    // Phones: every still is a full-height slab (services.css), so there are no vertical lanes
-    // left to spread into and no headroom to scale — each sits dead-centre at its natural size.
-    // Depth still reads through the per-layer horizontal reach (speed) and z-order.
-    const top = mob ? 50 : 22 + (lane / Math.max(1, n - 1)) * 54;
-    const scale = mob ? 1 : L.scale;
+    //
+    // Phones get the lanes too now. They did not before because every still was a
+    // full-height slab, which left nothing to spread into — so all of them were
+    // parked dead-centre at natural size and simply covered one another. The slab is
+    // gone (services.css lets the 16/9 aspect stand again), so the band and the
+    // per-layer depth scale both come back; the phone band is a little tighter and
+    // sits lower, because the title and the stacked capability bar own the top.
+    // The phone band starts high enough that the top lanes pass BEHIND the title
+    // rather than beginning under the capability bar -- the section reads as one
+    // field of movement instead of a gallery bolted below the chrome. Safe because
+    // ::before lays 0.82 black over the top 40% on phones, so the title still holds.
+    const band = mob ? { top: 10, span: 76 } : { top: 22, span: 54 };
+    const top = band.top + (lane / Math.max(1, n - 1)) * band.span;
+    const scale = L.scale;
     const fromX = () => window.innerWidth * L.reach + 140;
     const toX = () => -window.innerWidth * L.reach - 140;
     gsap.set(m, { top: top.toFixed(2) + '%', yPercent: -50, zIndex: L.z, scale, x: fromX });
     if (reparks) reparks.push(() => gsap.set(m, { x: fromX }));
-    master.fromTo(m, { x: fromX }, { x: toX, ease: 'none', duration: RTC.travel }, RTC.start + i * stag);
+    master.fromTo(m, { x: fromX }, { x: toX, ease: 'none', duration: RTC.travel }, RTC.start + i * RTC.stag);
   });
 }
 
@@ -639,15 +660,89 @@ function initEquipment(root) {
   const SUBJECT = {
     'disguise-gx3':            { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
     'x-series-servers':        { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
+    // The fleet item carrying the silverdraft turntable was renamed to CUSTOM
+    // MEDIA SERVERS in the CMS. Keyed by the live slug; the old slug is kept so
+    // any environment still serving it keeps its measured box rather than
+    // silently falling back to FULL_FRAME (which renders it at ~half size).
+    'custom-media-servers':    { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
     'silverdraft-a6000-nodes': { x: 0.083, r: 0.927, y: 0.344, b: 0.875 },
     'laptop-flypacks':         { x: 0.104, r: 0.864, y: 0.156, b: 0.864 },
-    'vfc-cards':               { x: 0.083, r: 0.959, y: 0.333, b: 0.656 },
+    // Re-measured 2026-09-02 against the tight re-export (1000x400, was a
+    // 1000x1000 square with the strip floating in black). ffmpeg cropdetect
+    // agrees at limit 0.10 and 0.16: crop=748:316:126:42.
+    'vfc-cards':               { x: 0.126, r: 0.874, y: 0.105, b: 0.895 },
     'custom-rack-builds':      { x: 0.042, r: 0.886, y: 0.037, b: 0.889 },
     'renderstream-hardware':   { x: 0.031, r: 0.979, y: 0.208, b: 1.000 },
   };
 
+  // Per-item size trim, applied on top of PLATE_FILL. 1 (the default) fills like
+  // everything else; 0.85 draws 15% smaller. The VFC plate is a 2.5:1 strip of
+  // five cards where the rest of the fleet is a near-square turntable of a single
+  // box, so filling the cell to the same 96% makes it read louder than its
+  // neighbours even when it measures the same.
+  const FILL_SCALE = {
+    'vfc-cards': 0.85,
+  };
+
   let plateBox = FULL_FRAME;
-  const setScale = (r) => { plateBox = (r && SUBJECT[r.dataset.slug]) || FULL_FRAME; fitPlate(); };
+  let plateFill = PLATE_FILL;
+  const setScale = (r) => {
+    const slug = r && r.dataset.slug;
+    plateBox = (slug && SUBJECT[slug]) || FULL_FRAME;
+    plateFill = PLATE_FILL * ((slug && FILL_SCALE[slug]) || 1);
+    fitPlate();
+  };
+
+  // The tip copy sits absolutely inside the panel and its height is a function of
+  // the text, which changes every time the fleet scrubs. Two things are wanted at
+  // once: the copy should sit directly under the name it describes, and the render
+  // should stay as large as the panel allows.
+  //
+  // So the copy hangs from just below the marquee and grows DOWNWARD, away from the
+  // names -- it cannot collide with them however long it runs -- and the cell above
+  // is shortened ONLY when the copy would otherwise run off the panel floor. Short
+  // tips leave the stylesheet's own bottom alone, which is what keeps the render
+  // full size for most of the fleet.
+  function fitCopy() {
+    if (!wrap || !copy) return;
+    // Off-stage the panel has no width, the tip wraps to about a character a line,
+    // and the measurement is nonsense. setActive re-runs this on arrival.
+    if (copy.offsetWidth < 120) return;
+
+    // Measure with our own overrides lifted, so the breakpoint keeps ownership of
+    // both numbers: the copy's floor (44 desktop, 104 on mobile to clear the CTA)
+    // and the cell's resting bottom.
+    const prevTop = copy.style.top;
+    const prevBottom = copy.style.bottom;
+    copy.style.top = '';
+    copy.style.bottom = '';
+    const floor = parseFloat(getComputedStyle(copy).bottom) || 0;
+    const need = copy.offsetHeight;
+    copy.style.top = prevTop;
+    copy.style.bottom = prevBottom;
+
+    const prevWrapBottom = wrap.style.bottom;
+    wrap.style.bottom = '';
+    const restingBottom = parseFloat(getComputedStyle(wrap).bottom) || 0;
+    wrap.style.bottom = prevWrapBottom;
+
+    const gap = parseFloat(getComputedStyle(wrap).rowGap) || 24;
+    // Only ever GROW the reservation: max(), not a sum, is what stops a short tip
+    // from stealing height the render could have used.
+    let reserve = Math.max(restingBottom, floor + need + gap);
+    const panelH = wrap.parentElement ? wrap.parentElement.clientHeight : 0;
+    if (panelH) reserve = Math.min(reserve, panelH * 0.55);
+    wrap.style.bottom = Math.round(reserve) + 'px';
+
+    // Read after the reserve lands, so the marquee is already in its final place.
+    const mq = wrap.querySelector('[data-equip-marquee]');
+    if (mq && wrap.parentElement) {
+      const top = mq.getBoundingClientRect().bottom
+        - wrap.parentElement.getBoundingClientRect().top + gap;
+      copy.style.top = Math.round(top) + 'px';
+      copy.style.bottom = 'auto';
+    }
+  }
 
   // Recomputed from measured pixels every time the cell or the media can have
   // changed, which is what makes it follow a resize instead of being baked once.
@@ -667,7 +762,7 @@ function initEquipment(root) {
       const sw = (plateBox.r - plateBox.x) * pw;
       const sh = (plateBox.b - plateBox.y) * ph;
       if (sw <= 0 || sh <= 0) return;
-      const k = PLATE_FILL * Math.min(W / sw, H / sh);
+      const k = plateFill * Math.min(W / sw, H / sh);
       const ox = ((plateBox.x + plateBox.r) / 2 - 0.5) * pw;
       const oy = ((plateBox.y + plateBox.b) / 2 - 0.5) * ph;
       m.style.transform =
@@ -696,7 +791,18 @@ function initEquipment(root) {
     } else if (isVid) {
       if (img) img.style.opacity = '0';
       if (vid) {
-        if (vid.getAttribute('src') !== src) vid.src = src;
+        // #103: rung-bearing fleet items pick their rendition at selection
+        // (row data-rungs, baked at build); ladder-less items take raw src.
+        let chosen = src;
+        const rungsRaw = r.dataset.rungs;
+        if (rungsRaw && typeof window.__aoinPickRung === 'function') {
+          let rungs = [];
+          try { rungs = JSON.parse(rungsRaw); } catch (_) { rungs = []; }
+          if (Array.isArray(rungs) && rungs.length) chosen = window.__aoinPickRung(rungs, src) || src;
+        }
+        const rowPoster = r.dataset.poster;
+        if (rowPoster && vid.getAttribute('poster') !== rowPoster) vid.setAttribute('poster', rowPoster);
+        if (vid.getAttribute('src') !== chosen) vid.src = chosen;
         vid.style.opacity = '1';
         // Only autoplay while the equipment section is active — otherwise the plate
         // holds frame 0 so its intro plays from the start when you scroll in.
@@ -711,7 +817,7 @@ function initEquipment(root) {
     if (i === activeIdx) return;
     activeIdx = i;
     rows.forEach((r, k) => r.classList.toggle('is-active', k === i));
-    if (copy) copy.textContent = rows[i].dataset.tip;
+    if (copy) { copy.textContent = rows[i].dataset.tip; fitCopy(); fitPlate(); }
     if (immediate) { setPlate(rows[i]); return; }
     if (img) img.style.opacity = '0';
     if (vid) vid.style.opacity = '0';
@@ -729,11 +835,13 @@ function initEquipment(root) {
   };
 
   // Center the default item (CUSTOM RACK BUILDS) once fonts — and thus item widths — settle.
-  const center = () => { const i = activeIdx < 0 ? defaultIdx : activeIdx; setX(xForIndex(i)); swap(i, true); };
+  const center = () => { const i = activeIdx < 0 ? defaultIdx : activeIdx; setX(xForIndex(i)); swap(i, true); fitCopy(); fitPlate(); };
   if (document.fonts && document.fonts.ready) document.fonts.ready.then(center); else center();
   window.addEventListener('resize', () => {
     const i = activeIdx < 0 ? defaultIdx : activeIdx;
     setX(clampU(bounds().min, bounds().max, xForIndex(i)));
+    fitCopy();
+    fitPlate();
   });
 
   // pointer drag (touch-action:pan-y in CSS lets vertical page scroll pass through)
@@ -797,6 +905,9 @@ function initEquipment(root) {
     const on = !!v;
     if (on === active) return;
     active = on;
+    // The panel only has its real width once it is on stage, and fitCopy needs
+    // that width to wrap the tip, so re-measure on arrival.
+    if (on) { fitCopy(); fitPlate(); }
     if (!vid) return;
     if (on && plateIsVideo) { try { vid.currentTime = 0; } catch (_) {} vid.play && vid.play().catch(() => {}); }
     else if (!on) { vid.pause && vid.pause(); }
@@ -822,6 +933,7 @@ function initEquipment(root) {
       const gap = parseFloat(getComputedStyle(wrap).rowGap) || 24;
       wrap.style.top = Math.round(barBottom + gap) + 'px';
     }
+    fitCopy();
     fitPlate();
   };
 

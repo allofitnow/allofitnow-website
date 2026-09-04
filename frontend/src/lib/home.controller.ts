@@ -542,6 +542,39 @@ export class HomeController {
     const v = this.ref<HTMLVideoElement>('reelVideo');
     if (!v) return; // Vimeo embed — the iframe player owns its own playback
 
+    // #99: rendition picker. The server renders the video WITHOUT a src (and
+    // preload=none) so nothing fetches until the rung is chosen here — the
+    // only video bytes on the wire are the chosen rung's. A rungs list that
+    // is empty or malformed (seed fallback, legacy markup) falls back to the
+    // master via the data-master-src attribute, never to a blank hero.
+    const rungsRaw = v.getAttribute('data-rungs');
+    let rungs: { w: number; url: string }[] = [];
+    try {
+      rungs = rungsRaw ? JSON.parse(rungsRaw) : [];
+      if (!Array.isArray(rungs)) rungs = [];
+    } catch {
+      rungs = [];
+    }
+    const master = v.getAttribute('data-master-src') || rungs[rungs.length - 1]?.url || '';
+    const pick = (): string => {
+      if (rungs.length === 0) return master;
+      // saveData (and a metered connection, guarded — #94 WebKit lesson) drop
+      // to the smallest rung; otherwise width tiers per the pilot spec:
+      // <768 -> 480, <1280 -> 720, >=1280 -> largest rung (the master).
+      const conn = (navigator as any).connection;
+      const saveData = (navigator as any).saveData === true || (conn && conn.saveData) === true;
+      const metered = conn && typeof conn.type === 'string' ? /^[23]g$/i.test(conn.type) : false;
+      const vw = Math.max(document.documentElement.clientWidth, window.innerWidth || 0);
+      const cap = saveData || metered ? rungs[0].w : vw < 768 ? rungs[0].w : vw < 1280 ? 1280 : Infinity;
+      let chosen = rungs[rungs.length - 1];
+      for (const r of rungs) if (r.w <= cap) chosen = r;
+      return chosen.url;
+    };
+    const chosenUrl = pick();
+    if (chosenUrl && v.src !== chosenUrl) v.src = chosenUrl;
+    if (chosenUrl && v.getAttribute('src') !== chosenUrl) v.setAttribute('src', chosenUrl);
+    if (chosenUrl) v.load();
+
     const frame = this.ref('reelFrame');
     const blocked = (on: boolean) => frame?.toggleAttribute('data-reel-blocked', on);
 
@@ -666,9 +699,17 @@ export class HomeController {
 
     const foot = this.ref('footer');
     if (foot) {
-      foot.style.padding = m ? '96px 20px 0' : '110px 48px 0';
+      // Phone: top-adjust the columns instead of dropping them 96px. The footer is
+      // space-between over at least 100svh, so that offset did not add air above
+      // the text -- it pushed the whole block down and handed the slack to the gap
+      // above the wordmark, which is the empty band in the middle of the screen.
+      // Matching the side padding puts the text at the top and leaves the wordmark
+      // where it was, at the bottom. The section carries data-nav-hide, so nothing
+      // is sitting over the top edge to collide with.
+      foot.style.padding = m ? '20px 20px 0' : '110px 48px 0';
       foot.style.height = m ? 'auto' : '100svh';
       foot.style.minHeight = m ? '100svh' : '560px';
+      if (m) foot.style.minHeight = '100dvh';
       const grid = foot.firstElementChild as HTMLElement;
       grid.style.gridTemplateColumns = m ? '1fr 1fr' : '1.6fr 1fr 1fr .9fr';
       grid.style.rowGap = m ? '40px' : '';

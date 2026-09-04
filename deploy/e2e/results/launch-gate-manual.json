@@ -1,0 +1,9 @@
+[
+  {
+    "row": "M2",
+    "status": "done",
+    "by": "hermes",
+    "date": "2026-09-01",
+    "evidence": "Playwright WebKit+Firefox on .245 vs https://46009.someofitlater.com post-v3h: 0 pageerrors across /, /work, /services, /work/trilogy (all HTTP 200); soft-nav re-bind .im__send.__aoinBound=true. Full run: deploy/e2e/results/m2-cross-engine.json (integration 4487bd9)."
+  }
+]

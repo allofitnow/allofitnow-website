@@ -70,7 +70,12 @@ def main():
         if r["Type"] in SKIP:
             continue
         key = (norm_name(r["Name"]), r["Type"])
-        want[key] = sorted(norm_value(v["Value"]) for v in r.get("ResourceRecords", []))
+        if r["Type"] in ("TXT", "SPF"):
+            # TXT strings are case-sensitive: quotes stripped, whitespace collapsed only
+            want[key] = sorted(norm_value(v["Value"]) for v in r.get("ResourceRecords", []))
+        else:
+            # MX/CNAME/A etc: case-insensitive, trailing dot insignificant
+            want[key] = sorted(norm_value(v["Value"]).lower().rstrip(".") for v in r.get("ResourceRecords", []))
 
     token = cf_token()
     zid = a.zone_id
@@ -88,9 +93,14 @@ def main():
         recs = cf(f"/zones/{zid}/dns_records?per_page=100&page={page}", token)
         for r in recs:
             key = (norm_name(r["name"]), r["type"])
-            # CF TXT records: content unquoted; others verbatim
-            val = norm_value(r["content"]) if r["type"] in ("TXT", "SPF") else r["content"].strip().strip('"')
-            have.setdefault(key, []).append(val)
+            if r["type"] == "MX":
+                # CF API returns priority as a separate field, host lowercase, no trailing dot
+                have.setdefault(key, []).append(f"{r['priority']} {r['content'].strip()}".lower().rstrip("."))
+            elif r["type"] in ("TXT", "SPF"):
+                have.setdefault(key, []).append(norm_value(r["content"]))
+            else:
+                # CNAME/AAAA/etc: CF stores targets without trailing dot; r53 export has it
+                have.setdefault(key, []).append(r["content"].strip().rstrip("."))
         if len(recs) < 100:
             break
         page += 1
