@@ -1133,6 +1133,8 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
       dlg.showModal();
       place();
       ensureTurnstile();
+      // #131: same focus handoff for click openers (nav CONTACT, project bar…).
+      (dlg.querySelector('[data-im-name]') as HTMLInputElement | null)?.focus();
     });
     dlg.querySelectorAll('[data-inquiry-close]').forEach((el) =>
       el.addEventListener('click', () => dlg.close())
@@ -1159,6 +1161,8 @@ const SITEKEY = '0x4AAAAAAElaykmuLNTNiyqY';
       dlg.showModal();
       place();
       ensureTurnstile();
+      // #131: cursor ready in the first field the moment the modal opens.
+      (dlg.querySelector('[data-im-name]') as HTMLInputElement | null)?.focus();
     }
     // A cleared hash keeps a plain reload from surprise-reopening the modal
     // (replaceState: no history entry, no scroll jump). Deep links stay
