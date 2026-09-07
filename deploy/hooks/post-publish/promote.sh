@@ -19,6 +19,11 @@
 # Exit contract: 0 green; 1 partial (idempotent re-run converges); 2 fatal.
 #
 # Usage: promote.sh --publish-id <soft-pid> [--dry-run]
+#
+# DORMANT since 2026-09-07: publish defaults to --live (direct live-root), so
+# the soft/ namespace is never written and promote is not needed. Re-enable:
+# flip the `live` default back to False on `_run_publish` AND `publish` in
+# aoin_mcp/server.py; then publish writes soft/ (E3) and this (E4) promotes it.
 set -uo pipefail
 
 BUCKET=46009

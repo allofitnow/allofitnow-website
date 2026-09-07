@@ -395,7 +395,11 @@ async def _run_publish(live: bool = True) -> dict:
     """Execute publish.sh under flock; returns {success, log_tail} or raises.
     live=True (default) appends --live: direct-to-live-root, skipping the soft/
     acceptance stage. BOTH the MCP publish tool and the /hook autopublish path
-    converge here so they share identical logic (same flock, same --live)."""
+    converge here so they share identical logic (same flock, same --live).
+
+    Soft/promote is DORMANT (2026-09-07): to re-enable it, flip the default on
+    this fn AND `publish` below back to live=False — then soft.sh (E3) runs
+    again on every publish and promote.sh (E4) promotes soft -> live root."""
     cmd = [PUBLISH_SCRIPT]
     if live:
         cmd.append("--live")

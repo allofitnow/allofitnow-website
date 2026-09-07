@@ -10,6 +10,11 @@
 # fan-out's AOIN_TARGET_TIMEOUT (default 300s) must not kill it mid-upload.
 # prod.sh is idempotent, so a detached run that dies is safely re-run by the
 # next publish. Log: deploy/logs/soft-<publish-id>.log (logtail in ledger).
+#
+# DORMANT since 2026-09-07: publish defaults to --live (--skip-soft), so this
+# target is SKIPPED in the fan-out. Re-enable: flip the `live` default back to
+# False on `_run_publish` AND `publish` in aoin_mcp/server.py — then this runs
+# again on every publish (E3) and promote.sh (E4) promotes soft -> live root.
 set -uo pipefail
 
 PUBLISH_ID=""
