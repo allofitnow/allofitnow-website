@@ -43,6 +43,10 @@ const assignCode: BeforeChangeHook = async ({ data, req, originalDoc }) => {
 
 const Projects: CollectionConfig = {
   slug: "projects",
+  // E2: enable Payload drafts so "save" (WIP) is distinct from "publish". The
+  // native `_status` field (draft/published) is auto-injected by Payload; the
+  // custom `visibility` field (published/unlisted/archive) stays a separate axis.
+  versions: { drafts: true },
   admin: {
     useAsTitle: "title",
     defaultColumns: ["title", "year", "order"],
@@ -57,44 +61,10 @@ const Projects: CollectionConfig = {
   },
   hooks: {
     beforeChange: [assignCode],
-    afterChange: [
-      async ({ doc, operation }) => {
-        const res = await fetch('http://127.0.0.1:8788/hook', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Webhook-Secret': process.env.MCP_WEBHOOK_SECRET || '',
-          },
-          body: JSON.stringify({
-            operation,
-            doc: { id: doc.id, slug: doc.slug, status: doc.status },
-          }),
-        });
-        if (!res.ok) {
-          const errBody = await res.text().catch(() => 'unknown error');
-          throw new Error(`Publish failed: ${res.status} ${errBody}`);
-        }
-      },
-    ],
-    afterDelete: [
-      async ({ doc }) => {
-        const res = await fetch('http://127.0.0.1:8788/hook', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'X-Webhook-Secret': process.env.MCP_WEBHOOK_SECRET || '',
-          },
-          body: JSON.stringify({
-            operation: 'afterDelete',
-            doc: { id: doc.id, slug: doc.slug },
-          }),
-        });
-        if (!res.ok) {
-          const errBody = await res.text().catch(() => 'unknown error');
-          throw new Error(`Publish failed: ${res.status} ${errBody}`);
-        }
-      },
-    ],
+    // E2: per-doc save is WIP (draft) and must NOT rebuild the site. The only
+    // rebuild trigger is the explicit site-wide `publish` MCP tool (publish.sh).
+    // afterChange/afterDelete webhook hooks removed — a save/delete no longer
+    // fires the /hook endpoint.
   },
   // Fields are ordered to mirror the project page top-to-bottom, so the editor
   // reads in the same order the content lands on the site. Publishing/meta and
@@ -403,7 +373,7 @@ const Projects: CollectionConfig = {
     { name: "slug", type: "text", required: true, unique: true, admin: { position: "sidebar" } },
     { name: "code", type: "text", admin: { hidden: true } },
     {
-      name: "status",
+      name: "visibility",
       type: "select",
       options: ["published", "unlisted", "archive"],
       defaultValue: "published",

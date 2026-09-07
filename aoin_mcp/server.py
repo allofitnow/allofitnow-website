@@ -140,11 +140,11 @@ async def list_media(query: str = "", limit: int = 50) -> Dict[str, Any]:
 
 # --- Browsing Tools ---
 @mcp.tool()
-async def list_projects(status: Optional[Literal['published', 'archive']] = None) -> Dict[str, Any]:
+async def list_projects(visibility: Optional[Literal['published', 'unlisted', 'archive']] = None) -> Dict[str, Any]:
     """Roster from Payload. Returns { total, projects: [...] }"""
     url = f"{PAYLOAD_URL}/api/projects?limit=100"
-    if status:
-        url += f"&where[status][equals]={status}"
+    if visibility:
+        url += f"&where[visibility][equals]={visibility}"
         
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         res = await client.get(url)
@@ -159,7 +159,7 @@ async def list_projects(status: Optional[Literal['published', 'archive']] = None
             "client": p.get("client") or p.get("code", ""),
             "year": p.get("year", ""),
             "role": p.get("role") or ", ".join(p.get("capabilities") or []),
-            "status": p.get("status", ""),
+            "visibility": p.get("visibility", ""),
             "thumb_url": (p.get("thumb") or {}).get("url", "")
         } for p in data["docs"]]
     }
@@ -178,8 +178,8 @@ async def get_project(slug: str) -> Dict[str, Any]:
 
 # --- Publish Tools ---
 @mcp.tool()
-async def set_status(slug: str, status: Literal['published', 'archive']) -> Dict[str, str]:
-    """Flip publish state."""
+async def set_visibility(slug: str, visibility: Literal['published', 'unlisted', 'archive']) -> Dict[str, str]:
+    """Flip project visibility (published/unlisted/archive)."""
     jwt = await get_jwt()
     async with httpx.AsyncClient(timeout=HTTP_TIMEOUT) as client:
         proj_res = await client.get(f"{PAYLOAD_URL}/api/projects?where[slug][equals]={slug}")
@@ -191,11 +191,11 @@ async def set_status(slug: str, status: Literal['published', 'archive']) -> Dict
         patch_res = await client.patch(
             f"{PAYLOAD_URL}/api/projects/{docs[0]['id']}",
             headers={"Authorization": f"JWT {jwt}"},
-            json={"status": status}
+            json={"visibility": visibility}
         )
         patch_res.raise_for_status()
         
-    return {"slug": slug, "status": status}
+    return {"slug": slug, "visibility": visibility}
 
 @mcp.tool()
 async def publish() -> Dict[str, Any]:
@@ -248,7 +248,7 @@ async def validate_portfolio(data: ProjectData) -> Dict[str, Any]:
 async def create_portfolio(
     data: ProjectData,
     assets: Optional[List[AssetInput]] = None,
-    status: Literal['published', 'archive'] = 'published'
+    visibility: Literal['published', 'unlisted', 'archive'] = 'published'
 ) -> Dict[str, Any]:
     """One-call portfolio creation."""
     jwt = await get_jwt()
@@ -259,7 +259,7 @@ async def create_portfolio(
         
     payload_doc = data.dict(exclude_none=True)
     payload_doc["code"] = "TEMP"
-    payload_doc["status"] = status
+    payload_doc["visibility"] = visibility
     
     if not payload_doc.get("order"):
         # Auto-assign order
@@ -363,7 +363,7 @@ async def delete_portfolio(slug: str) -> Dict[str, Any]:
         if not docs:
             return {"error": "not found"}
             
-        if docs[0]["status"] == "published":
+        if docs[0]["visibility"] == "published":
             return {"error": "Cannot delete a published project. Archive it first."}
             
         res = await client.delete(

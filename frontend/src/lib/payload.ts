@@ -134,9 +134,9 @@ function sortRunningOrder(projects: Project[]): Project[] {
   });
 }
 
-/** Shared fetch for a status set, memoised per-set for the production build. */
-async function fetchProjectsByStatus(statusQuery: string): Promise<Project[]> {
-  const res = await fetch(`${API_URL}/api/projects?limit=100&depth=2&sort=order&${statusQuery}`);
+/** Shared fetch for a visibility set, memoised per-set for the production build. */
+async function fetchProjectsByVisibility(visibilityQuery: string): Promise<Project[]> {
+  const res = await fetch(`${API_URL}/api/projects?limit=100&depth=2&sort=order&${visibilityQuery}`);
   if (!res.ok) throw new Error(`Payload API ${res.status}: ${await res.text()}`);
   const data = await res.json();
   return sortRunningOrder(data.docs.map(mapPayloadProject));
@@ -149,7 +149,7 @@ async function fetchProjectsByStatus(statusQuery: string): Promise<Project[]> {
  *  than being locked into year blocks. Memoised for the production build. */
 export function getProjects(): Promise<Project[]> {
   if (import.meta.env.PROD && projectsCache) return projectsCache;
-  const req = fetchProjectsByStatus('where[status][equals]=published');
+  const req = fetchProjectsByVisibility('where[visibility][equals]=published');
   if (import.meta.env.PROD) {
     projectsCache = req;
     req.catch(() => { projectsCache = null; });
@@ -166,7 +166,7 @@ export function getProjects(): Promise<Project[]> {
  *  `archive` is still excluded outright — that status means no page at all. */
 export function getRoutableProjects(): Promise<Project[]> {
   if (import.meta.env.PROD && routableCache) return routableCache;
-  const req = fetchProjectsByStatus('where[status][in]=published,unlisted');
+  const req = fetchProjectsByVisibility('where[visibility][in]=published,unlisted');
   if (import.meta.env.PROD) {
     routableCache = req;
     req.catch(() => { routableCache = null; });

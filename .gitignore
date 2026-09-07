@@ -5,3 +5,7 @@ __pycache__/
 *.pyc
 .env
 deploy/logs/
+# E5: media never belongs in git — 4.4 GB on .245. Filename is the SSOT; the
+# R2 archive/ prefix is the per-publish asset history.
+backend/media/
+backend/media-wip/
