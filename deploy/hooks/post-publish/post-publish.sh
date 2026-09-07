@@ -6,10 +6,12 @@ set -uo pipefail
 
 BUILD_TREE=""
 PUBLISH_ID=""
+SKIP_SOFT=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --build-tree) BUILD_TREE="${2:-}"; shift 2 ;;
     --publish-id) PUBLISH_ID="${2:-}"; shift 2 ;;
+    --skip-soft) SKIP_SOFT=1; shift ;;
     *) echo "post-publish: ignoring unknown arg ${1}" >&2; shift ;;
   esac
 done
@@ -28,6 +30,8 @@ trap 'rm -f "$RESULTS"' EXIT
 for SCRIPT in deploy/hooks/post-publish/targets/*.sh; do
   [ -f "$SCRIPT" ] || continue
   T=$(basename "$SCRIPT" .sh)
+  # --skip-soft: publish --live bypasses the soft/ acceptance stage entirely.
+  [ "$SKIP_SOFT" -eq 1 ] && [ "$T" = "soft" ] && continue
   OUT=$(timeout "${AOIN_TARGET_TIMEOUT:-300}" bash "$SCRIPT" \
         --build-tree "$BUILD_TREE" --publish-id "$PUBLISH_ID" 2>&1)
   RC=$?

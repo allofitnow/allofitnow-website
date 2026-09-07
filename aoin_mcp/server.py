@@ -198,11 +198,16 @@ async def set_visibility(slug: str, visibility: Literal['published', 'unlisted',
     return {"slug": slug, "visibility": visibility}
 
 @mcp.tool()
-async def publish() -> Dict[str, Any]:
-    """Blocking; runs publish.sh; returns { success, timestamp, build_log_tail }"""
+async def publish(live: bool = False) -> Dict[str, Any]:
+    """Blocking; runs publish.sh; returns { success, timestamp, build_log_tail }.
+    live=True publishes straight to the live root (allofitnow.com), bypassing
+    the soft/ (46009.someofitlater.com) acceptance stage."""
+    cmd = ["/root/projects/aoin-deploy/deploy/publish.sh"]
+    if live:
+        cmd.append("--live")
     try:
         proc = subprocess.run(
-            ["/root/projects/aoin-deploy/deploy/publish.sh"],
+            cmd,
             capture_output=True, text=True, check=True
         )
         success = True
