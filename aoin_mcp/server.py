@@ -1,7 +1,6 @@
 from fastmcp import FastMCP, Context
 import httpx
 import os
-import subprocess
 import asyncio
 from typing import Optional, List, Dict, Any, Literal
 from pydantic import BaseModel, Field
@@ -198,29 +197,16 @@ async def set_visibility(slug: str, visibility: Literal['published', 'unlisted',
     return {"slug": slug, "visibility": visibility}
 
 @mcp.tool()
-async def publish(live: bool = False) -> Dict[str, Any]:
-    """Blocking; runs publish.sh; returns { success, timestamp, build_log_tail }.
-    live=True publishes straight to the live root (allofitnow.com), bypassing
-    the soft/ (46009.someofitlater.com) acceptance stage."""
-    cmd = ["/root/projects/aoin-deploy/deploy/publish.sh"]
-    if live:
-        cmd.append("--live")
-    try:
-        proc = subprocess.run(
-            cmd,
-            capture_output=True, text=True, check=True
-        )
-        success = True
-        log = proc.stdout
-    except subprocess.CalledProcessError as e:
-        success = False
-        log = e.stdout + "\n" + e.stderr
-        
-    tail = "\n".join(log.split("\n")[-20:])
+async def publish(live: bool = True) -> Dict[str, Any]:
+    """Blocking; runs publish.sh via the SAME _run_publish path as autopublish.
+    Returns { success, timestamp, build_log_tail }. live=True (default) publishes
+    straight to the live root (allofitnow.com), bypassing the soft/ acceptance
+    stage (--live -> --skip-soft)."""
+    result = await _run_publish(live=live)
     return {
-        "success": success,
+        "success": result["success"],
         "timestamp": time.strftime("%Y-%m-%dT%H:%M:%SZ"),
-        "build_log_tail": tail
+        "build_log_tail": result["log_tail"],
     }
 
 @mcp.tool()
@@ -405,11 +391,16 @@ PUBLISH_MARKER = os.environ.get("AOIN_PUBLISH_MARKER", "/run/aoin-publish-pendin
 PUBLISH_JOURNAL = os.environ.get("AOIN_PUBLISH_JOURNAL",
                                  "/root/projects/aoin-deploy/deploy/logs/async-publish-journal.jsonl")
 
-async def _run_publish() -> dict:
-    """Execute publish.sh under flock; returns {success, log_tail} or raises."""
+async def _run_publish(live: bool = True) -> dict:
+    """Execute publish.sh under flock; returns {success, log_tail} or raises.
+    live=True (default) appends --live: direct-to-live-root, skipping the soft/
+    acceptance stage. BOTH the MCP publish tool and the /hook autopublish path
+    converge here so they share identical logic (same flock, same --live)."""
+    cmd = [PUBLISH_SCRIPT]
+    if live:
+        cmd.append("--live")
     proc = await asyncio.create_subprocess_exec(
-        "flock", "-w", "900", PUBLISH_FLOCK,
-        PUBLISH_SCRIPT,
+        "flock", "-w", "900", PUBLISH_FLOCK, *cmd,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
