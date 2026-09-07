@@ -478,7 +478,7 @@ else
     SWEEP_DIRS=$("$PY" - "$SWEEP_GUARD" "$PREFIX" <<'PYK2'
 import sys
 prefix = sys.argv[2]
-skip = {"media/", "archive/", "manifests/", "_astro/"}
+skip = {"media/", "archive/", "manifests/", "_astro/", "soft/"}
 dirs = []
 for g in open(sys.argv[1]).read().split():
     if prefix and g.startswith(prefix):
@@ -620,7 +620,7 @@ for g in open(sys.argv[2]).read().split():
     if g.startswith(prefix):
         g = g[len(prefix):]
     guard.add(g)
-allowed = tops | {"archive/", "manifests/"}
+allowed = tops | {"archive/", "manifests/", "soft/"}
 unexpected = sorted(guard - allowed)
 if unexpected:
     print("UNEXPECTED:" + ",".join(unexpected))
