@@ -47,12 +47,19 @@ function hostLabel() {
 
 const result = {
   host: hostLabel(),
-  exportedAt: new Date().toISOString(),
   collections: {},
 };
 
+// dataUpdatedAt = latest updatedAt across all exported docs. Stable (derived
+// from the data itself), so the export only diffs when the data actually changes
+// — no per-run timestamp churn.
+let dataUpdatedAt = new Date(0);
+
 for (const c of ["projects", "equipment", "service-categories", "globals"]) {
   const docs = s.getCollection(c).find({}).sort({ _id: 1 }).toArray().map(stripSecrets);
+  for (const d of docs) {
+    if (d.updatedAt instanceof Date && d.updatedAt > dataUpdatedAt) dataUpdatedAt = d.updatedAt;
+  }
   result.collections[c] = docs;
 }
 
@@ -60,6 +67,11 @@ for (const c of ["projects", "equipment", "service-categories", "globals"]) {
 const media = s.getCollection("media").find({}, {
   projection: { _id: 1, filename: 1, alt: 1, mimeType: 1, sizes: 1, url: 1, updatedAt: 1, createdAt: 1 },
 }).sort({ _id: 1 }).toArray();
+for (const d of media) {
+  if (d.updatedAt instanceof Date && d.updatedAt > dataUpdatedAt) dataUpdatedAt = d.updatedAt;
+}
 result.collections.media = media;
+
+result.dataUpdatedAt = dataUpdatedAt.toISOString();
 
 print(JSON.stringify(normalize(result), null, 2));
