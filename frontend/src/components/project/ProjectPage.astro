@@ -280,8 +280,16 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     transition: transform var(--dl);
     transition-delay: 168ms;
   }
+  /* Open, the tour used to slide to left:49cqw — the head of the right column.
+     Since the panel became a reading surface pinned to the chrome band
+     (--pp-aside-top = 148 when open, see track()), that column IS the panel,
+     and the tour line was printed straight over the production notes. It now
+     tucks under the name instead: back to the row's left edge, one line below
+     the baseline, inside the row's 50px bottom padding. Transform only, so it
+     rides the same stage-0 timing as before and the closing slide is the
+     reverse of the opening one. */
   [data-expanded='true'] .pp__tour {
-    transform: translateX(0);
+    transform: translate(-49cqw, calc(100% + 0.7em));
     transition-delay: 0ms;
   }
 
