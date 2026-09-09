@@ -30,7 +30,8 @@ const R = 170, CORE = 0.42, SCATTER = 84;
 // The field is an IDLE state: it starts hidden and only drifts in once the page has been left
 // alone (FIRST_IDLE after load, IDLE_AFTER after any later activity). Keep moving (mouse or
 // scroll) for HIDE_AFTER and it scatters away again. RETURN_MS covers the longest beat + drift.
-const FIRST_IDLE = 2400, HIDE_AFTER = 1300, IDLE_AFTER = 1500, RETURN_MS = 1750;
+// Idle means idle: a reading pause is several seconds, so the waits sit well past one.
+const FIRST_IDLE = 10000, HIDE_AFTER = 1300, IDLE_AFTER = 8000, RETURN_MS = 1750;
 
 type Rand = { ux: number; uy: number; mag: number; spin: number; delay: number };
 
