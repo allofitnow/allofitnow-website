@@ -22,7 +22,7 @@ const WORDS = [
 
 let seed = 21;
 const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
-type Cell = { g: string; on: boolean; w: boolean; dur: number; del: number; a: number; dd: number };
+type Cell = { g: string; on: boolean; w: boolean; sp?: boolean; last?: boolean; wlen?: number; dur: number; del: number; a: number; dd: number };
 const rows: Cell[][] = [];
 for (let r = 0; r < ROWS; r++) {
   const row: Cell[] = [];
@@ -53,7 +53,11 @@ for (const word of WORDS) {
   const c0 = (rnd() * (COLS - word.length - 2)) | 0;
   for (let k = 0; k < word.length; k++) {
     const cell = rows[r][c0 + k];
-    cell.g = word[k]; cell.on = word[k] !== ' '; cell.w = true; cell.a = 0.92;
+    // Every cell of the run is a word cell, the inner spaces included, so the whole run
+    // takes the word tracking; the last cell carries the padding that puts the rest of
+    // the row back on the field's pitch.
+    cell.g = word[k]; cell.on = true; cell.w = true; cell.sp = word[k] === ' ';
+    cell.last = k === word.length - 1; cell.wlen = word.length; cell.a = 0.92;
   }
 }
 ---
@@ -87,8 +91,12 @@ for (const word of WORDS) {
     transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1),
                 opacity 420ms cubic-bezier(0.22, 1, 0.36, 1);
   }
-  /* Word cells: the names. Same face, held at a steadier brightness so they read. */
-  .fc.w { animation-duration: calc(var(--dur) * 1.6); }
+  /* Word cells: the names. Same face, held at a steadier brightness so they read, and set at
+     a normal label tracking (0.28em) rather than the field's 1.15em pitch — the field is
+     spread out, the words shouldn't be. Each cell's letter-spacing shrinks by 0.87em, so the
+     run's last cell pads by 0.87em × its length and the rest of the row stays on the grid. */
+  .fc.w { animation-duration: calc(var(--dur) * 1.6); letter-spacing: 0.28em; }
+  .fc.w.wl { margin-right: var(--wpad, 0); }
 
   /* DISSOLVE, not fade: with the field hidden, every glyph drops to 0 on its own beat
      (--dd, 0–650ms), so the field breaks up rather than dimming as a sheet. Returning does
@@ -112,7 +120,7 @@ for (const word of WORDS) {
       {rows.map((row) => (
         <div class="frow">
           {row.map((c) => (c.on
-            ? <span class={c.w ? 'fc w' : 'fc'} style={`--dur:${c.dur}s;--del:${c.del}s;--a:${c.a};--dd:${c.dd}ms`}>{c.g}</span>
+            ? <span class={c.w ? `fc w${c.sp ? ' sp' : ''}${c.last ? ' wl' : ''}` : 'fc'} style={`--dur:${c.dur}s;--del:${c.del}s;--a:${c.a};--dd:${c.dd}ms${c.last ? `;--wpad:${(c.wlen! * 0.87).toFixed(2)}em` : ''}`}>{c.g}</span>
             : ' '))}
         </div>
       ))}
