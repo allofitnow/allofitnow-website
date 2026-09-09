@@ -4,7 +4,17 @@
 // @ts-nocheck
 
 // Baked from the design's final tweak values — do not re-expose as props.
-const FIELD_OPACITY = 60;          // ascii field alpha, % (dimmed so the flashlight pools + nav text read clearer)
+const FIELD_OPACITY = 50;          // ascii field alpha, % (PREVIZ nav glow: 60 → 50 so the hover glow reads against a quieter field)
+// PREVIZ (nav glow): the hovered label's outer glow — wide layers with real alpha at distance, so
+// the light leaves the letters and lands in the field. Paired with the light pool + field dim in
+// services.css ([data-slot].is-hov).
+const HOVER_GLOW = '0 0 10px rgba(217,225,234,0.9), 0 0 40px rgba(217,225,234,0.8), 0 0 110px rgba(217,225,234,0.6), 0 0 220px rgba(217,225,234,0.4)';
+// PREVIZ (nav glow): the hero "shine" — sweep() repainting every label every frame with a
+// text-clipped gradient — is retired. It was the one per-frame writer of slot colour and
+// background, and the hand-off between it and the hover state is where the flash lived.
+// With it off, slot colour is a plain inline value (playIntro / setActiveService) and the
+// hover is pure CSS on .is-hov. Flip back to true to restore the shine.
+const HERO_SHINE = false;
 const FIELD_TOP_BRIGHTNESS = 66;   // ascii field brightness at the top of the ramp, %
 const NAV_BRIGHTNESS = 91;         // capability-label base fill, %
 const SWEEP_SPEED = 50;            // gradient sweep speed, % of the 2500ms base pass
@@ -121,34 +131,24 @@ class ServicesController {
       // have nothing to act on.
       b.addEventListener('mouseenter', () => {
         if (this.active >= 0) return;
-        b.__hov = true;
-        // Snapshot rather than assume a resting value: colour here is owned by
-        // setActiveService or sweep depending on mode, and leaving must hand it back
-        // exactly as found rather than making this a third writer.
-        b.__preHov = {
-          color: b.style.color,
-          fill: b.style.webkitTextFillColor,
-          filter: b.style.filter,
-          shadow: b.style.textShadow,
-        };
-        b.style.color = '#000';
-        b.style.webkitTextFillColor = '#000';
-        b.style.filter = 'none';   // the halo separates the label from the field; on white it muddies
-        b.style.textShadow = 'none';
+        b.__hov = true;               // fitSlots reads this for the letter-spacing widen
+        // PREVIZ (nav glow): the hover is pure CSS on .is-hov (services.css) — full cool
+        // white, the dark halo off, the outer glow. No inline paint here: with the hero
+        // shine retired (HERO_SHINE) nothing writes slot colour or background per frame,
+        // so there is nothing to snapshot, nothing to restore, and nothing to race.
+        b.classList.add('is-hov');
+        // Mute the field's cursor flashlight while a name is hovered (it pooled a bright
+        // patch under the word) and scatter the field around the label.
+        this._navHov = true;
+        this._glDirty = true;
+        this.navScatter(b);
       });
       b.addEventListener('mouseleave', () => {
         b.__hov = false;
-        const pre = b.__preHov;
-        if (pre) {
-          b.style.color = pre.color;
-          b.style.webkitTextFillColor = pre.fill;
-          b.style.filter = pre.filter;
-          b.style.textShadow = pre.shadow;
-          b.__preHov = null;
-        }
-        // Force sweep, if it is running, to re-run its gradient branch rather than
-        // trusting the snapshot to match what it would have painted.
-        if (b.__sw === 2) b.__sw = 0;
+        b.classList.remove('is-hov');
+        this._navHov = false;
+        this._glDirty = true;
+        this.navScatterClear();
       });
     });
     // Panel-navigation handlers (clicks into subcategories, inventory rows, drag,
@@ -551,6 +551,66 @@ class ServicesController {
     if (!this._dyn) return;
     const dyn = this._dyn, ba = this._baseA, n = this._n;
     for (let i = 0; i < n; i++) dyn[i * 5 + 1] = ba[i];
+    this._glDirty = true;
+  }
+
+  // PREVIZ (nav glow): scatter-dissolve the field around a hovered capability label. Cells
+  // inside the label's box (+PAD) fade out fully; a FEATHER ring beyond it drifts outward —
+  // away from the word, with a per-cell random vector mixed in for the organic feel — and
+  // fades on a smoothstep falloff, with a little shrink. Offsets and scale ride the field's
+  // existing _tOff/_tScale/_moving easing (the scramble's machinery); the fade rides _scatA,
+  // eased toward _scatT in tickAscii. Everything is in CSS px: aOff is in cell-px space.
+  navScatter(btn) {
+    const root = this.el();
+    const box = root && root.querySelector('[data-ascii]');
+    if (!box || !this._dyn || !this._scatSet || !btn) return;
+    const br = box.getBoundingClientRect();
+    let raw = btn.getBoundingClientRect();
+    try { const rg = document.createRange(); rg.selectNodeContents(btn); const rr = rg.getBoundingClientRect(); if (rr.width) raw = rr; } catch (_) {}
+    // Shape: a rounded superellipse (P=3) sized to the word — Rx a touch past the half-width,
+    // Ry a touch past the half-height — so the pocket hugs the letters with rounded ends
+    // instead of reading as a box. Inside it everything clears; a FEATHER band beyond it
+    // scatters and fades. Tighter than the first pass on purpose.
+    const PADX = 16, PADY = 14, FEATHER = 58, SCATTER = 66, P = 3;
+    const wx = (raw.left + raw.right) / 2 - br.left, wy = (raw.top + raw.bottom) / 2 - br.top;
+    const Rx = raw.width / 2 + PADX, Ry = raw.height / 2 + PADY;
+    const cw = this._cw, ch = this._ch, cols = this._cols, rows = this._rows;
+    const rA = Math.max(0, Math.floor((wy - Ry - FEATHER) / ch)), rB = Math.min(rows - 1, Math.ceil((wy + Ry + FEATHER) / ch));
+    const cA = Math.max(0, Math.floor((wx - Rx - FEATHER) / cw)), cB = Math.min(cols - 1, Math.ceil((wx + Rx + FEATHER) / cw));
+    const seen = new Set();
+    for (let r = rA; r <= rB; r++) {
+      for (let c = cA; c <= cB; c++) {
+        const i = r * cols + c;
+        if (!this._baseA[i]) continue;                       // an "off" cell — nothing to move
+        const px = (c + 0.5) * cw, py = (r + 0.5) * ch;
+        const ox = px - wx, oy = py - wy;
+        // Superellipse radius ratio: <= 1 inside the pocket, growing outside it.
+        const q = Math.pow(Math.pow(Math.abs(ox) / Rx, P) + Math.pow(Math.abs(oy) / Ry, P), 1 / P);
+        // Distance beyond the pocket's edge, in px along the ray from the centre.
+        const d = q <= 1 ? 0 : ((q - 1) * Math.hypot(ox, oy)) / q;
+        if (d >= FEATHER) continue;
+        const f = 1 - d / FEATHER, e = f * f * (3 - 2 * f);
+        const ang = hash2(c, r, 5) * Math.PI * 2, mag = 0.6 + 0.9 * hash2(c, r, 6);
+        const ol = Math.hypot(ox, oy) || 1;
+        let vx = (ox / ol) * 0.75 + Math.cos(ang) * 0.55, vy = (oy / ol) * 0.75 + Math.sin(ang) * 0.55;
+        const vl = Math.hypot(vx, vy) || 1; vx /= vl; vy /= vl;
+        const dist = SCATTER * (0.4 + 0.6 * e) * mag;
+        this._tOff[i * 2] = vx * dist;
+        this._tOff[i * 2 + 1] = vy * dist;
+        this._tScale[i] = 1 - 0.35 * e;
+        this._scatT[i] = d < 0.5 ? 1 : Math.min(1, e * 2.4) * 0.99;
+        this._moving.add(i); this._scatSet.add(i); seen.add(i);
+      }
+    }
+    // Cells a previous label scattered that this one doesn't cover: let them return.
+    this._scatSet.forEach((i) => {
+      if (!seen.has(i)) { this._tOff[i * 2] = 0; this._tOff[i * 2 + 1] = 0; this._tScale[i] = 1; this._scatT[i] = 0; this._moving.add(i); }
+    });
+    this._glDirty = true;
+  }
+  navScatterClear() {
+    if (!this._scatSet || !this._scatSet.size) return;
+    this._scatSet.forEach((i) => { this._tOff[i * 2] = 0; this._tOff[i * 2 + 1] = 0; this._tScale[i] = 1; this._scatT[i] = 0; this._moving.add(i); });
     this._glDirty = true;
   }
 
@@ -1270,6 +1330,7 @@ class ServicesController {
   sweep(now) {
     const root = this.el();
     if (!root) return;
+    if (!HERO_SHINE) return; // PREVIZ (nav glow): shine retired — never paint the slots here
     const slots = root.querySelectorAll('[data-slot]');
     const vw = window.innerWidth;
     const band = Math.round(vw * 1.1);
@@ -1303,9 +1364,10 @@ class ServicesController {
           b.style.backgroundColor = 'transparent';
           b.style.backgroundClip = '';
           b.style.webkitBackgroundClip = '';
-          b.style.webkitTextFillColor = '#000';
-          b.style.color = '#000';
-          b.style.textShadow = 'none';
+          // PREVIZ (nav glow): same paint as the mouseenter handler — lit, no halo, outer glow.
+          b.style.webkitTextFillColor = 'rgb(217,225,234)';
+          b.style.color = 'rgb(217,225,234)';
+          b.style.textShadow = HOVER_GLOW;
           b.style.filter = 'none';
         }
         return;
@@ -1343,9 +1405,12 @@ class ServicesController {
   sweepOff() {
     const root = this.el();
     if (!root) return;
+    this._navHov = false;
+    this.navScatterClear(); // PREVIZ (nav glow): leaving the hero releases any scattered cells
     root.querySelectorAll('[data-slot]').forEach((b) => {
       b.__sw = 0;
       b.__hov = false;
+      b.classList.remove('is-hov'); // PREVIZ (nav glow): a tap never gets a mouseleave; the section boundary clears it
       b.__bg = null;
       b.style.backgroundImage = 'none';
       b.style.backgroundColor = 'transparent';
@@ -1602,6 +1667,11 @@ class ServicesController {
     this._moving = new Set();
     this._tOff = new Float32Array(n * 2);
     this._tScale = tScale;
+    // PREVIZ (nav glow): per-cell scatter-dissolve state for the hovered capability label —
+    // target fade (0..1), eased fade, and the set of cells currently in play.
+    this._scatT = new Float32Array(n);
+    this._scatA = new Float32Array(n);
+    this._scatSet = new Set();
 
     // Per-run random dissolve thresholds: contiguous horizontal runs (i = r*cols+c) share a
     // value so whole "strings" vanish together as dissolveField(t) ramps 0→1. Regenerated
@@ -1961,11 +2031,15 @@ class ServicesController {
   tickAscii(now) {
     if (!this._gl || !this._dyn) return;
     const dyn = this._dyn;
-    if (this._mIn) this.asciiHover();
+    // PREVIZ (nav glow): the cursor's hover-scramble stays out of it while a label is hovered —
+    // the scatter owns those cells.
+    if (this._mIn && !this._navHov) this.asciiHover();
     // Cursor-pool presence eases toward 1 while the mouse is over the field, 0 when it leaves or
     // mutes near the bar — so the luminance halo fades rather than snapping (drawAscii reads _lumCurA).
     {
-      const lt = this._mIn ? 1 : 0;
+      // PREVIZ (nav glow): _navHov mutes the cursor flashlight while a nav name is hovered,
+      // so the field doesn't bloom into a box under the glowing word.
+      const lt = (this._mIn && !this._navHov) ? 1 : 0;
       const l0 = this._lumCurA || 0;
       if (Math.abs(lt - l0) > 0.001) { this._lumCurA = l0 + (lt - l0) * 0.16; this._glDirty = true; }
       else if (this._lumCurA !== lt) { this._lumCurA = lt; this._glDirty = true; }
@@ -2016,6 +2090,21 @@ class ServicesController {
         }
       });
       done.forEach((i) => this._moving.delete(i));
+      this._glDirty = true;
+    }
+    // PREVIZ (nav glow): ease each scattered cell's fade toward its target and write its alpha
+    // (after the flicker/fade passes so it wins for shared cells); release a cell once it has
+    // faded all the way back in.
+    if (this._scatSet && this._scatSet.size) {
+      const done = [];
+      this._scatSet.forEach((i) => {
+        const t = this._scatT[i], a0 = this._scatA[i];
+        const a = Math.abs(t - a0) < 0.004 ? t : a0 + (t - a0) * 0.16;
+        this._scatA[i] = a;
+        dyn[i * 5 + 1] = this._baseA[i] * (1 - a);
+        if (t === 0 && a === 0) done.push(i);
+      });
+      done.forEach((i) => this._scatSet.delete(i));
       this._glDirty = true;
     }
     this._applyDissolve(); // wins the frame — after flicker/fade/hover, before the draw

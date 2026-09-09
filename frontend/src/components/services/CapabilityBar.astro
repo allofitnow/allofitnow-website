@@ -48,27 +48,11 @@
     position: relative;
     isolation: isolate;
   }
-  [data-slot]::before {
-    content: '';
-    position: absolute;
-    inset: -0.22em -0.42em;
-    z-index: -1;
-    background: var(--aoin-cool-white);
-    transform: scaleY(0);
-    transform-origin: bottom;
-    /* --ease-brand is not defined on /services: this page is standalone and pulls
-       only services.css, not the full token sheet, so var(--ease-brand) resolved to
-       nothing and took the whole transition shorthand down with it -- the bar
-       snapped instead of wiping. --fly-ease is the same curve and IS present here;
-       the literal is the last resort so this cannot silently break again. */
-    transition: transform 0.35s var(--ease-brand, var(--fly-ease, cubic-bezier(0.05, 0.89, 0, 0.99)));
-    pointer-events: none;
-  }
-  /* Fine pointers only. On touch :hover latches after a tap, which would leave a
-     white bar stuck under a label the reader has already navigated away from. */
-  @media (hover: hover) and (pointer: fine) {
-    [data-slot]:hover::before {
-      transform: scaleY(1);
-    }
-  }
+  /* PREVIZ (nav glow): the plate wipe is replaced by a soft LIGHT POOL behind the
+     hovered word — the "outer" half of the glow, lighting the character field
+     around the label. The glyph glow itself is the text-shadow the controller
+     paints on hover (HOVER_GLOW); this pool fades in on the same .is-hov class the
+     controller toggles, so it never latches after a tap (sweepOff clears it). */
+  /* No plate, no light-pool box. The hover is JUST the glow: the text-shadow the
+     controller paints on .is-hov (HOVER_GLOW), plus the field dim in services.css. */
 </style>

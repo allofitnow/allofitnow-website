@@ -78,8 +78,18 @@ html.lenis, html.lenis body { height: auto; }
   position: absolute; left: 48px; bottom: 44px; z-index: 12; margin: 0;
   /* bottom:44 (not 48) so the last line's BASELINE lands on the bottom-right nav's baseline —
      the description's 1.45 line-height otherwise lifts its baseline ~4px above the 12px mono nav. */
-  max-width: 34ch; font-family: var(--font-headline); font-weight: 400;
-  font-size: clamp(15px, 1.5vw, 19px); line-height: 1.45; color: rgba(217, 225, 234, 0.86);
+  font-family: var(--font-headline); font-weight: 400; color: rgba(217, 225, 234, 0.86);
+  /* Fluid across every width — ~13.5px on a phone, ~16px at 1100, ~19px at 1440, capped at
+     21 — so the copy scales with the viewport instead of stepping at a breakpoint. The
+     ch-based widths below ride the same ramp automatically. */
+  font-size: clamp(13.5px, 0.35rem + 0.95vw, 21px); line-height: 1.45;
+  /* The width scales INWARDS so the copy never runs into the centred CTA pill: the room
+     between the left gutter and the pill's left edge (the pill publishes its width as
+     --sbar-w, see ServicesBar.astro) minus a gap — capped at the reading measure, and
+     floored so it never collapses into a sliver. Below the width where even the floor
+     would cross the pill, the tablet rule further down steps the copy above the CTA. */
+  --svc-desc-room: calc(50vw - var(--sbar-w, 404px) / 2 - 48px - 28px);
+  max-width: max(20ch, min(34ch, var(--svc-desc-room)));
   pointer-events: none;
 }
 .svc-desc--overlay { text-shadow: 0 2px 30px rgba(0, 0, 0, 0.55); }
@@ -200,7 +210,7 @@ html.lenis, html.lenis body { height: auto; }
 }
 .equip-marquee.is-grabbing .equip-item { cursor: grabbing; }
 .equip-item.is-active { color: rgb(217, 225, 234); }
-.svc-panel--equip .svc-desc { max-width: 62ch; bottom: 44px; }
+.svc-panel--equip .svc-desc { max-width: max(20ch, min(62ch, var(--svc-desc-room))); bottom: 44px; }
 
 /* ===== Capability list (the four [data-slot] names) =====
    The list sits on the character field, which is lit brightest exactly where the names are — the
@@ -208,7 +218,29 @@ html.lenis, html.lenis body { height: auto; }
    section. So the field's characters read straight through the type, worst of all on the hero and
    the whole way out of it. A soft dark halo lifts the names off the field without dimming it or
    retiming the dissolve. Same treatment .svc-desc uses to hold up over the galleries. */
-[data-slot] { text-shadow: 0 1px 16px rgba(0, 0, 0, 0.92), 0 0 3px rgba(0, 0, 0, 0.85); }
+[data-slot] {
+  text-shadow: 0 1px 16px rgba(0, 0, 0, 0.92), 0 0 3px rgba(0, 0, 0, 0.85);
+  /* PREVIZ (nav glow): the glow and the halo-off ease in rather than snap. */
+  position: relative; isolation: isolate;
+  transition: text-shadow 420ms var(--fly-ease), filter 300ms ease, color 300ms ease;
+}
+/* PREVIZ (nav glow): the hover state itself — pure CSS on the class the controller toggles.
+   Full cool white, the dark separation halo off (it would shadow the glow back onto the
+   letters), the outer glow. !important because the resting colour and halo are inline
+   styles (playIntro / setActiveService / the markup's filter). No plate, no pool, no
+   per-frame repaint underneath: the hero shine is retired (HERO_SHINE in the controller). */
+[data-slot].is-hov {
+  color: rgb(217, 225, 234) !important;
+  -webkit-text-fill-color: rgb(217, 225, 234) !important;
+  filter: none !important;
+  text-shadow: 0 0 10px rgba(217, 225, 234, 0.9), 0 0 40px rgba(217, 225, 234, 0.8), 0 0 110px rgba(217, 225, 234, 0.6), 0 0 220px rgba(217, 225, 234, 0.4) !important;
+}
+/* PREVIZ (nav glow): the hover is JUST the glow — no plate, no light-pool box (the controller
+   also mutes the field's cursor flashlight while a name is hovered so it can't bloom a patch
+   under the word). While a name is lit the whole field steps down a little more, on top of the
+   quieter resting alpha in the controller, so the glow is the brightest thing on the hero. */
+[data-ascii] canvas { transition: opacity 420ms var(--fly-ease); }
+[data-root]:has([data-slot].is-hov) [data-ascii] canvas { opacity: 0.72; }
 
 /* ===== Persistent bottom-right service nav ===== */
 .svc-nav {
@@ -224,6 +256,19 @@ html.lenis, html.lenis body { height: auto; }
 .svc-nav-idx { font-size: 12px; letter-spacing: 0.2em; color: rgba(217, 225, 234, 0.3); transition: color 0.26s ease; }
 .svc-nav-row:hover, .svc-nav-row.is-active { color: rgb(217, 225, 234); }
 .svc-nav-row.is-active .svc-nav-idx, .svc-nav-row:hover .svc-nav-idx { color: rgba(217, 225, 234, 0.7); }
+
+/* Tablet-ish desktop (769–980): the pill is a fixed ~404px in the middle, so even the floored
+   copy width would cross it. Step the copy ABOVE the CTA instead (the phone arrangement, at
+   the desktop gutter) and give it the full measure back. --sbar-h is the pill's height,
+   published by ServicesBar.astro alongside its width. */
+@media (min-width: 769px) and (max-width: 980px) {
+  .svc-desc,
+  .svc-panel--equip .svc-desc { bottom: calc(var(--bar-bottom, 52px) + var(--sbar-h, 42px) + 22px); }
+  .svc-desc { max-width: min(34ch, calc(100vw - 96px)); }
+  .svc-panel--equip .svc-desc { max-width: min(62ch, calc(100vw - 96px)); }
+  /* The pill itself leaves the centre in this band and sits under the copy at the left gutter
+     (ServicesBar.astro), so the bottom-right nav keeps its place — nothing to step up. */
+}
 
 @media (max-width: 768px) {
   /* Bottom chrome stacks vertically on phones (desktop spreads it across three

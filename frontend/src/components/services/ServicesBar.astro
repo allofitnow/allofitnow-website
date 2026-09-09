@@ -145,6 +145,13 @@ const { href = '#contact', label, ctas = [], iconRegister = 'dotted' } = Astro.p
   /* Phones: the longest CTA line (~44 chars) overflows a one-line nowrap pill and
      clips off the right edge. Constrain the pill to the margins and let the label
      wrap to two centred lines (min-width:0 so the flex label can actually shrink). */
+  /* Tablet band (769–980): a centred 404px pill collides with both the bottom-left copy and
+     the bottom-right nav, so the pill leaves the centre and sits UNDER the copy, left-aligned
+     to the desktop gutter (services.css steps the copy up above it). The nav stays put. */
+  @media (min-width: 769px) and (max-width: 980px) {
+    .sbar { justify-content: flex-start; padding: 0 48px; }
+  }
+
   @media (max-width: 768px) {
     .sbar { bottom: var(--bar-bottom-m, 40px); padding: 0 16px; }
     .sbar__cluster { max-width: 100%; }
@@ -177,6 +184,20 @@ const { href = '#contact', label, ctas = [], iconRegister = 'dotted' } = Astro.p
 
     // Public handle, mirroring window.aoinCursor in Cursor.astro.
     (window as any).aoinServicesBar = { setLabel, show };
+
+    // Publish the pill's size on :root so the bottom-left copy can keep clear of it
+    // (services.css --svc-desc-room / the tablet step-above rule). A ResizeObserver catches
+    // label scrambles (the pill is as wide as its line) and viewport changes alike.
+    const cluster = bar.querySelector<HTMLElement>('.sbar__cluster');
+    if (cluster && 'ResizeObserver' in window) {
+      const pub = () => {
+        const r = cluster.getBoundingClientRect();
+        document.documentElement.style.setProperty('--sbar-w', Math.round(r.width) + 'px');
+        document.documentElement.style.setProperty('--sbar-h', Math.round(r.height) + 'px');
+      };
+      new ResizeObserver(pub).observe(cluster);
+      pub();
+    }
 
     // Driven by the services scroll controller (services-effects.js driveSection):
     //   { index: -1 } hero  → hide
