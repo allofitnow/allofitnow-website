@@ -23,7 +23,10 @@ import Footer from '@/components/home/Footer.astro';
 
 <style>
   .home {
-    background: #000;
+    /* Transparent, not black: the body paints the page black (tokens.css), and the
+       site-wide idle field (Base.astro) sits between the body and this wrapper — an
+       opaque wrapper here would hide it. */
+    background: transparent;
     color: var(--aoin-cool-white);
   }
 </style>

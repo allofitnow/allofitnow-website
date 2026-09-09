@@ -1,0 +1,86 @@
+---
+/* Site-wide idle field — the ambient character field behind every Base.astro page.
+   The shell is empty on purpose: lib/idle-field.ts builds the grid client-side, sized to
+   the viewport. It carries the words to sprinkle (the four services + their CMS-editable
+   sub-services) as a data attribute. transition:persist keeps the same element — and its
+   running field — across soft navigation. Decorative: aria-hidden, no pointer events.
+   The /services page has its own WebGL field and is a standalone doc, so this never
+   appears there. */
+import { getServiceSections } from '@/data/services';
+
+const NAMES = ['REAL-TIME CONTENT', 'SCREENS PRODUCTION', 'MIXED REALITY', 'EQUIPMENT RENTAL'];
+const sections = await getServiceSections();
+// Collapse runs of whitespace: a double space in CMS copy would otherwise become an empty cell mid-word.
+const words = Array.from(new Set([...NAMES, ...sections.flatMap((s) => s.subs || [])].map((w) => String(w).replace(/\s+/g, ' ').trim().toUpperCase()).filter(Boolean)));
+---
+<div class="idle-field" data-idle-field data-words={JSON.stringify(words)} aria-hidden="true" transition:persist="aoin-idle-field"></div>
+
+<style is:global>
+  /* Global on purpose: the rows and glyphs are created at runtime, so scoped rules would
+     never reach them. Everything is namespaced under .idle-field / .if-*. */
+
+  /* tokens.css paints BOTH html and body black. With html painted, the body's background
+     stops propagating to the canvas and becomes an in-flow layer of its own — which sits
+     above a z-index:-1 child and would hide the field. Transparent body: the html background
+     still paints the canvas black, and the field lands above it, below all page content. */
+  body { background: transparent; }
+
+  .idle-field {
+    position: fixed; inset: 0; z-index: -1; padding: 40px 48px;
+    font-family: var(--font-mono); font-weight: var(--weight-mono);
+    font-size: 12.5px; line-height: 52px; letter-spacing: 1.15em;
+    color: var(--aoin-cool-white);
+    overflow: hidden; pointer-events: none; user-select: none;
+    text-transform: uppercase;
+  }
+  .if-row { white-space: pre; }
+
+  /* Each glyph breathes on its own clock, between ITS base brightness (--a) and full, so the
+     dissolve hands opacity back at --a and the breathe resumes without a pop. */
+  @keyframes if-breathe { 0%, 100% { opacity: var(--a); } 50% { opacity: 1; } }
+  .if-g {
+    display: inline-block; vertical-align: baseline;
+    animation: if-breathe var(--dur) ease-in-out var(--del) infinite;
+    transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 420ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  /* The names: same face, steadier, and at a label's tracking (0.28em) rather than the
+     field's 1.15em pitch. Each cell's tracking shrinks by 0.87em, so the run's last cell pads
+     by 0.87em × its length and the rest of the row stays on the grid. */
+  .if-w { animation-duration: calc(var(--dur) * 1.6); letter-spacing: 0.28em; }
+  .if-wl { margin-right: var(--wpad, 0); }
+
+  /* DISSOLVE, not fade — the same move as the cursor pocket, applied to the whole field:
+     hidden, every glyph drifts off in its own direction (--dx/--dy), spins a little (--rot)
+     and fades, each on its own beat (--dd, 0–900ms). Returning is the reverse. !important so
+     it also takes glyphs mid-scatter (which carry inline styles). */
+  .idle-field[data-hidden] .if-g {
+    animation: none;
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) !important;
+    opacity: 0 !important;
+    transition: transform 680ms cubic-bezier(0.55, 0, 0.75, 0.6), opacity 560ms ease-in;
+    transition-delay: var(--dd) !important;
+  }
+  .idle-field[data-returning] .if-g {
+    animation: none;
+    transform: none !important;
+    opacity: var(--a) !important;
+    transition: transform 760ms cubic-bezier(0.22, 1, 0.36, 1), opacity 600ms ease-out;
+    transition-delay: var(--dd) !important;
+  }
+</style>
+
+<script>
+  import { initIdleField } from '@/lib/idle-field';
+  // (Re)boot on every page-load: the element persists across soft swaps, and init is
+  // guarded per element, so this is a no-op once it is running.
+  const boot = () => {
+    const el = document.querySelector<HTMLElement>('[data-idle-field]');
+    if (!el) return;
+    let words: string[] = [];
+    try { words = JSON.parse(el.dataset.words || '[]'); } catch (_) {}
+    initIdleField(el, words);
+  };
+  boot();
+  document.addEventListener('astro:page-load', boot);
+</script>

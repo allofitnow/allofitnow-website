@@ -79,7 +79,9 @@ const {
 <style>
   .work {
     --cols: 4;
-    background: #000;
+    /* Transparent, not black: the body paints the page black, and the site-wide idle
+       field (Base.astro) sits between the body and this root — opaque here would hide it. */
+    background: transparent;
     color: var(--aoin-cool-white);
     min-height: 100vh;
     font-family: var(--font-headline);

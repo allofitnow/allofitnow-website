@@ -3,6 +3,7 @@ import '@/styles/tokens.css';
 import '@/styles/transitions.css';
 import { ClientRouter } from 'astro:transitions';
 import Nav from '@/components/chrome/Nav.astro';
+import IdleField from '@/components/chrome/IdleField.astro';
 import Cursor from '@/components/chrome/Cursor.astro';
 import HoverCard from '@/components/chrome/HoverCard.astro';
 import FootBar from '@/components/chrome/FootBar.astro';
@@ -143,6 +144,9 @@ const SITE_URL = Astro.site?.toString().replace(/\/$/, '') ?? 'https://46009.som
         <Preloader />
       </div>
     )}
+    {/* The ambient character field behind every page — fixed, z-index -1, persisted
+        across soft swaps so it runs continuously. Decorative only. */}
+    <IdleField />
     {/* Nav + Cursor persist across soft swaps (transition:persist is on their
         own root elements) so their once-bound scripts — clock, reveal, crosshair
         — keep working instead of re-binding to fresh nodes each navigation. */}
