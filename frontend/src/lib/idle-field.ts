@@ -1,10 +1,11 @@
 /* Site-wide idle field — the ambient character field behind every Base.astro page.
  *
  * A sparse, spread-out grid of mono glyphs with the service names sprinkled through it as
- * whole words. It idles (a slow flicker + a gentle per-glyph breathe), displaces around the
- * cursor as you move, and after a beat of movement comes apart — every glyph drifts off in
- * its own direction and fades on its own random timing — then drifts back in once the mouse
- * has been still. Pure DOM: at this sparsity it is a few hundred spans, which is cheaper and
+ * whole words. It is the page's IDLE state: it starts hidden and drifts in only once the page
+ * has been left alone; while up it idles (a slow flicker + a gentle per-glyph breathe) and
+ * displaces around the cursor as you move; after a beat of activity (mouse or scroll) it comes
+ * apart — every glyph drifts off in its own direction and fades on its own random timing — and
+ * drifts back in once the page is still again. Pure DOM: at this sparsity it is a few hundred spans, which is cheaper and
  * simpler than a second WebGL field (the one on /services stays as it is).
  *
  * The grid is built client-side, sized to the viewport, and rebuilt on resize. Reduced-motion
@@ -26,9 +27,10 @@ const WORD_TRACK_DIFF = 0.87; // em: field tracking 1.15 − word tracking 0.28
 
 // Cursor pocket: a circle of R px; the inner CORE fully clears, the ring scatters outward.
 const R = 170, CORE = 0.42, SCATTER = 84;
-// Move for HIDE_AFTER and the field scatters away; be still for IDLE_AFTER and it drifts back
-// (RETURN_MS covers the longest beat + the drift-back).
-const HIDE_AFTER = 1300, IDLE_AFTER = 1500, RETURN_MS = 1750;
+// The field is an IDLE state: it starts hidden and only drifts in once the page has been left
+// alone (FIRST_IDLE after load, IDLE_AFTER after any later activity). Keep moving (mouse or
+// scroll) for HIDE_AFTER and it scatters away again. RETURN_MS covers the longest beat + drift.
+const FIRST_IDLE = 2400, HIDE_AFTER = 1300, IDLE_AFTER = 1500, RETURN_MS = 1750;
 
 type Rand = { ux: number; uy: number; mag: number; spin: number; delay: number };
 
@@ -38,6 +40,7 @@ export function initIdleField(root: HTMLElement, words: string[]): void {
   if (typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches) return;
   const finePointer = typeof matchMedia !== 'undefined' && matchMedia('(hover: hover) and (pointer: fine)').matches;
 
+  let built = false;
   let spans: HTMLElement[] = [];
   let plain: HTMLElement[] = [];
   let rand: Rand[] = [];
@@ -111,6 +114,8 @@ export function initIdleField(root: HTMLElement, words: string[]): void {
       flush();
       frag.appendChild(rowEl);
     }
+    if (!built) root.setAttribute('data-hidden', ''); // mount already dissolved: no first-paint flash
+    built = true;
     root.replaceChildren(frag);
     spans = nextSpans;
     plain = spans.filter((s) => !s.classList.contains('if-w'));
@@ -161,27 +166,38 @@ export function initIdleField(root: HTMLElement, words: string[]): void {
   };
 
   /* --------------------------------------------- idle → moving → idle state */
-  let lastMove = 0, activeSince = 0, hidden = false, lastRun = 0, returnT = 0;
+  // hidden: the field is (dissolving) away. activeSince: start of the current burst of activity,
+  // 0 when the page is idle. shown: it has drifted in at least once (the first wait is longer).
+  let lastMove = performance.now(), activeSince = 0, hidden = true, shown = false, lastRun = 0, returnT = 0;
+  const activity = () => {
+    const now = performance.now();
+    if (!activeSince) { activeSince = now; clearTimeout(returnT); root.removeAttribute('data-returning'); }
+    lastMove = now;
+    if (!hidden && now - activeSince > HIDE_AFTER) { hidden = true; root.setAttribute('data-hidden', ''); }
+  };
   if (finePointer) {
     window.addEventListener('pointermove', (ev) => {
       if (!active.size) cache();              // positions can shift as fonts land; re-read per burst
+      activity();
       const now = performance.now();
-      if (!activeSince) { activeSince = now; clearTimeout(returnT); root.removeAttribute('data-returning'); }
-      lastMove = now;
-      if (now - lastRun > 14) { lastRun = now; displace(ev.clientX, ev.clientY); }
-      if (!hidden && now - activeSince > HIDE_AFTER) { hidden = true; root.setAttribute('data-hidden', ''); }
+      if (!hidden && now - lastRun > 14) { lastRun = now; displace(ev.clientX, ev.clientY); }
     }, { passive: true });
-    setInterval(() => {
-      if (activeSince && performance.now() - lastMove > IDLE_AFTER) {
-        activeSince = 0; hidden = false;
-        clear();
-        root.removeAttribute('data-hidden');
-        root.setAttribute('data-returning', '');
-        clearTimeout(returnT);
-        returnT = window.setTimeout(() => root.removeAttribute('data-returning'), RETURN_MS);
-      }
-    }, 100);
   }
+  // Scrolling is activity too (any device): the field belongs to a page that is being left alone.
+  window.addEventListener('scroll', activity, { passive: true });
+  window.addEventListener('wheel', activity, { passive: true });
+  window.addEventListener('touchmove', activity, { passive: true });
+  setInterval(() => {
+    const idleFor = performance.now() - lastMove;
+    if (activeSince && idleFor > IDLE_AFTER) { activeSince = 0; clear(); }
+    if (hidden && !activeSince && idleFor > (shown ? IDLE_AFTER : FIRST_IDLE) && spans.length) {
+      hidden = false; shown = true;
+      root.removeAttribute('data-hidden');
+      root.setAttribute('data-returning', '');
+      clearTimeout(returnT);
+      returnT = window.setTimeout(() => root.removeAttribute('data-returning'), RETURN_MS);
+    }
+  }, 100);
 
   /* ----------------------------------------------------------- idle flicker */
   setInterval(() => {
