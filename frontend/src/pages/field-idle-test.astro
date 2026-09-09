@@ -22,7 +22,7 @@ const WORDS = [
 
 let seed = 21;
 const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
-type Cell = { g: string; on: boolean; w: boolean; sp?: boolean; last?: boolean; wlen?: number; dur: number; del: number; a: number; dd: number };
+type Cell = { g: string; on: boolean; w: boolean; sp?: boolean; last?: boolean; wlen?: number; dur: number; del: number; a: number; dd: number; dx: number; dy: number; rot: number };
 const rows: Cell[][] = [];
 for (let r = 0; r < ROWS; r++) {
   const row: Cell[] = [];
@@ -34,7 +34,12 @@ for (let r = 0; r < ROWS; r++) {
       dur: +(4 + rnd() * 5).toFixed(2),      // breathe period, s
       del: +(-rnd() * 9).toFixed(2),         // negative delay = desynchronised from load
       a: +(0.35 + rnd() * 0.45).toFixed(2),  // per-glyph base brightness
-      dd: (rnd() * 650) | 0,                 // dissolve beat, ms — each glyph drops on its own
+      dd: (rnd() * 900) | 0,                 // dissolve beat, ms — each glyph goes on its own
+      // The global dissolve is the same move as the cursor pocket: each glyph drifts off in
+      // its own direction and spins a little as it fades — not a blink.
+      dx: +((rnd() * 2 - 1) * 46).toFixed(1),
+      dy: +((rnd() * 2 - 1) * 34).toFixed(1),
+      rot: +((rnd() * 2 - 1) * 40).toFixed(1),
     });
   }
   rows.push(row);
@@ -98,13 +103,26 @@ for (const word of WORDS) {
   .fc.w { animation-duration: calc(var(--dur) * 1.6); letter-spacing: 0.28em; }
   .fc.w.wl { margin-right: var(--wpad, 0); }
 
-  /* DISSOLVE, not fade: with the field hidden, every glyph drops to 0 on its own beat
-     (--dd, 0–650ms), so the field breaks up rather than dimming as a sheet. Returning does
-     the reverse — glyphs come back at their base brightness on the same random beats, then
-     the breathe resumes from exactly that value. !important so it also takes glyphs that
-     were mid-scatter (which carry inline opacity). */
-  .field[data-hidden] .fc { animation: none; opacity: 0 !important; transition: opacity 240ms ease-out; transition-delay: var(--dd) !important; }
-  .field[data-returning] .fc { animation: none; opacity: var(--a) !important; transition: opacity 320ms ease-in; transition-delay: var(--dd) !important; }
+  /* DISSOLVE, not fade — the same move as the cursor pocket, applied to the whole field:
+     with the field hidden, every glyph drifts off in its own direction (--dx/--dy), spins a
+     little (--rot) and fades, each on its own beat (--dd, 0–900ms), so the field comes apart
+     rather than dimming as a sheet or blinking out. Returning is the reverse: glyphs drift
+     back in to their base brightness on the same beats, then the breathe resumes from exactly
+     that value. !important so it also takes glyphs mid-scatter (which carry inline styles). */
+  .field[data-hidden] .fc {
+    animation: none;
+    transform: translate(var(--dx), var(--dy)) rotate(var(--rot)) !important;
+    opacity: 0 !important;
+    transition: transform 680ms cubic-bezier(0.55, 0, 0.75, 0.6), opacity 560ms ease-in;
+    transition-delay: var(--dd) !important;
+  }
+  .field[data-returning] .fc {
+    animation: none;
+    transform: none !important;
+    opacity: var(--a) !important;
+    transition: transform 760ms cubic-bezier(0.22, 1, 0.36, 1), opacity 600ms ease-out;
+    transition-delay: var(--dd) !important;
+  }
 
   /* Stand-in site content, to show the field lives BEHIND the page. */
   .content { position: absolute; left: 48px; right: 48px; top: 50%; transform: translateY(-50%); z-index: 1; pointer-events: none; }
@@ -120,7 +138,7 @@ for (const word of WORDS) {
       {rows.map((row) => (
         <div class="frow">
           {row.map((c) => (c.on
-            ? <span class={c.w ? `fc w${c.sp ? ' sp' : ''}${c.last ? ' wl' : ''}` : 'fc'} style={`--dur:${c.dur}s;--del:${c.del}s;--a:${c.a};--dd:${c.dd}ms${c.last ? `;--wpad:${(c.wlen! * 0.87).toFixed(2)}em` : ''}`}>{c.g}</span>
+            ? <span class={c.w ? `fc w${c.sp ? ' sp' : ''}${c.last ? ' wl' : ''}` : 'fc'} style={`--dur:${c.dur}s;--del:${c.del}s;--a:${c.a};--dd:${c.dd}ms;--dx:${c.dx}px;--dy:${c.dy}px;--rot:${c.rot}deg${c.last ? `;--wpad:${(c.wlen! * 0.87).toFixed(2)}em` : ''}`}>{c.g}</span>
             : ' '))}
         </div>
       ))}
@@ -131,7 +149,7 @@ for (const word of WORDS) {
       <div class="sub">SITE-WIDE IDLE FIELD — STAND-IN CONTENT</div>
     </div>
 
-    <div class="note">MOVE THE MOUSE: THE FIELD DISPLACES AROUND THE CURSOR, THEN DISSOLVES. STOP: IT DISSOLVES BACK IN.</div>
+    <div class="note">MOVE THE MOUSE: THE FIELD DISPLACES AROUND THE CURSOR, THEN (AFTER ~1.3S) SCATTERS AWAY. STOP: IT DRIFTS BACK IN.</div>
   </div>
 
   <script>
@@ -149,7 +167,9 @@ for (const word of WORDS) {
     const R = 170, CORE = 0.42, SCATTER = 84;
     // Timing: keep moving for HIDE_AFTER ms and the field dissolves; stop for IDLE_AFTER ms
     // and it dissolves back in. The gap is what lets you SEE the displacement first.
-    const HIDE_AFTER = 800, IDLE_AFTER = 1500, RETURN_MS = 1100;
+    // HIDE_AFTER is longer than before so the displacement is clearly seen before the field
+    // starts to go; RETURN_MS covers the longest beat + the drift-back.
+    const HIDE_AFTER = 1300, IDLE_AFTER = 1500, RETURN_MS = 1750;
 
     let active = new Set();
     const reset = (i) => { const s = spans[i]; s.style.transitionDelay = (rand[i].delay >> 1) + 'ms'; s.style.transform = ''; s.style.opacity = ''; s.style.animation = ''; };
