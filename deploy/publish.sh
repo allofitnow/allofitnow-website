@@ -16,7 +16,7 @@ if [ "$LIVE" -eq 1 ]; then
   export AOIN_R2_LIVE_ROOT=1
 fi
 
-git pull --ff-only origin staging
+git pull --ff-only origin designer246
 # #101: generate missing video rungs + register in payload BEFORE the build so
 # HTML bakes data-rungs in the same pass. Additive: failure warns, never aborts.
 bash deploy/hooks/ladder-rungs.sh || echo "WARN: ladder rung generation failed; publish continues without new rungs" >&2
