@@ -54,6 +54,12 @@ const GALLERY_SLOTS: Record<string, number> = {
   'three-up': 3,
 };
 
+// Where a slot's cover crop centres, from the CMS entry's focusX / focusY. Set
+// as a custom property on the slot so the same rule covers <img> and <video>;
+// the centre needs no style at all.
+const focusStyle = (f?: { x: number; y: number }) =>
+  f && (f.x !== 50 || f.y !== 50) ? `--focus:${f.x}% ${f.y}%` : undefined;
+
 // #58 responsive hints per row layout (layout-audit table in issue #58). One
 // entry per SLOT when the slots differ (split rows), else one per row.
 const GALLERY_SIZES: Record<string, string> = {
@@ -121,7 +127,7 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
           {project.gallery.map((row) => (
             <div class={`pp__gRow pp__gRow--${row.layout}`}>
               {row.images.slice(0, GALLERY_SLOTS[row.layout] ?? row.images.length).map((src, i) => (
-                <div class={`pp__g pp__g--slot${i + 1}`}>
+                <div class={`pp__g pp__g--slot${i + 1}`} style={focusStyle(row.focus?.[i])}>
                   <Media src={src} doc={row.docs?.[i] ?? null} alt="" loading="lazy" sizes={GALLERY_SIZES[row.layout] ?? '(max-width:480px) 90vw, 95vw'} />
                 </div>
               ))}
@@ -577,6 +583,8 @@ const CUE_WORK = 'THE WORK'; //   write-up → page 1
     width: 100%;
     height: 100%;
     object-fit: cover;
+    /* The crop's focal point, set per slot by the CMS entry; centre otherwise. */
+    object-position: var(--focus, 50% 50%);
     display: block;
   }
   /* Layout presets — fixed aspect ratios per slot, keeping the page's rhythm.

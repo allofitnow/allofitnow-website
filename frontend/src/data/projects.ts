@@ -58,7 +58,13 @@ export interface Project {
   summary: string;
   /** Gallery arrangements — an ordered list of rows; each row has a layout
    *  preset and the images that fill its slots. */
-  gallery: { layout: string; images: string[]; docs?: (import('@/lib/media').MediaDoc | null)[] }[];
+  gallery: {
+    layout: string;
+    images: string[];
+    docs?: (import('@/lib/media').MediaDoc | null)[];
+    /** Per slot, where the cover crop centres (object-position in %); absent means the middle. */
+    focus?: { x: number; y: number }[];
+  }[];
   /** Figure row under the gallery. */
   stats: { label: string; value: string }[];
   /** Credit groups. Each entry renders TITLE | NAME with the name linking out

@@ -147,6 +147,33 @@ const Projects: CollectionConfig = {
           admin: { description: "Fill the layout's slots in order — each shows a thumbnail; drag to reorder. Extras beyond the slot count are ignored." },
           fields: [
             { name: "image", type: "upload", relationTo: "media" },
+            // Where the slot's crop centres. Every slot is drawn object-fit: cover
+            // at a fixed aspect, so the only freedom is which part of the picture
+            // the window sits over — this is the object-position, as percentages.
+            // 50 / 50 is the middle. Set by dragging in the page composer; kept
+            // per entry rather than per media doc because the same file can sit
+            // in two slots and want a different crop in each.
+            {
+              type: "row",
+              fields: [
+                {
+                  name: "focusX",
+                  type: "number",
+                  min: 0,
+                  max: 100,
+                  defaultValue: 50,
+                  admin: { width: "50%", description: "Crop centre, left → right (0–100). 50 is the middle." },
+                },
+                {
+                  name: "focusY",
+                  type: "number",
+                  min: 0,
+                  max: 100,
+                  defaultValue: 50,
+                  admin: { width: "50%", description: "Crop centre, top → bottom (0–100). 50 is the middle." },
+                },
+              ],
+            },
           ],
         },
       ],

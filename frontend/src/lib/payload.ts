@@ -32,6 +32,8 @@ function formatCollaborator(c: unknown): string {
 
 /** Map a Payload projects REST doc to the frontend `Project` shape. */
 export function mapPayloadProject(doc: any): Project {
+  const focusPct = (v: unknown): number =>
+    typeof v === 'number' && Number.isFinite(v) ? Math.min(100, Math.max(0, v)) : 50;
   const gallery = (doc.gallery ?? []).map((row: any) => {
     // Each row's images are an array of { image: media }. Tolerate the older
     // hasMany-relationship shape (bare media objects) too, so a build mid-migration
@@ -41,10 +43,21 @@ export function mapPayloadProject(doc: any): Project {
     const pairs = (row?.images ?? [])
       .map((it: any) => {
         const media = it?.image ?? it;
-        return { url: mediaUrl(media), doc: it && typeof it === 'object' ? toMediaDoc(media) : null };
+        return {
+          url: mediaUrl(media),
+          doc: it && typeof it === 'object' ? toMediaDoc(media) : null,
+          // The crop's focal point (object-position, in %) lives on the entry.
+          // Anything unset — every row from before the field existed — is the centre.
+          focus: { x: focusPct(it?.focusX), y: focusPct(it?.focusY) },
+        };
       })
       .filter((p: any) => p.url !== '');
-    return { layout: row?.layout ?? 'full', images: pairs.map((p: any) => p.url), docs: pairs.map((p: any) => p.doc) };
+    return {
+      layout: row?.layout ?? 'full',
+      images: pairs.map((p: any) => p.url),
+      docs: pairs.map((p: any) => p.doc),
+      focus: pairs.map((p: any) => p.focus),
+    };
   });
 
   const credits = (doc.credits ?? []).map((g: any) => ({
