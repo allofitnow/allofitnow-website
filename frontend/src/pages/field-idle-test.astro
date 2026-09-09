@@ -1,21 +1,28 @@
 ---
 /* PREVIZ — SITE-WIDE IDLE FIELD. Local only, not linked anywhere.
-   A much sparser, more spread-out character field that sits behind the whole site as
-   an ambient idle animation (slow glyph flicker + a gentle per-glyph breathe). Move the
-   mouse and the field DISPLACES around the cursor (scatter + fade in a circle that
-   follows you); keep moving and, after a short delay, the whole field fades away.
-   Stop, and after a beat it fades back in and idles again. Pure DOM + a small script.
-   Reuses services.css for the @font-face only. */
+   A much sparser, more spread-out character field behind the whole site as an ambient idle
+   animation (slow glyph flicker + a gentle per-glyph breathe), with the service and
+   sub-service NAMES sprinkled through it as whole words among the characters. Move the
+   mouse and the field displaces around the cursor (scatter + fade in a circle that follows
+   you); keep moving and, after a short delay, the field DISSOLVES — every glyph drops out on
+   its own random beat, not a uniform fade. Stop, and it dissolves back in the same way. */
 import '../styles/services.css';
 
 const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/';
 // Sparse + spread: ~1/9 of cells lit, on a pitch roughly 2x wider and 2x taller than the
 // services field. Generous grid so it overflows and fills any viewport (overflow clips).
 const ROWS = 34, COLS = 130, DENSITY = 0.11;
+// The names, sprinkled as whole words — one per row at most, never two rows adjacent.
+const WORDS = [
+  'REAL-TIME CONTENT', 'SCREENS PRODUCTION', 'MIXED REALITY', 'EQUIPMENT RENTAL',
+  'INTERACTIVE CONTENT', 'LIVE GRAPHICS', 'CAMERA DESIGN', 'GENERATIVE SYSTEMS',
+  'TECHNICAL DIRECTION', 'MEDIA SERVER PROGRAMMING', 'ON-SITE ENGINEERING',
+  'DISGUISE SERVERS', 'RENDER NODES', 'CUSTOM RACK BUILDS', 'TRACKING SYSTEMS',
+];
 
 let seed = 21;
 const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
-type Cell = { g: string; on: boolean; dur: number; del: number; a: number };
+type Cell = { g: string; on: boolean; w: boolean; dur: number; del: number; a: number; dd: number };
 const rows: Cell[][] = [];
 for (let r = 0; r < ROWS; r++) {
   const row: Cell[] = [];
@@ -23,12 +30,31 @@ for (let r = 0; r < ROWS; r++) {
     row.push({
       g: GLYPHS[(rnd() * GLYPHS.length) | 0],
       on: rnd() < DENSITY,
+      w: false,
       dur: +(4 + rnd() * 5).toFixed(2),      // breathe period, s
       del: +(-rnd() * 9).toFixed(2),         // negative delay = desynchronised from load
       a: +(0.35 + rnd() * 0.45).toFixed(2),  // per-glyph base brightness
+      dd: (rnd() * 650) | 0,                 // dissolve beat, ms — each glyph drops on its own
     });
   }
   rows.push(row);
+}
+// Write the words in. A word takes a row of its own (no neighbours above/below), and the
+// cells it covers become word cells: always on, a little brighter, left out of the flicker.
+const usedRows = new Set<number>();
+for (const word of WORDS) {
+  let r = -1;
+  for (let tries = 0; tries < 40 && r < 0; tries++) {
+    const cand = 1 + ((rnd() * (ROWS - 2)) | 0);
+    if (!usedRows.has(cand) && !usedRows.has(cand - 1) && !usedRows.has(cand + 1)) r = cand;
+  }
+  if (r < 0) continue;
+  usedRows.add(r);
+  const c0 = (rnd() * (COLS - word.length - 2)) | 0;
+  for (let k = 0; k < word.length; k++) {
+    const cell = rows[r][c0 + k];
+    cell.g = word[k]; cell.on = word[k] !== ' '; cell.w = true; cell.a = 0.92;
+  }
 }
 ---
 <!doctype html>
@@ -43,28 +69,34 @@ for (let r = 0; r < ROWS; r++) {
   html, body { margin: 0; height: 100%; background: #000; color: rgb(217, 225, 234); cursor: crosshair; }
   .stage { position: fixed; inset: 0; overflow: hidden; font-family: 'Denim INK WD', -apple-system, Arial, sans-serif; }
 
-  /* The idle field: fixed behind everything, fades out while the mouse is active. */
+  /* The idle field: fixed behind everything. */
   .field {
     position: fixed; inset: 0; z-index: 0; padding: 40px 48px;
     font-family: 'SN Ja Mono', ui-monospace, Menlo, monospace;
     font-size: 12.5px; line-height: 52px; letter-spacing: 1.15em;
     color: rgb(217, 225, 234);
     overflow: hidden; pointer-events: none; user-select: none;
-    opacity: 1;
-    transition: opacity 620ms cubic-bezier(0.22, 1, 0.36, 1);
   }
-  .field[data-hidden] { opacity: 0; transition-duration: 700ms; }
-  .field[data-returning] { transition-duration: 1200ms; }
   .frow { white-space: pre; }
-  @keyframes breathe { 0%, 100% { opacity: 0.35; } 50% { opacity: 1; } }
-  /* Each glyph breathes on its own clock. When scattered, the script switches the
-     animation off and drives opacity inline. No will-change (see navglow-test). */
+  /* Each glyph breathes on its own clock, between ITS base brightness (--a) and full — so
+     when the dissolve hands opacity back at --a, the animation resumes without a pop. */
+  @keyframes breathe { 0%, 100% { opacity: var(--a); } 50% { opacity: 1; } }
   .fc {
     display: inline-block; vertical-align: baseline;
     animation: breathe var(--dur) ease-in-out var(--del) infinite;
     transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1),
                 opacity 420ms cubic-bezier(0.22, 1, 0.36, 1);
   }
+  /* Word cells: the names. Same face, held at a steadier brightness so they read. */
+  .fc.w { animation-duration: calc(var(--dur) * 1.6); }
+
+  /* DISSOLVE, not fade: with the field hidden, every glyph drops to 0 on its own beat
+     (--dd, 0–650ms), so the field breaks up rather than dimming as a sheet. Returning does
+     the reverse — glyphs come back at their base brightness on the same random beats, then
+     the breathe resumes from exactly that value. !important so it also takes glyphs that
+     were mid-scatter (which carry inline opacity). */
+  .field[data-hidden] .fc { animation: none; opacity: 0 !important; transition: opacity 240ms ease-out; transition-delay: var(--dd) !important; }
+  .field[data-returning] .fc { animation: none; opacity: var(--a) !important; transition: opacity 320ms ease-in; transition-delay: var(--dd) !important; }
 
   /* Stand-in site content, to show the field lives BEHIND the page. */
   .content { position: absolute; left: 48px; right: 48px; top: 50%; transform: translateY(-50%); z-index: 1; pointer-events: none; }
@@ -80,7 +112,7 @@ for (let r = 0; r < ROWS; r++) {
       {rows.map((row) => (
         <div class="frow">
           {row.map((c) => (c.on
-            ? <span class="fc" style={`--dur:${c.dur}s;--del:${c.del}s;opacity:${c.a}`}>{c.g}</span>
+            ? <span class={c.w ? 'fc w' : 'fc'} style={`--dur:${c.dur}s;--del:${c.del}s;--a:${c.a};--dd:${c.dd}ms`}>{c.g}</span>
             : ' '))}
         </div>
       ))}
@@ -91,7 +123,7 @@ for (let r = 0; r < ROWS; r++) {
       <div class="sub">SITE-WIDE IDLE FIELD — STAND-IN CONTENT</div>
     </div>
 
-    <div class="note">MOVE THE MOUSE: THE FIELD DISPLACES AROUND THE CURSOR, THEN FADES OUT. STOP: IT RETURNS.</div>
+    <div class="note">MOVE THE MOUSE: THE FIELD DISPLACES AROUND THE CURSOR, THEN DISSOLVES. STOP: IT DISSOLVES BACK IN.</div>
   </div>
 
   <script>
@@ -107,9 +139,9 @@ for (let r = 0; r < ROWS; r++) {
     // Displacement around the cursor: a circle of R px; the inner CORE fully clears, the
     // ring scatters outward (away from the cursor, plus each glyph's random vector) and fades.
     const R = 170, CORE = 0.42, SCATTER = 84;
-    // Timing: keep moving for HIDE_AFTER ms and the whole field fades out; stop for
-    // IDLE_AFTER ms and it comes back. The gap is what lets you SEE the displacement first.
-    const HIDE_AFTER = 800, IDLE_AFTER = 1500;
+    // Timing: keep moving for HIDE_AFTER ms and the field dissolves; stop for IDLE_AFTER ms
+    // and it dissolves back in. The gap is what lets you SEE the displacement first.
+    const HIDE_AFTER = 800, IDLE_AFTER = 1500, RETURN_MS = 1100;
 
     let active = new Set();
     const reset = (i) => { const s = spans[i]; s.style.transitionDelay = (rand[i].delay >> 1) + 'ms'; s.style.transform = ''; s.style.opacity = ''; s.style.animation = ''; };
@@ -141,19 +173,14 @@ for (let r = 0; r < ROWS; r++) {
       active = next;
     };
 
-    // State: idle (field showing) → moving (displacing; hides after HIDE_AFTER) → idle again
-    // once the mouse has been still for IDLE_AFTER.
-    // Throttled by timestamp, not requestAnimationFrame: rAF pauses in a hidden tab and
-    // would leave a pending frame stuck forever, freezing the displacement. ~14ms is
-    // one frame's worth and the loop over a few hundred glyphs is cheap.
-    let lastMove = 0, activeSince = 0, hidden = false, lastRun = 0;
-    // Positions can be cached before SN Ja Mono lands (the fallback mono has other widths),
-    // so re-read them at the start of every burst — the moment nothing is displaced yet.
-    // A few hundred rects; sub-millisecond, and it makes the cache impossible to get stale.
+    // State: idle (field showing) → moving (displacing; dissolves after HIDE_AFTER) → idle
+    // again once the mouse has been still for IDLE_AFTER (dissolves back in over RETURN_MS,
+    // then the breathe resumes).
+    let lastMove = 0, activeSince = 0, hidden = false, lastRun = 0, returnT = 0;
     window.addEventListener('pointermove', (ev) => {
-      if (!active.size) cache();
+      if (!active.size) cache();              // positions can shift as fonts land; re-read per burst
       const now = performance.now();
-      if (!activeSince) { activeSince = now; field.removeAttribute('data-returning'); }
+      if (!activeSince) { activeSince = now; clearTimeout(returnT); field.removeAttribute('data-returning'); }
       lastMove = now;
       if (now - lastRun > 14) { lastRun = now; displace(ev.clientX, ev.clientY); }
       if (!hidden && now - activeSince > HIDE_AFTER) { hidden = true; field.setAttribute('data-hidden', ''); }
@@ -161,9 +188,11 @@ for (let r = 0; r < ROWS; r++) {
     setInterval(() => {
       if (activeSince && performance.now() - lastMove > IDLE_AFTER) {
         activeSince = 0; hidden = false;
-        field.setAttribute('data-returning', '');
-        field.removeAttribute('data-hidden');
         clear();
+        field.removeAttribute('data-hidden');
+        field.setAttribute('data-returning', '');
+        clearTimeout(returnT);
+        returnT = setTimeout(() => field.removeAttribute('data-returning'), RETURN_MS);
       }
     }, 100);
 
@@ -171,12 +200,13 @@ for (let r = 0; r < ROWS; r++) {
     if (document.fonts && document.fonts.ready) { document.fonts.ready.then(cache); document.fonts.addEventListener('loadingdone', cache); } else cache();
     setTimeout(cache, 400); setTimeout(cache, 1600);
 
-    // Idle flicker: slow, sparse — a few glyphs change character now and then.
+    // Idle flicker: slow, sparse — a few character glyphs (never the words) change now and then.
     const CH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/';
+    const plain = spans.filter((s) => !s.classList.contains('w'));
     setInterval(() => {
-      const k = Math.max(2, (spans.length * 0.015) | 0);
+      const k = Math.max(2, (plain.length * 0.015) | 0);
       for (let n = 0; n < k; n++) {
-        const s = spans[(Math.random() * spans.length) | 0];
+        const s = plain[(Math.random() * plain.length) | 0];
         if (s && !s.style.transform) s.textContent = CH[(Math.random() * CH.length) | 0];
       }
     }, 260);
