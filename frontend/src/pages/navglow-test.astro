@@ -1,0 +1,177 @@
+---
+/* PREVIZ (nav glow) — ISOLATION TEST. Local only, not linked anywhere.
+   Hovering a capability name (a) glows it and (b) SCATTER-DISSOLVES the field
+   characters around the word: the glyphs in a near-circular zone drift off in
+   random directions and fade, staggered, so the field seems to come apart around
+   the letters rather than being shoved aside. The field itself is rebuilt to match
+   the live /services WebGL field — same charset, the sparse-dim-top / dense-bright-
+   bottom density+alpha ramp, and a light flicker — so the effect is judged in context.
+   Pure DOM + a small script; no sweep()/WebGL/plate. services.css only for fonts. */
+import '../styles/services.css';
+
+// --- Field, matched to the live field's parameters (services-controller.js buildAscii) ---
+const GLYPHS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/';
+// Generous grid: it deliberately OVERFLOWS the field container (overflow:hidden clips
+// the excess) so the field fills the whole viewport — full width under EQUIPMENT RENTAL
+// on the right, and all the way down — on wide/tall screens.
+const ROWS = 46, COLS = 250;
+const DENS = 0.85, GAMMA = 1.75, TOP_BRIGHT = 0.66; // = FIELD_TOP_BRIGHTNESS/100
+
+let seed = 7;
+const rnd = () => { seed = (seed * 16807) % 2147483647; return (seed - 1) / 2147483646; };
+
+type Cell = { g: string; on: boolean };
+const rowsData: { a: number; cells: Cell[] }[] = [];
+for (let r = 0; r < ROWS; r++) {
+  const t = (r + 1) / ROWS;
+  const p = (0.34 + 0.66 * Math.pow(t, GAMMA)) * DENS;           // density ramp
+  const a = Math.min(1, (TOP_BRIGHT + 0.5 * Math.pow(t, 1.1)) * 1.25 * 0.62); // alpha ramp
+  const cells: Cell[] = [];
+  for (let c = 0; c < COLS; c++) cells.push({ g: GLYPHS[(rnd() * GLYPHS.length) | 0], on: rnd() < p });
+  rowsData.push({ a: +a.toFixed(3), cells });
+}
+
+const NAMES = ['REAL-TIME CONTENT', 'SCREENS PRODUCTION', 'MIXED REALITY', 'EQUIPMENT RENTAL'];
+const g = (Astro.url.searchParams.get('g') || 'outer').toLowerCase();
+---
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Nav glow — scatter test</title>
+<link rel="preload" href="/fonts/SNJaMono-Light.woff2" as="font" type="font/woff2" crossorigin />
+<link rel="preload" href="/fonts/DenimINKWD-Medium.woff2" as="font" type="font/woff2" crossorigin />
+<style>
+  html, body { margin: 0; height: 100%; background: #000; color: rgb(217, 225, 234); }
+  .stage { position: fixed; inset: 0; overflow: hidden; font-family: 'Denim INK WD', -apple-system, Arial, sans-serif; }
+
+  /* The field, sized to the live grid: 12.5px glyphs, 140% tracking, 215% leading. */
+  .field {
+    position: absolute; left: 48px; right: 48px; top: 150px; bottom: 0;
+    font-family: 'SN Ja Mono', ui-monospace, Menlo, monospace;
+    font-size: 12.5px; line-height: 26.9px; letter-spacing: 0.22em;
+    color: rgb(217, 225, 234);
+    overflow: hidden; pointer-events: none; user-select: none;
+  }
+  .frow { white-space: pre; }
+  /* Only "on" cells are spans (transformable); "off" cells are plain spaces. No
+     will-change — thousands of promoted layers stall the compositor; the transition
+     alone animates the handful that actually move. */
+  .fc {
+    display: inline-block; vertical-align: baseline;
+    transition: transform 520ms cubic-bezier(0.22, 1, 0.36, 1),
+                opacity 460ms cubic-bezier(0.22, 1, 0.36, 1);
+  }
+
+  .title { position: absolute; left: 48px; right: 48px; top: 40px; display: flex; justify-content: space-between; font-weight: 500; font-size: 88px; line-height: 0.9; letter-spacing: -0.01em; }
+
+  .bar { position: absolute; left: 48px; right: 48px; top: 322px; display: flex; justify-content: space-between; align-items: center; z-index: 2; }
+  .cap {
+    font-family: 'SN Ja Mono', ui-monospace, Menlo, monospace;
+    font-weight: 300; font-size: 22.5px; letter-spacing: 0.22em; white-space: nowrap;
+    color: rgba(217, 225, 234, 0.45);
+    background: none; border: 0; padding: 0; cursor: pointer;
+    filter: drop-shadow(0 0 .5em rgba(0,0,0,.95)) drop-shadow(0 0 1.6em rgba(0,0,0,.9)) drop-shadow(0 0 3.4em rgba(0,0,0,.8));
+    text-shadow: 0 0 0 rgba(217, 225, 234, 0);
+    transition: color 320ms ease, letter-spacing 360ms cubic-bezier(0.22,1,0.36,1),
+                text-shadow 460ms cubic-bezier(0.22,1,0.36,1), filter 320ms ease;
+  }
+  .cap:hover { color: rgb(217, 225, 234); letter-spacing: 0.3em; filter: none; }
+  .stage[data-g='outer'] .cap:hover { text-shadow: 0 0 10px rgba(217,225,234,0.9), 0 0 40px rgba(217,225,234,0.8), 0 0 110px rgba(217,225,234,0.6), 0 0 220px rgba(217,225,234,0.4); }
+  .stage[data-g='halo']  .cap:hover { text-shadow: 0 0 10px rgba(217,225,234,0.95), 0 0 44px rgba(217,225,234,0.85), 0 0 130px rgba(217,225,234,0.7), 0 0 240px rgba(217,225,234,0.5); }
+  .stage[data-g='max']   .cap:hover { text-shadow: 0 0 12px rgba(217,225,234,1), 0 0 48px rgba(217,225,234,0.9), 0 0 130px rgba(217,225,234,0.75), 0 0 260px rgba(217,225,234,0.55), 0 0 400px rgba(217,225,234,0.35); }
+
+  .note { position: absolute; left: 48px; bottom: 24px; z-index: 3; font-family: 'SN Ja Mono', ui-monospace, Menlo, monospace; font-size: 11px; letter-spacing: 0.26em; color: rgba(217, 225, 234, 0.4); }
+</style>
+</head>
+<body>
+  <div class="stage" data-g={g}>
+    <div class="field" data-field>
+      {rowsData.map((row) => (
+        <div class="frow" style={`opacity:${row.a}`}>
+          {row.cells.map((cell) => (cell.on ? <span class="fc">{cell.g}</span> : ' '))}
+        </div>
+      ))}
+    </div>
+    <div class="title"><span>STUDIO</span><span>CAPABILITIES</span></div>
+    <div class="bar">
+      {NAMES.map((n) => <button class="cap" type="button">{n}</button>)}
+    </div>
+    <div class="note">SCATTER TEST — HOVER A NAME: THE FIELD COMES APART + THE NAME GLOWS.&nbsp;&nbsp;?g=outer | halo | max</div>
+  </div>
+
+  <script>
+    const spans = Array.from(document.querySelectorAll('.fc'));
+    // Per-glyph stable randomness: a scatter direction, a magnitude jitter, a spin, and a
+    // stagger delay — so the dissolve is organic and enter/leave use the same targets.
+    const rand = spans.map(() => {
+      const ang = Math.random() * Math.PI * 2;
+      return { ux: Math.cos(ang), uy: Math.sin(ang), mag: 0.6 + Math.random() * 0.9, spin: (Math.random() * 2 - 1) * 40, delay: (Math.random() * 130) | 0 };
+    });
+    let centres = [];
+    const cache = () => { centres = spans.map((s) => { const r = s.getBoundingClientRect(); return { x: r.left + r.width / 2, y: r.top + r.height / 2 }; }); };
+
+    // Clear by distance to the word's BOX (not an ellipse to its centre), so the whole
+    // span of the letters clears evenly — not just the middle. PAD grows the fully-cleared
+    // box a little beyond the ink; FEATHER is the ring beyond it where glyphs scatter and
+    // fade out. Anything inside the box goes fully transparent → full legibility.
+    const PADX = 14, PADY = 16, FEATHER = 88, SCATTER = 78;
+    let active = new Set();
+
+    const enter = (word) => {
+      const wr = word.getBoundingClientRect();
+      const wx = wr.left + wr.width / 2, wy = wr.top + wr.height / 2;
+      const x0 = wr.left - PADX, x1 = wr.right + PADX, y0 = wr.top - PADY, y1 = wr.bottom + PADY;
+      const next = new Set();
+      for (let i = 0; i < spans.length; i++) {
+        const c = centres[i];
+        const bx = Math.max(0, x0 - c.x, c.x - x1);  // gap to the box in X (0 when inside)
+        const by = Math.max(0, y0 - c.y, c.y - y1);  // gap to the box in Y
+        const d = Math.hypot(bx, by);                // 0 inside the word box, grows outside
+        if (d < FEATHER) {
+          const f = 1 - d / FEATHER;              // 1 at/inside the box → 0 at the feather edge
+          const e = f * f * (3 - 2 * f);          // smoothstep
+          const inBox = d < 0.5;
+          const j = rand[i];
+          const dist = SCATTER * (0.4 + 0.6 * e) * j.mag;
+          // Scatter direction: mostly AWAY from the word, with the glyph's random vector
+          // mixed in for the organic feel — so nothing drifts back over the letters.
+          const ox = c.x - wx, oy = c.y - wy, ol = Math.hypot(ox, oy) || 1;
+          let vx = (ox / ol) * 0.75 + j.ux * 0.55, vy = (oy / ol) * 0.75 + j.uy * 0.55;
+          const vl = Math.hypot(vx, vy) || 1; vx /= vl; vy /= vl;
+          const s = spans[i];
+          s.style.transitionDelay = j.delay + 'ms';
+          s.style.transform = 'translate(' + (vx * dist).toFixed(1) + 'px,' + (vy * dist).toFixed(1) + 'px) rotate(' + (j.spin * e).toFixed(1) + 'deg)';
+          s.style.opacity = inBox ? '0' : (1 - Math.min(1, e * 2.4) * 0.99).toFixed(3);
+          next.add(i);
+        }
+      }
+      active.forEach((i) => { if (!next.has(i)) reset(i); });
+      active = next;
+    };
+    const reset = (i) => { const s = spans[i]; s.style.transitionDelay = (rand[i].delay >> 1) + 'ms'; s.style.transform = ''; s.style.opacity = ''; };
+    const leave = () => { active.forEach(reset); active = new Set(); };
+
+    // Positions can be cached before SN Ja Mono lands (the fallback mono has other widths),
+    // so re-read them on entering a name while nothing is displaced yet — it cannot go stale.
+    Array.from(document.querySelectorAll('.cap')).forEach((c) => {
+      c.addEventListener('pointerenter', () => { if (!active.size) cache(); enter(c); });
+      c.addEventListener('pointerleave', leave);
+    });
+    let rz; window.addEventListener('resize', () => { clearTimeout(rz); rz = setTimeout(() => { leave(); cache(); }, 150); });
+    if (document.fonts && document.fonts.ready) { document.fonts.ready.then(cache); document.fonts.addEventListener('loadingdone', cache); } else cache();
+    setTimeout(cache, 400); setTimeout(cache, 1600);
+
+    // Light flicker, like the live field: nudge a few on-glyphs to a new character.
+    const CH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789-/';
+    setInterval(() => {
+      const k = Math.max(6, (spans.length * 0.02) | 0);
+      for (let n = 0; n < k; n++) {
+        const s = spans[(Math.random() * spans.length) | 0];
+        if (s && !s.style.transform) s.textContent = CH[(Math.random() * CH.length) | 0];
+      }
+    }, 90);
+  </script>
+</body>
+</html>
