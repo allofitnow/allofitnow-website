@@ -16,7 +16,16 @@ if [ "$LIVE" -eq 1 ]; then
   export AOIN_R2_LIVE_ROOT=1
 fi
 
-git pull --ff-only origin designer246
+# The deploy checkout MIRRORS origin — it is never a place commits are made.
+# It used to fast-forward pull, and that broke on .246: the post-publish
+# payload-export target commits a DB snapshot here, this checkout's remote is
+# https with no credentials so the push silently fails, and the cron exporter
+# in the other checkout pushes its own snapshot of the same file minutes later.
+# From then on nothing fast-forwards and every publish dies at this line.
+# Fetch and reset instead: whatever is only local here is a snapshot that
+# could not be pushed anyway, and the cron exporter keeps the footprint.
+git fetch origin designer246
+git reset --hard origin/designer246
 # #101: generate missing video rungs + register in payload BEFORE the build so
 # HTML bakes data-rungs in the same pass. Additive: failure warns, never aborts.
 bash deploy/hooks/ladder-rungs.sh || echo "WARN: ladder rung generation failed; publish continues without new rungs" >&2
