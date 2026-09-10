@@ -3546,38 +3546,48 @@
         "featuredOrder": null,
         "gallery": [
           {
-            "id": "6aa1fd76455a85b018ca1f6a",
+            "id": "6aa1feccc229bd0c1937098e",
             "images": [
               {
-                "id": "6aa1fd76455a85b018ca1f6d",
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa1feccc229bd0c19370991",
                 "image": "6a90b4e5722d7a45f9b5f8a5"
               },
               {
-                "id": "6aa1fd76455a85b018ca1f6e",
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa1feccc229bd0c19370992",
                 "image": "6a91be351f45730c2261a315"
               },
               {
-                "id": "6aa1fd76455a85b018ca1f6f",
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa1feccc229bd0c19370993",
                 "image": "6a90b512722d7a45f9b5f8f2"
               }
             ],
             "layout": "three-up"
           },
           {
-            "id": "6aa1fd76455a85b018ca1f6b",
+            "id": "6aa1feccc229bd0c1937098f",
             "images": [
               {
-                "id": "6aa1fd76455a85b018ca1f70",
+                "focusX": 50,
+                "focusY": 100,
+                "id": "6aa1feccc229bd0c19370994",
                 "image": "6a90b55b722d7a45f9b5f943"
               }
             ],
             "layout": "full"
           },
           {
-            "id": "6aa1fd76455a85b018ca1f6c",
+            "id": "6aa1feccc229bd0c19370990",
             "images": [
               {
-                "id": "6aa1fd76455a85b018ca1f71",
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa1feccc229bd0c19370995",
                 "image": "6a91d99510665f0fb1d8c937"
               }
             ],
@@ -3599,7 +3609,7 @@
         "summary": "Partway through Good Charlotte’s North American tour with Avenged Sevenfold, All Of It Now was brought in by EighteentwentySix Productions to expand the show’s content and Notch IMAG. In roughly three weeks, the team created new content, reworked existing material, and developed over 20 unique Notch looks for the setlist, integrating everything between shows.",
         "title": "GOOD CHARLOTTE",
         "tour": "NORTH AMERICA TOUR",
-        "updatedAt": "2026-09-10T00:44:38.703Z",
+        "updatedAt": "2026-09-10T00:50:20.588Z",
         "visibility": "published",
         "writeup": [
           {
@@ -10444,6 +10454,6 @@
       }
     ]
   },
-  "dataUpdatedAt": "2026-09-10T00:44:38.703Z",
+  "dataUpdatedAt": "2026-09-10T00:50:20.588Z",
   "host": "246"
 }
