@@ -6630,48 +6630,42 @@
           {
             "entries": [
               {
-                "id": "6a8cc7b1c69d1befba48452d",
+                "id": "6aa20940c229bd0c193709ab",
                 "name": "Vishal Sharma",
                 "title": "SCREENS PRODUCER + NOTCH DESIGNER",
                 "url": "http://instagram.com/_vishalsharma"
               },
               {
-                "id": "6a8cc7b1c69d1befba48452e",
+                "id": "6aa20940c229bd0c193709ac",
                 "name": "Berto Mora",
                 "title": "NOTCH DESIGNER",
                 "url": "https://www.instagram.com/berto_mora"
               },
               {
-                "id": "6a8cc7b1c69d1befba48452f",
+                "id": "6aa20940c229bd0c193709ad",
                 "name": "Stella Kinoshita",
                 "title": "NOTCH DESIGNER",
                 "url": "http://instagram.com/knsht.exr"
               }
             ],
-            "id": "6a8cc7b1c69d1befba484523",
+            "id": "6aa20940c229bd0c193709a9",
             "title": "ALL OF IT NOW"
           },
           {
             "entries": [
               {
-                "id": "6a922dd8a642fd725d22e60b",
-                "name": "Morgan Wallen",
-                "title": "Artist",
-                "url": "https://morganwallen.com/"
-              },
-              {
-                "id": "6a8cc7b1c69d1befba484530",
+                "id": "6aa20940c229bd0c193709ae",
                 "name": "STURDY.",
                 "title": "CREATIVE DIRECTION",
-                "url": "https://sturdy.co/ "
+                "url": "https://www.instagram.com/voyageproductions/?hl=en"
               }
             ],
-            "id": "6a8cc7b1c69d1befba484524",
+            "id": "6aa20940c229bd0c193709aa",
             "title": "COLLABORATORS"
           }
         ],
-        "featured": true,
-        "featuredOrder": 3,
+        "featured": null,
+        "featuredOrder": null,
         "gallery": [
           {
             "id": "6aa2029fc229bd0c19370996",
@@ -6774,77 +6768,59 @@
         "order": 0.2,
         "press": [],
         "services": [
-          "6a92062ffd173ebc99005f67",
-          "6a920635fd173ebc99005f8e",
-          "6a920646fd173ebc99006003",
-          "6a91ff0310665f0fb1d8d396",
+          "6a91fef510665f0fb1d8d348",
           "6a91fefb10665f0fb1d8d36f",
-          "6a92065cfd173ebc99006054",
-          "6a920662fd173ebc9900607b",
-          "6a92063bfd173ebc99005fb5",
-          "6a920654fd173ebc9900602d"
+          "6a91ff0310665f0fb1d8d396"
         ],
         "slug": "morgan-wallen",
         "stats": [
           {
-            "id": "6a922db5a642fd725d22e60a",
-            "label": "Pixels Rendered",
-            "value": "20M+"
-          },
-          {
-            "id": "6a8cc7b1c69d1befba484520",
+            "id": "6aa20940c229bd0c193709a6",
             "label": "STADIUM SHOWS",
             "value": "21"
           },
           {
-            "id": "6a8cc7b1c69d1befba484521",
+            "id": "6aa20940c229bd0c193709a7",
             "label": "CITIES TRAVELED",
             "value": "11"
           },
           {
-            "id": "6a8cc7b1c69d1befba484522",
+            "id": "6aa20940c229bd0c193709a8",
             "label": "TICKETS SOLD",
             "value": "1.6M+"
           }
         ],
-        "summary": "For Morgan Wallen’s Still The Problem Tour, All of it Now developed a real-time Notch pipeline that integrated live camera, tracking, simulation, and interactive systems directly into the show’s content. From camera-driven film strips and real-time fire simulations to UVW-mapped environments and musicality-driven effects, Notch became an active part of the visual system rather than a separate effects layer.",
+        "summary": "For Morgan Wallen’s *Still The Problem Tour*, development began in 2025 and continued through the 2026 tour launch, with ongoing support and updates as the production evolved. Our work encompassed screens production, real-time Notch integration, and programming support, with Notch serving as a core pipeline tool for tracking, simulation, interaction, and live camera integration within the rendered content. Across the show, Notch was used both as an enhancement layer and as content itself, from real-time film strips and fire simulations to tracked camera integration, UVW workflows, and musicality-driven content systems. The result was a highly integrated real-time pipeline that allowed live elements and rendered content to interact dynamically throughout the production.",
         "title": "MORGAN WALLEN",
         "tour": "STILL THE PROBLEM TOUR",
-        "updatedAt": "2026-09-10T01:06:39.854Z",
+        "updatedAt": "2026-09-10T01:34:56.047Z",
         "visibility": "published",
         "writeup": [
           {
             "children": [
               {
-                "text": "For Morgan Wallen’s Still The Problem Tour, All of it Now began development in 2025 and continued through the launch of the 2026 tour, providing ongoing creative and technical support as the production evolved. AOIN’s scope included screens production, real-time Notch integration, and programming, with a particular focus on developing a Notch pipeline that could connect rendered content with live, interactive systems."
+                "text": "For Morgan Wallen’s "
+              },
+              {
+                "italic": true,
+                "text": "Still The Problem Tour"
+              },
+              {
+                "text": ", All Of It Now began development in 2025 and continued through the launch of the tour in 2026, providing ongoing creative and technical support as the production evolved and new changes were required. Our scope included screens production, real-time Notch integration, and assisting with programming integration, with a particular focus on developing a complex Notch pipeline that could bridge the gap between rendered content and live, interactive systems. Rather than using Notch solely as a playback or effects platform, we incorporated it directly into the content pipeline to add tracking, simulation, interaction, and real-time camera capabilities to the show’s existing visual framework."
               }
             ]
           },
           {
             "children": [
               {
-                "text": "Rather than using Notch solely as an effects or playback platform, the system incorporated real-time tracking, simulation, interaction, and camera processing directly into the show’s content pipeline. This allowed live inputs to become part of the rendered environments and gave the visual system greater flexibility to respond to the performance in real time."
+                "text": "Across the production, Notch was used in a variety of ways depending on the needs of each song and visual moment. In some instances, the real-time camera became the content itself, creating treatments such as live film strips and other camera-driven compositions. In others, Notch was used to introduce simulation and environmental interaction, including real-time fire and other effects layered into or behind existing rendered content. We also developed UVW-based workflows that allowed tracked live camera feeds to be mapped into specific elements of the rendered environments. For example, television screens within moving scenes could be tracked in real time, with UVW data generated to ensure the live camera remained correctly mapped to those surfaces as they moved through the scene."
               }
             ]
           },
           {
             "children": [
               {
-                "text": "Across the production, Notch was used to create camera-driven content as well as augment pre-rendered environments. Live camera feeds became the basis for treatments including film strips and other camera-driven compositions, while real-time fire and environmental simulations could be layered into or behind rendered content. UVW-based workflows extended this integration further, allowing tracked camera feeds to be mapped onto specific surfaces within moving environments. Television screens within rendered scenes, for example, could receive live camera content while maintaining accurate mapping as the surfaces moved through the scene."
-              }
-            ]
-          },
-          {
-            "children": [
-              {
-                "text": "The same real-time framework was also used to introduce greater musicality and responsiveness into the visual system, allowing individual elements to react and evolve alongside the performance. By combining rendered assets with live camera, tracking, simulation, and interactive processes, Notch became an extension of the show’s existing content pipeline rather than a separate visual layer."
-              }
-            ]
-          },
-          {
-            "children": [
-              {
-                "text": "Development continued through the 2026 tour launch, with the system remaining flexible enough to accommodate creative changes and new technical requirements as the production evolved. The resulting pipeline connected the show’s pre-rendered content with live inputs and real-time processes, creating a more responsive visual system without requiring the production to abandon its existing content workflow."
+                "text": "The pipeline also allowed for greater musicality and responsiveness within the real-time content, giving individual systems the ability to react and evolve alongside the performance. By combining rendered assets with live tracking, camera, simulation, and interactive Notch processes, the system became an extension of the show’s content pipeline rather than a separate visual layer. This approach provided the production with a flexible framework that could accommodate complex visual interactions while remaining adaptable throughout the development process and the ongoing needs of the 2026 tour."
               }
             ]
           }
@@ -6872,7 +6848,7 @@
             "text": "The pipeline also allowed for greater musicality and responsiveness within the real-time content, giving individual systems the ability to react and evolve alongside the performance. By combining rendered assets with live tracking, camera, simulation, and interactive Notch processes, the system became an extension of the show’s content pipeline rather than a separate visual layer. This approach provided the production with a flexible framework that could accommodate complex visual interactions while remaining adaptable throughout the development process and the ongoing needs of the 2026 tour."
           }
         ],
-        "writeupColumns": "1",
+        "writeupColumns": null,
         "year": "2026"
       },
       {
@@ -10471,6 +10447,6 @@
       }
     ]
   },
-  "dataUpdatedAt": "2026-09-10T01:06:39.854Z",
+  "dataUpdatedAt": "2026-09-10T01:34:56.047Z",
   "host": "246"
 }
