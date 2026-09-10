@@ -51,7 +51,7 @@ export interface Project {
   services: Capability[];
   /** Overlay + list secondary line, ALL CAPS, e.g. "WORLD TOUR". */
   tour: string;
-  /** Overlay bottom line, e.g. "ALL OF IT NOW X PHNTM". */
+  /** Overlay bottom line: the partner name only, e.g. "PHNTM". */
   collaborator: string;
   // --- Project-page fields -------------------------------------------------
   /** Short lede beside the meta block. */

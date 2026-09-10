@@ -19,15 +19,15 @@ export function mediaUrl(media: { url?: string } | null | undefined): string {
   return url.startsWith('/') ? `${API_URL}${url}` : url;
 }
 
-/** Collaborator display: the CMS stores the PARTNER NAME only (e.g. "PHNTM"); the site always
- *  shows it as "ALL OF IT NOW X <partner>". Idempotent — strips any pre-existing prefix first, so it
- *  reads correctly whether the stored value is already migrated (partner-only) or still the old full
- *  string. Empty stays empty (solo AOIN work → no collaborator row). */
+/** Collaborator display: the CMS stores the PARTNER NAME only (e.g. "PHNTM") and the site shows
+ *  exactly that — no "ALL OF IT NOW X" prefix (added for a while, then dropped). Any legacy full
+ *  string still in the CMS is reduced to the partner. Empty stays empty (solo AOIN work → no
+ *  collaborator row). */
 function formatCollaborator(c: unknown): string {
   const raw = typeof c === 'string' ? c.trim() : '';
   if (!raw) return '';
   const partner = raw.replace(/^ALL\s+OF\s+IT\s+NOW\s*X\s*/i, '').trim();
-  return partner ? `ALL OF IT NOW X ${partner}` : raw;
+  return partner || raw;
 }
 
 /** Map a Payload projects REST doc to the frontend `Project` shape. */
