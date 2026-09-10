@@ -1,16 +1,18 @@
 // scripts/export-payload.js — deterministic per-host export of Payload content
-// collections to JSON, so DB edits become git-trackable (issue #153).
+// collections to EJSON, so DB edits become git-trackable (issue #153).
 //
 // Usage:
 //   AOIN_HOST_LABEL=245 mongosh --quiet scripts/export-payload.js > data/db/245-payload.json
 //
 // Scope:
 //   IN  : projects, equipment, service-categories, globals (full, secret-stripped)
-//         media (metadata only: filename/alt/mimeType/sizes/url/timestamps)
-//   OUT : users, payload-preferences, payload-migrations (secrets / internal)
+//         media (metadata only: filename/alt/mimeType/sizes/timestamps)
+//   OUT : users, payload-preferences, payload-migrations, _*_versions (secrets / internal)
 //
-// Determinism: keys are sorted recursively, arrays sorted by _id, Dates/BSON
-// coerced to stable strings — so a DB edit yields a minimal, meaningful diff.
+// Determinism: keys are sorted recursively (sortKeys) while BSON types are left
+// intact, then EJSON.stringify preserves types (ObjectId -> $oid, Date -> $date)
+// so the file round-trips cleanly into Mongo. Arrays are sorted by _id at the
+// query level. dataUpdatedAt = max updatedAt (derived from the data, not per-run).
 const DB = "payload";
 const s = db.getSiblingDB(DB);
 
@@ -19,15 +21,19 @@ const SECRET_KEYS = new Set([
   "resetPasswordExpiration", "loginAttempts", "lockUntil", "apiKey",
 ]);
 
-// Coerce BSON/JS values to JSON-safe, deterministically-ordered plain values.
-function normalize(v) {
-  if (Array.isArray(v)) return v.map(normalize);
-  if (v instanceof Date) return v.toISOString();
-  if (v instanceof ObjectId) return v.toString();
-  if (v && typeof v === "object") {
-    if (typeof v.toHexString === "function") return v.toString(); // Binary/UUID/etc
+// Recursively sort plain-object keys; leave BSON types (ObjectId, Date, Binary,
+// Long, etc.) and primitives untouched for EJSON.stringify.
+function isPlainObject(v) {
+  if (v === null || typeof v !== "object") return false;
+  const proto = Object.getPrototypeOf(v);
+  return proto === Object.prototype || proto === null;
+}
+
+function sortKeys(v) {
+  if (Array.isArray(v)) return v.map(sortKeys);
+  if (isPlainObject(v)) {
     const out = {};
-    Object.keys(v).sort().forEach((k) => { out[k] = normalize(v[k]); });
+    Object.keys(v).sort().forEach((k) => { out[k] = sortKeys(v[k]); });
     return out;
   }
   return v;
@@ -64,8 +70,9 @@ for (const c of ["projects", "equipment", "service-categories", "globals"]) {
 }
 
 // media: metadata only, keeps the file small and the diff free of binary noise.
+// url is not stored in Mongo (a computed field), so it is absent from the export.
 const media = s.getCollection("media").find({}, {
-  projection: { _id: 1, filename: 1, alt: 1, mimeType: 1, sizes: 1, url: 1, updatedAt: 1, createdAt: 1 },
+  projection: { _id: 1, filename: 1, alt: 1, mimeType: 1, sizes: 1, updatedAt: 1, createdAt: 1 },
 }).sort({ _id: 1 }).toArray();
 for (const d of media) {
   if (d.updatedAt instanceof Date && d.updatedAt > dataUpdatedAt) dataUpdatedAt = d.updatedAt;
@@ -74,4 +81,4 @@ result.collections.media = media;
 
 result.dataUpdatedAt = dataUpdatedAt.toISOString();
 
-print(JSON.stringify(normalize(result), null, 2));
+print(EJSON.stringify(sortKeys(result), null, 2));
