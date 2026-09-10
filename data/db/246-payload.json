@@ -6674,80 +6674,96 @@
         "featuredOrder": 3,
         "gallery": [
           {
-            "id": "6a8cc7b1c69d1befba484519",
+            "id": "6aa2029fc229bd0c19370996",
             "images": [
               {
-                "id": "6a8cc7b1c69d1befba484525",
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa2029fc229bd0c1937099e",
                 "image": "6a8cc7a817ce5209038acb53"
               }
             ],
             "layout": "full"
           },
           {
-            "id": "6a8cc7b1c69d1befba48451a",
+            "id": "6aa2029fc229bd0c19370997",
             "images": [
               {
-                "id": "6a8cc7b1c69d1befba484526",
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa2029fc229bd0c1937099f",
                 "image": "6a8cc7ac17ce5209038acb5a"
               }
             ],
             "layout": "full"
           },
           {
-            "id": "6a8cc7b1c69d1befba48451b",
+            "id": "6aa2029fc229bd0c19370998",
             "images": [
               {
-                "id": "6a8cc7b1c69d1befba484527",
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa2029fc229bd0c193709a0",
                 "image": "6a8cc7ac17ce5209038acb61"
               }
             ],
             "layout": "full-3-1"
           },
           {
-            "id": "6a8cc7b1c69d1befba48451c",
+            "id": "6aa2029fc229bd0c19370999",
             "images": [
               {
-                "id": "6a8cc7b1c69d1befba484529",
+                "focusX": 50,
+                "focusY": 100,
+                "id": "6aa2029fc229bd0c193709a1",
                 "image": "6a8cc7ae17ce5209038acb6f"
               }
             ],
             "layout": "full"
           },
           {
-            "id": "6a8cc972e4e6b6952bb35d24",
+            "id": "6aa2029fc229bd0c1937099a",
             "images": [
               {
-                "id": "6a8cc989e4e6b6952bb35d25",
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa2029fc229bd0c193709a2",
                 "image": "6a8cc7ad17ce5209038acb68"
               }
             ],
             "layout": "full-3-1"
           },
           {
-            "id": "6a8cc7b1c69d1befba48451d",
+            "id": "6aa2029fc229bd0c1937099b",
             "images": [
               {
-                "id": "6a8cc7b1c69d1befba48452a",
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa2029fc229bd0c193709a3",
                 "image": "6a8cc7ae17ce5209038acb76"
               }
             ],
             "layout": "full"
           },
           {
-            "id": "6a8cc7b1c69d1befba48451e",
+            "id": "6aa2029fc229bd0c1937099c",
             "images": [
               {
-                "id": "6a8cc7b1c69d1befba48452b",
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa2029fc229bd0c193709a4",
                 "image": "6a8cc7af17ce5209038acb7d"
               }
             ],
             "layout": "full-3-1"
           },
           {
-            "id": "6a8cc7b1c69d1befba48451f",
+            "id": "6aa2029fc229bd0c1937099d",
             "images": [
               {
-                "id": "6a8cc7b1c69d1befba48452c",
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa2029fc229bd0c193709a5",
                 "image": "6a8cc7b017ce5209038acb84"
               }
             ],
@@ -6756,6 +6772,7 @@
         ],
         "image": "6a8cc7a717ce5209038acb45",
         "order": 0.2,
+        "press": [],
         "services": [
           "6a92062ffd173ebc99005f67",
           "6a920635fd173ebc99005f8e",
@@ -6793,7 +6810,7 @@
         "summary": "For Morgan Wallen’s Still The Problem Tour, All of it Now developed a real-time Notch pipeline that integrated live camera, tracking, simulation, and interactive systems directly into the show’s content. From camera-driven film strips and real-time fire simulations to UVW-mapped environments and musicality-driven effects, Notch became an active part of the visual system rather than a separate effects layer.",
         "title": "MORGAN WALLEN",
         "tour": "STILL THE PROBLEM TOUR",
-        "updatedAt": "2026-08-29T00:55:15.506Z",
+        "updatedAt": "2026-09-10T01:06:39.854Z",
         "visibility": "published",
         "writeup": [
           {
@@ -10454,6 +10471,6 @@
       }
     ]
   },
-  "dataUpdatedAt": "2026-09-10T00:50:20.588Z",
+  "dataUpdatedAt": "2026-09-10T01:06:39.854Z",
   "host": "246"
 }
