@@ -3546,38 +3546,38 @@
         "featuredOrder": null,
         "gallery": [
           {
-            "id": "6aa1f9ab455a85b018ca1f52",
+            "id": "6aa1fd76455a85b018ca1f6a",
             "images": [
               {
-                "id": "6aa1f9ab455a85b018ca1f55",
+                "id": "6aa1fd76455a85b018ca1f6d",
                 "image": "6a90b4e5722d7a45f9b5f8a5"
               },
               {
-                "id": "6aa1f9ab455a85b018ca1f56",
+                "id": "6aa1fd76455a85b018ca1f6e",
                 "image": "6a91be351f45730c2261a315"
               },
               {
-                "id": "6aa1f9ab455a85b018ca1f57",
+                "id": "6aa1fd76455a85b018ca1f6f",
                 "image": "6a90b512722d7a45f9b5f8f2"
               }
             ],
             "layout": "three-up"
           },
           {
-            "id": "6aa1f9ab455a85b018ca1f53",
+            "id": "6aa1fd76455a85b018ca1f6b",
             "images": [
               {
-                "id": "6aa1f9ab455a85b018ca1f58",
+                "id": "6aa1fd76455a85b018ca1f70",
                 "image": "6a90b55b722d7a45f9b5f943"
               }
             ],
             "layout": "full"
           },
           {
-            "id": "6aa1f9ab455a85b018ca1f54",
+            "id": "6aa1fd76455a85b018ca1f6c",
             "images": [
               {
-                "id": "6aa1f9ab455a85b018ca1f59",
+                "id": "6aa1fd76455a85b018ca1f71",
                 "image": "6a91d99510665f0fb1d8c937"
               }
             ],
@@ -3599,7 +3599,7 @@
         "summary": "Partway through Good Charlotte’s North American tour with Avenged Sevenfold, All Of It Now was brought in by EighteentwentySix Productions to expand the show’s content and Notch IMAG. In roughly three weeks, the team created new content, reworked existing material, and developed over 20 unique Notch looks for the setlist, integrating everything between shows.",
         "title": "GOOD CHARLOTTE",
         "tour": "NORTH AMERICA TOUR",
-        "updatedAt": "2026-09-10T00:28:27.650Z",
+        "updatedAt": "2026-09-10T00:44:38.703Z",
         "visibility": "published",
         "writeup": [
           {
@@ -10444,6 +10444,6 @@
       }
     ]
   },
-  "dataUpdatedAt": "2026-09-10T00:28:27.650Z",
+  "dataUpdatedAt": "2026-09-10T00:44:38.703Z",
   "host": "246"
 }
