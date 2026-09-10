@@ -2167,6 +2167,54 @@
       },
       {
         "_id": "6a95b36344c1ba053073e42c"
+      },
+      {
+        "_id": "6aa20c888f4b891a8f2be5d6"
+      },
+      {
+        "_id": "6aa20c898f4b891a8f2be5dd"
+      },
+      {
+        "_id": "6aa20c898f4b891a8f2be5e4"
+      },
+      {
+        "_id": "6aa20c8b8f4b891a8f2be5f3"
+      },
+      {
+        "_id": "6aa20c8c8f4b891a8f2be5fa"
+      },
+      {
+        "_id": "6aa20c8d8f4b891a8f2be601"
+      },
+      {
+        "_id": "6aa20c8d8f4b891a8f2be608"
+      },
+      {
+        "_id": "6aa20c8f8f4b891a8f2be60f"
+      },
+      {
+        "_id": "6aa20c908f4b891a8f2be616"
+      },
+      {
+        "_id": "6aa20c938f4b891a8f2be61d"
+      },
+      {
+        "_id": "6aa20c948f4b891a8f2be624"
+      },
+      {
+        "_id": "6aa20c958f4b891a8f2be62b"
+      },
+      {
+        "_id": "6aa20c978f4b891a8f2be632"
+      },
+      {
+        "_id": "6aa20c988f4b891a8f2be639"
+      },
+      {
+        "_id": "6aa20c988f4b891a8f2be640"
+      },
+      {
+        "_id": "6aa20d788f4b891a8f2be672"
       }
     ],
     "projects": [
@@ -6630,141 +6678,189 @@
           {
             "entries": [
               {
-                "id": "6aa20940c229bd0c193709ab",
+                "id": "6aa20d80c229bd0c193709ed",
                 "name": "Vishal Sharma",
                 "title": "SCREENS PRODUCER + NOTCH DESIGNER",
                 "url": "http://instagram.com/_vishalsharma"
               },
               {
-                "id": "6aa20940c229bd0c193709ac",
+                "id": "6aa20d80c229bd0c193709ee",
                 "name": "Berto Mora",
                 "title": "NOTCH DESIGNER",
                 "url": "https://www.instagram.com/berto_mora"
               },
               {
-                "id": "6aa20940c229bd0c193709ad",
+                "id": "6aa20d80c229bd0c193709ef",
                 "name": "Stella Kinoshita",
                 "title": "NOTCH DESIGNER",
                 "url": "http://instagram.com/knsht.exr"
               }
             ],
-            "id": "6aa20940c229bd0c193709a9",
+            "id": "6aa20d80c229bd0c193709dd",
             "title": "ALL OF IT NOW"
           },
           {
             "entries": [
               {
-                "id": "6aa20940c229bd0c193709ae",
+                "id": "6aa20d80c229bd0c193709f0",
                 "name": "STURDY.",
                 "title": "CREATIVE DIRECTION",
                 "url": "https://www.instagram.com/voyageproductions/?hl=en"
               }
             ],
-            "id": "6aa20940c229bd0c193709aa",
+            "id": "6aa20d80c229bd0c193709de",
             "title": "COLLABORATORS"
           }
         ],
-        "featured": null,
+        "featured": false,
         "featuredOrder": null,
         "gallery": [
           {
-            "id": "6aa2029fc229bd0c19370996",
+            "id": "6aa20defc229bd0c193709f1",
             "images": [
               {
                 "focusX": 50,
                 "focusY": 50,
-                "id": "6aa2029fc229bd0c1937099e",
-                "image": "6a8cc7a817ce5209038acb53"
+                "id": "6aa20defc229bd0c193709fb",
+                "image": "6aa20c898f4b891a8f2be5e4"
               }
             ],
             "layout": "full"
           },
           {
-            "id": "6aa2029fc229bd0c19370997",
+            "id": "6aa20defc229bd0c193709f2",
             "images": [
               {
                 "focusX": 50,
                 "focusY": 50,
-                "id": "6aa2029fc229bd0c1937099f",
-                "image": "6a8cc7ac17ce5209038acb5a"
+                "id": "6aa20defc229bd0c193709fc",
+                "image": "6aa20d788f4b891a8f2be672"
               }
             ],
             "layout": "full"
           },
           {
-            "id": "6aa2029fc229bd0c19370998",
+            "id": "6aa20defc229bd0c193709f3",
             "images": [
               {
                 "focusX": 50,
                 "focusY": 50,
-                "id": "6aa2029fc229bd0c193709a0",
-                "image": "6a8cc7ac17ce5209038acb61"
+                "id": "6aa20defc229bd0c193709fd",
+                "image": "6aa20c8b8f4b891a8f2be5f3"
+              },
+              {
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa20defc229bd0c193709fe",
+                "image": "6aa20c8c8f4b891a8f2be5fa"
               }
             ],
-            "layout": "full-3-1"
+            "layout": "two-up"
           },
           {
-            "id": "6aa2029fc229bd0c19370999",
+            "id": "6aa20defc229bd0c193709f4",
             "images": [
               {
                 "focusX": 50,
-                "focusY": 100,
-                "id": "6aa2029fc229bd0c193709a1",
-                "image": "6a8cc7ae17ce5209038acb6f"
+                "focusY": 50,
+                "id": "6aa20defc229bd0c193709ff",
+                "image": "6aa20c8d8f4b891a8f2be601"
               }
             ],
             "layout": "full"
           },
           {
-            "id": "6aa2029fc229bd0c1937099a",
+            "id": "6aa20defc229bd0c193709f5",
             "images": [
               {
                 "focusX": 50,
                 "focusY": 50,
-                "id": "6aa2029fc229bd0c193709a2",
-                "image": "6a8cc7ad17ce5209038acb68"
-              }
-            ],
-            "layout": "full-3-1"
-          },
-          {
-            "id": "6aa2029fc229bd0c1937099b",
-            "images": [
-              {
-                "focusX": 50,
-                "focusY": 50,
-                "id": "6aa2029fc229bd0c193709a3",
-                "image": "6a8cc7ae17ce5209038acb76"
+                "id": "6aa20defc229bd0c19370a00",
+                "image": "6aa20c8d8f4b891a8f2be608"
               }
             ],
             "layout": "full"
           },
           {
-            "id": "6aa2029fc229bd0c1937099c",
+            "id": "6aa20defc229bd0c193709f6",
             "images": [
               {
                 "focusX": 50,
-                "focusY": 50,
-                "id": "6aa2029fc229bd0c193709a4",
-                "image": "6a8cc7af17ce5209038acb7d"
+                "focusY": 40,
+                "id": "6aa20defc229bd0c19370a01",
+                "image": "6aa20c8f8f4b891a8f2be60f"
               }
             ],
-            "layout": "full-3-1"
+            "layout": "full"
           },
           {
-            "id": "6aa2029fc229bd0c1937099d",
+            "id": "6aa20defc229bd0c193709f7",
             "images": [
               {
                 "focusX": 50,
                 "focusY": 50,
-                "id": "6aa2029fc229bd0c193709a5",
-                "image": "6a8cc7b017ce5209038acb84"
+                "id": "6aa20defc229bd0c19370a02",
+                "image": "6aa20c908f4b891a8f2be616"
+              },
+              {
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa20defc229bd0c19370a03",
+                "image": "6aa20c938f4b891a8f2be61d"
+              },
+              {
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa20defc229bd0c19370a04",
+                "image": "6aa20c948f4b891a8f2be624"
               }
             ],
-            "layout": "full-3-1"
+            "layout": "three-up"
+          },
+          {
+            "id": "6aa20defc229bd0c193709f8",
+            "images": [
+              {
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa20defc229bd0c19370a05",
+                "image": "6aa20c958f4b891a8f2be62b"
+              },
+              {
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa20defc229bd0c19370a06",
+                "image": "6aa20c978f4b891a8f2be632"
+              }
+            ],
+            "layout": "split-5-7"
+          },
+          {
+            "id": "6aa20defc229bd0c193709f9",
+            "images": [
+              {
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa20defc229bd0c19370a07",
+                "image": "6aa20c988f4b891a8f2be639"
+              }
+            ],
+            "layout": "full"
+          },
+          {
+            "id": "6aa20defc229bd0c193709fa",
+            "images": [
+              {
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa20defc229bd0c19370a08",
+                "image": "6aa20c988f4b891a8f2be640"
+              }
+            ],
+            "layout": "full"
           }
         ],
-        "image": "6a8cc7a717ce5209038acb45",
+        "image": "6aa20c888f4b891a8f2be5d6",
         "order": 0.2,
         "press": [],
         "services": [
@@ -6775,17 +6871,17 @@
         "slug": "morgan-wallen",
         "stats": [
           {
-            "id": "6aa20940c229bd0c193709a6",
+            "id": "6aa20d80c229bd0c193709da",
             "label": "STADIUM SHOWS",
             "value": "21"
           },
           {
-            "id": "6aa20940c229bd0c193709a7",
+            "id": "6aa20d80c229bd0c193709db",
             "label": "CITIES TRAVELED",
             "value": "11"
           },
           {
-            "id": "6aa20940c229bd0c193709a8",
+            "id": "6aa20d80c229bd0c193709dc",
             "label": "TICKETS SOLD",
             "value": "1.6M+"
           }
@@ -6793,7 +6889,7 @@
         "summary": "For Morgan Wallen’s *Still The Problem Tour*, development began in 2025 and continued through the 2026 tour launch, with ongoing support and updates as the production evolved. Our work encompassed screens production, real-time Notch integration, and programming support, with Notch serving as a core pipeline tool for tracking, simulation, interaction, and live camera integration within the rendered content. Across the show, Notch was used both as an enhancement layer and as content itself, from real-time film strips and fire simulations to tracked camera integration, UVW workflows, and musicality-driven content systems. The result was a highly integrated real-time pipeline that allowed live elements and rendered content to interact dynamically throughout the production.",
         "title": "MORGAN WALLEN",
         "tour": "STILL THE PROBLEM TOUR",
-        "updatedAt": "2026-09-10T01:34:56.047Z",
+        "updatedAt": "2026-09-10T01:54:55.630Z",
         "visibility": "published",
         "writeup": [
           {
@@ -10447,6 +10543,6 @@
       }
     ]
   },
-  "dataUpdatedAt": "2026-09-10T01:34:56.047Z",
+  "dataUpdatedAt": "2026-09-10T01:54:55.630Z",
   "host": "246"
 }
