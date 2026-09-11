@@ -24,8 +24,8 @@ fi
 # From then on nothing fast-forwards and every publish dies at this line.
 # Fetch and reset instead: whatever is only local here is a snapshot that
 # could not be pushed anyway, and the cron exporter keeps the footprint.
-git fetch origin designer246
-git reset --hard origin/designer246
+git fetch origin staging
+git reset --hard origin/staging
 # #101: generate missing video rungs + register in payload BEFORE the build so
 # HTML bakes data-rungs in the same pass. Additive: failure warns, never aborts.
 bash deploy/hooks/ladder-rungs.sh || echo "WARN: ladder rung generation failed; publish continues without new rungs" >&2
