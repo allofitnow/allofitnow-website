@@ -13495,6 +13495,8 @@
             "images": [
               {
                 "image": "6a97a30e1e3a2fc7e7ce307e",
+                "focusX": 50,
+                "focusY": 50,
                 "id": "6a97a32652a6673c7c92a960"
               }
             ],
@@ -13505,10 +13507,14 @@
             "images": [
               {
                 "image": "6a97a30f1e3a2fc7e7ce3085",
+                "focusX": 50,
+                "focusY": 50,
                 "id": "6a97a32652a6673c7c92a961"
               },
               {
                 "image": "6a97a3101e3a2fc7e7ce308c",
+                "focusX": 50,
+                "focusY": 50,
                 "id": "6a97a32652a6673c7c92a962"
               }
             ],
@@ -13519,6 +13525,8 @@
             "images": [
               {
                 "image": "6a97a3101e3a2fc7e7ce3093",
+                "focusX": 50,
+                "focusY": 50,
                 "id": "6a97a32652a6673c7c92a963"
               }
             ],
@@ -13529,10 +13537,14 @@
             "images": [
               {
                 "image": "6a97a3101e3a2fc7e7ce309a",
+                "focusX": 50,
+                "focusY": 50,
                 "id": "6a97a32652a6673c7c92a964"
               },
               {
                 "image": "6a97a3101e3a2fc7e7ce30a1",
+                "focusX": 50,
+                "focusY": 50,
                 "id": "6a97a32652a6673c7c92a965"
               }
             ],
@@ -13543,14 +13555,20 @@
             "images": [
               {
                 "image": "6a97a3111e3a2fc7e7ce30a8",
+                "focusX": 50,
+                "focusY": 50,
                 "id": "6a97a32652a6673c7c92a966"
               },
               {
                 "image": "6a97a3121e3a2fc7e7ce30af",
+                "focusX": 50,
+                "focusY": 50,
                 "id": "6a97a32652a6673c7c92a967"
               },
               {
                 "image": "6a97a3121e3a2fc7e7ce30b6",
+                "focusX": 50,
+                "focusY": 50,
                 "id": "6a97a32652a6673c7c92a968"
               }
             ],
@@ -13561,14 +13579,20 @@
             "images": [
               {
                 "image": "6a97a3141e3a2fc7e7ce30bd",
+                "focusX": 50,
+                "focusY": 50,
                 "id": "6a97a32652a6673c7c92a969"
               },
               {
                 "image": "6a97a3141e3a2fc7e7ce30c4",
+                "focusX": 50,
+                "focusY": 50,
                 "id": "6a97a32652a6673c7c92a96a"
               },
               {
                 "image": "6a97a3151e3a2fc7e7ce30cb",
+                "focusX": 50,
+                "focusY": 50,
                 "id": "6a97a32652a6673c7c92a96b"
               }
             ],
@@ -13579,6 +13603,8 @@
             "images": [
               {
                 "image": "6a97a3161e3a2fc7e7ce30d2",
+                "focusX": 50,
+                "focusY": 50,
                 "id": "6a97a32652a6673c7c92a96c"
               }
             ],
@@ -13589,10 +13615,14 @@
             "images": [
               {
                 "image": "6a97a3161e3a2fc7e7ce30d9",
+                "focusX": 50,
+                "focusY": 50,
                 "id": "6a97a32652a6673c7c92a96d"
               },
               {
                 "image": "6a97a3171e3a2fc7e7ce30e0",
+                "focusX": 50,
+                "focusY": 50,
                 "id": "6a97a32652a6673c7c92a96e"
               }
             ],
@@ -13709,7 +13739,7 @@
           "$date": "2026-09-02T04:16:23.258Z"
         },
         "updatedAt": {
-          "$date": "2026-09-02T04:16:50.843Z"
+          "$date": "2026-09-11T20:39:32.198Z"
         },
         "__v": 0,
         "press": [],
@@ -14241,6 +14271,6 @@
       }
     ]
   },
-  "dataUpdatedAt": "2026-09-10T21:47:32.018Z",
+  "dataUpdatedAt": "2026-09-11T20:39:32.198Z",
   "host": "245"
 }
