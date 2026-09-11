@@ -4030,6 +4030,16 @@
         "_id": {
           "$oid": "6aa31348ac0126caab1888a9"
         }
+      },
+      {
+        "_id": {
+          "$oid": "6aa329f4ac0126caab188c78"
+        }
+      },
+      {
+        "_id": {
+          "$oid": "6aa32a43ac0126caab188c8a"
+        }
       }
     ],
     "projects": [
@@ -12052,102 +12062,126 @@
             "images": [
               {
                 "image": "6a90c99f722d7a45f9b60380",
-                "id": "6a90cb8c544e59349e0eb790"
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa32574dfa5b83f6e4fe24b"
               }
             ],
-            "id": "6a90cb8c544e59349e0eb782"
+            "id": "6aa32574dfa5b83f6e4fe242"
           },
           {
             "layout": "two-up",
             "images": [
               {
                 "image": "6a90c9a0722d7a45f9b60387",
-                "id": "6a90cb8c544e59349e0eb791"
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa32574dfa5b83f6e4fe24c"
               },
               {
                 "image": "6a90c9a0722d7a45f9b6038e",
-                "id": "6a90cb8c544e59349e0eb792"
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa32574dfa5b83f6e4fe24d"
               }
             ],
-            "id": "6a90cb8c544e59349e0eb783"
+            "id": "6aa32574dfa5b83f6e4fe243"
           },
           {
             "layout": "full",
             "images": [
               {
                 "image": "6a90c9a1722d7a45f9b60395",
-                "id": "6a90cb8c544e59349e0eb793"
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa32574dfa5b83f6e4fe24e"
               }
             ],
-            "id": "6a90cb8c544e59349e0eb784"
+            "id": "6aa32574dfa5b83f6e4fe244"
           },
           {
             "layout": "full",
             "images": [
               {
                 "image": "6a90c9a3722d7a45f9b6039c",
-                "id": "6a90cb8c544e59349e0eb794"
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa32574dfa5b83f6e4fe24f"
               }
             ],
-            "id": "6a90cb8c544e59349e0eb785"
+            "id": "6aa32574dfa5b83f6e4fe245"
           },
           {
             "layout": "two-up",
             "images": [
               {
-                "image": "6a90c9a3722d7a45f9b603a3",
-                "id": "6a90cb8c544e59349e0eb795"
+                "image": "6a90c9a3722d7a45f9b603aa",
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa32574dfa5b83f6e4fe250"
               },
               {
-                "image": "6a90c9a3722d7a45f9b603aa",
-                "id": "6a90cb8c544e59349e0eb796"
+                "image": "6a90c9a3722d7a45f9b603a3",
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa32574dfa5b83f6e4fe251"
               }
             ],
-            "id": "6a90cb8c544e59349e0eb786"
+            "id": "6aa32574dfa5b83f6e4fe246"
           },
           {
             "layout": "full",
             "images": [
               {
                 "image": "6a90c9a4722d7a45f9b603b1",
-                "id": "6a90cb8c544e59349e0eb797"
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa32574dfa5b83f6e4fe252"
               }
             ],
-            "id": "6a90cb8c544e59349e0eb787"
+            "id": "6aa32574dfa5b83f6e4fe247"
           },
           {
             "layout": "full",
             "images": [
               {
                 "image": "6a90c9a8722d7a45f9b603b8",
-                "id": "6a90cb8c544e59349e0eb798"
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa32574dfa5b83f6e4fe253"
               }
             ],
-            "id": "6a90cb8c544e59349e0eb788"
+            "id": "6aa32574dfa5b83f6e4fe248"
           },
           {
             "layout": "two-up",
             "images": [
               {
                 "image": "6a90c9a8722d7a45f9b603bf",
-                "id": "6a90cb8c544e59349e0eb799"
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa32574dfa5b83f6e4fe254"
               },
               {
                 "image": "6a90c9a9722d7a45f9b603c6",
-                "id": "6a90cb8c544e59349e0eb79a"
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa32574dfa5b83f6e4fe255"
               }
             ],
-            "id": "6a90cb8c544e59349e0eb789"
+            "id": "6aa32574dfa5b83f6e4fe249"
           },
           {
             "layout": "full",
             "images": [
               {
                 "image": "6a90c9a9722d7a45f9b603cd",
-                "id": "6a90cb8c544e59349e0eb79b"
+                "focusX": 50,
+                "focusY": 50,
+                "id": "6aa32574dfa5b83f6e4fe256"
               }
             ],
-            "id": "6a90cb8c544e59349e0eb78a"
+            "id": "6aa32574dfa5b83f6e4fe24a"
           }
         ],
         "stats": [
@@ -12289,7 +12323,7 @@
           "$date": "2026-08-27T23:35:05.581Z"
         },
         "updatedAt": {
-          "$date": "2026-09-01T22:00:05.714Z"
+          "$date": "2026-09-10T21:47:32.018Z"
         },
         "__v": 0,
         "writeupBlocks": [],
@@ -14207,6 +14241,6 @@
       }
     ]
   },
-  "dataUpdatedAt": "2026-09-10T20:30:00.593Z",
+  "dataUpdatedAt": "2026-09-10T21:47:32.018Z",
   "host": "245"
 }
