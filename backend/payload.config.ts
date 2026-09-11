@@ -13,6 +13,21 @@ import Homepage from "./globals/Homepage";
 import Settings from "./globals/Settings";
 import Services from "./globals/Services";
 import About from "./globals/About";
+import { exportAfterChange } from "./hooks/exportAfterChange";
+
+// Append the dark-launched DB-export trigger (#155) to every content collection
+// + global's afterChange hooks. Inert unless /root/.aoin-export-hook-on exists.
+// Users (admin) is deliberately excluded.
+const withExportHook = (config: any) => ({
+  ...config,
+  hooks: {
+    ...(config.hooks || {}),
+    afterChange: [
+      ...((config.hooks && config.hooks.afterChange) || []),
+      exportAfterChange,
+    ],
+  },
+});
 
 export default buildConfig({
   admin: {
@@ -50,8 +65,19 @@ export default buildConfig({
       collections: ["projects"],
     },
   },
-  collections: [Users, Media, Projects, ServiceCategories, Equipment],
-  globals: [Homepage, Settings, Services, About],
+  collections: [
+    Users,
+    withExportHook(Media),
+    withExportHook(Projects),
+    withExportHook(ServiceCategories),
+    withExportHook(Equipment),
+  ],
+  globals: [
+    withExportHook(Homepage),
+    withExportHook(Settings),
+    withExportHook(Services),
+    withExportHook(About),
+  ],
   db: mongooseAdapter({
     url: process.env.DATABASE_URI || "mongodb://localhost:27017/payload",
   }),
