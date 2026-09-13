@@ -198,7 +198,13 @@ export class HomeController {
       this.stmtRO.observe(sw);
     }
 
-    document.fonts.ready.then(() => {
+    // Cap the font wait so the preloader starts even on slow links (#156) —
+    // document.fonts.ready can stall for seconds while WOFF2 fonts trickle in,
+    // leaving the loader pinned at 0%.
+    Promise.race([
+      document.fonts.ready,
+      new Promise((resolve) => window.setTimeout(resolve, 2500)),
+    ]).then(() => {
       this.runPreload();
       this.fitDropcap();
       this.applyAboutType();

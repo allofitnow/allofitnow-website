@@ -30,13 +30,28 @@ import Footer from '@/components/home/Footer.astro';
 
 <script>
   import { mountHome } from '@/lib/home.controller';
-  const root = document.querySelector<HTMLElement>('[data-home]');
-  if (root) {
-    const c = mountHome(root);
-    // A home marquee tile flies to its project as a soft (ClientRouter) nav, so
-    // tear the controller down on the way out — otherwise Lenis and its scroll
-    // listeners leak onto the project page. Returning to home is always a full
-    // load (every home-bound link is data-astro-reload), so it re-mounts fresh.
-    document.addEventListener('astro:before-swap', () => c.destroy(), { once: true });
-  }
+  let ctrl: ReturnType<typeof mountHome> | null = null;
+
+  const mount = () => {
+    const root = document.querySelector<HTMLElement>('[data-home]');
+    if (!root || ctrl) return;
+    ctrl = mountHome(root);
+  };
+
+  const unmount = () => {
+    ctrl?.destroy();
+    ctrl = null;
+  };
+
+  mount();
+
+  // A home marquee tile flies to its project as a soft (ClientRouter) nav, so
+  // tear the controller down on the way out — otherwise Lenis and its scroll
+  // listeners leak onto the project page. The browser BACK button restores home
+  // via the ClientRouter (NOT a full reload, despite data-astro-reload on the
+  // links), so re-mount on swap — otherwise the restored preloader sits at 0%
+  // forever (#156).
+  document.addEventListener('astro:before-swap', unmount);
+  document.addEventListener('astro:after-swap', mount);
+  document.addEventListener('astro:page-load', mount);
 </script>
